@@ -1,0 +1,18 @@
+node_modules/
+.DS_Store
+*.log
+
+# This repo is public. CLAUDE.md is working notes, with local paths in it.
+CLAUDE.md
+.claude/settings.local.json
+
+# Render-test output; regenerate with `npm test`.
+ui/tests/screenshots/
+
+# Credentials for the live-site tests. Never commit these.
+.env
+.env.*
+!.env.example
+
+# dist/ is deliberately NOT ignored — the built userscripts are committed so
+# they can be installed straight from GitHub.

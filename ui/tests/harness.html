@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>amq-ui harness</title>
+    <!-- Loads the BUILT script, for `npm test`. `harness.dev.html` is the same
+         page against the dev server for a live edit loop — add a stub here and
+         it needs adding there too. -->
+    <!-- The real IBM Plex faces, vendored under tests/fonts so the suite
+         measures the metrics the game actually renders with, without needing
+         the network. Several layout bugs here were metric-dependent. -->
+    <link rel="stylesheet" href="./fonts.css" />
+    <style>
+      /* Stands in for the user's wallpaper: the screen must stay legible over
+         arbitrary bright art (SPEC §7). */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background:
+          radial-gradient(
+            1100px 620px at 22% 8%,
+            #3d5a7a 0%,
+            #2a3e58 42%,
+            #1b2536 74%,
+            #131a26 100%
+          ),
+          #0b0e14;
+      }
+      /* AMQ's quest drawer, verbatim from main.css: absolute, z-index 10.
+         Our screen must not cover it. */
+      #questContainer {
+        position: absolute;
+        left: 0;
+        bottom: max(calc(50% - 278px), 100px);
+        width: 333px;
+        height: 200px;
+        background-color: #424242;
+        z-index: 10;
+      }
+      /* AMQ's menu bar owns the bottom 45px and is not ours to draw. */
+      #mainMenuBar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 45px;
+        background: #1b1b1b;
+        color: #fff;
+        font:
+          14px Coda,
+          sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="roomBrowserPage" class="hidden">AMQ's own room browser</div>
+    <div id="customQuizCreatorPage" class="hidden">AMQ's own quiz creator</div>
+    <div id="questContainer">Quests</div>
+    <div id="mainMenuBar">AMQ menu bar — not ours</div>
+    <script src="./locale.js"></script>
+    <script src="./amq-stub.js"></script>
+    <script src="./rooms.js"></script>
+    <script src="./quizzes.js"></script>
+    <script src="../../dist/amq-ui.user.js"></script>
+  </body>
+</html>

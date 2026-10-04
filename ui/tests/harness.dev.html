@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>amq-ui dev harness</title>
+    <link rel="stylesheet" href="/ui/tests/fonts.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: #131a26;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="roomBrowserPage" class="hidden">AMQ's own room browser</div>
+    <div id="customQuizCreatorPage" class="hidden">AMQ's own quiz creator</div>
+    <script src="/ui/tests/locale.js"></script>
+    <script src="/ui/tests/amq-stub.js"></script>
+    <script src="/ui/tests/rooms.js"></script>
+    <script src="/ui/tests/quizzes.js"></script>
+    <script type="module" src="/__vite-plugin-monkey.entry.js"></script>
+  </body>
+</html>

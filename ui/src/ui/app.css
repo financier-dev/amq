@@ -1,0 +1,249 @@
+/*
+ * Styles for everything mounted inside the shadow root. Component styles live
+ * in their own .svelte files; this is the reset and the token set (SPEC §2).
+ *
+ * The screen sits over a user-set wallpaper (see `amq-custom-css.user.ts` in
+ * the tampermonkey repo), so surfaces stay translucent enough to let the art
+ * through. If the list body reads thin over pale wallpapers, drop the zebra and
+ * raise `--line` rather than raising `--bg-list` — that defeats the point.
+ */
+
+:host {
+  all: initial;
+  display: block;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.amq-ui-root {
+  /* surfaces */
+  --bg-top: rgba(11, 14, 20, 0.82);
+  --bg-strip: rgba(11, 14, 20, 0.58);
+  --bg-head: rgba(9, 12, 18, 0.92);
+  --bg-list: rgba(13, 17, 25, 0.8);
+  --bg-row: rgba(255, 255, 255, 0.022);
+  --bg-row-hover: rgba(255, 255, 255, 0.045);
+  --bg-pop: rgba(10, 13, 19, 0.98);
+  --bg-sunken: rgba(0, 0, 0, 0.34);
+  --bg-raised: rgba(255, 255, 255, 0.07);
+
+  --line: rgba(255, 255, 255, 0.055);
+  --line-soft: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  /* text */
+  --text: #eef1f6;
+  --text-2: #cdd4e0;
+  --text-3: #98a1b0;
+  --text-4: #8a93a3;
+  --text-5: #6f7889;
+
+  /* accents */
+  --accent: #5b9bf5;
+  --accent-fg: #07101f;
+  --accent-soft: #a7cbfa;
+  --teal: #34c9a3;
+  --teal-fg: #6fdcbd;
+  --amber: #e8a33d;
+  --amber-fg: #f0bd70;
+  --violet: #9b7cf5;
+  --violet-fg: #b6a0fa;
+  --rose: #e5658a;
+  --rose-fg: #f08aa8;
+  --blue-fg: #8dbcf8;
+  /* Mode pills only — keeps the busiest modes off the rose that already means
+     "full" and "excluded" everywhere else on the row. */
+  --cyan: #3fb9d6;
+  --cyan-fg: #6fd3e8;
+
+  /* chip surfaces, one per family */
+  --chip-teal-bg: rgba(52, 201, 163, 0.14);
+  --chip-teal-line: rgba(52, 201, 163, 0.34);
+  --chip-amber-bg: rgba(232, 163, 61, 0.13);
+  --chip-amber-line: rgba(232, 163, 61, 0.32);
+  --chip-violet-bg: rgba(155, 124, 245, 0.15);
+  --chip-violet-line: rgba(155, 124, 245, 0.4);
+  --chip-rose-bg: rgba(229, 101, 138, 0.13);
+  --chip-rose-line: rgba(229, 101, 138, 0.36);
+  --chip-blue-bg: rgba(91, 155, 245, 0.13);
+  --chip-blue-line: rgba(91, 155, 245, 0.32);
+  --chip-off-bg: rgba(255, 255, 255, 0.045);
+  --chip-off-line: rgba(255, 255, 255, 0.1);
+  --chip-off-fg: #7d8695;
+
+  /*
+   * Fonts are injected into the document, not here — @font-face does not
+   * inherit into a shadow root (see lib/shadow.ts). Every stack keeps a real
+   * fallback so a blocked CDN degrades instead of breaking.
+   */
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Bricolage Grotesque', 'IBM Plex Sans', system-ui, sans-serif;
+
+  --radius: 8px;
+  --gutter: 24px;
+
+  /*
+   * Column widths live here, not in the two components that draw them. The
+   * header and the rows are separate flex containers, so any drift between
+   * their width lists shows up as misaligned headings — which is exactly what
+   * happened when one of the two was updated and the other was not.
+   */
+  --col-id: 64px;
+  /* hostModal.js:2055 caps a room name at 20 characters, so this column does
+     not need to flex — the chips column does, and it has real use for the
+     space because its overflow collapses into a `+N`. */
+  --col-identity: 250px;
+  --col-mode: 136px;
+  --col-selection: 96px;
+  /* 3 × 32px chips + 2 × 4px gaps. A flex item's `min-width: auto` raises it
+     to its min-content size, so a token narrower than the content silently
+     widens the column and knocks the header out of step — keep these exact. */
+  --col-types: 104px;
+  --col-players: 88px;
+  --col-songs: 96px;
+  --col-time: 88px;
+  --col-difficulty: 108px;
+  /* A floor, not a fixed width: the chips column takes the leftover space. */
+  --col-chips: 220px;
+  /* 30px settings + 6 + 78 + 6 + 78 — see the note on --col-types. */
+  --col-action: 200px;
+  --col-gap: 10px;
+  --row-pad: 14px;
+
+  /*
+   * Quiz builder (SPEC §5.4).
+   *
+   * Same discipline as the room browser's columns above and for the same
+   * reason: the entry row and anything that lines up with it are separate flex
+   * containers, so a width that lives in only one of them drifts.
+   *
+   * Sized against AMQ's own creator, which sets its block rows in 16px
+   * (`main.css:20854`). The first pass here was 11.5–12.5px and read as
+   * cramped next to the rest of the game — these are the type sizes the whole
+   * pane scales from, so change them here rather than in a component.
+   */
+  --qb-text: 14px;
+  --qb-text-sm: 12.5px;
+  --qb-text-xs: 11.5px;
+  --qb-badge: 12px;
+
+  --qb-chain: 16px;
+  --qb-grip: 12px;
+  --qb-check: 15px;
+  /*
+   * Anime and song both flex. Fixed widths here made the anime column truncate
+   * names while the song column sat half empty — the two carry the same kind
+   * of content and should share the slack.
+   */
+  --qb-anime-min: 120px;
+  --qb-song-min: 160px;
+  --qb-types: 156px;
+  --qb-pick: 88px;
+  --qb-overrides: 148px;
+  --qb-actions: 108px;
+  --qb-row-gap: 9px;
+  --qb-entry-h: 44px;
+  --qb-row-pad-left: 11px;
+  /*
+   * Where an entry row's checkbox starts: row padding, then the chain gutter,
+   * the drag grip, and the gaps between them. A nested block indents its rail
+   * by `--qb-chain` and then pads out to this, so its checkbox sits on the
+   * same line as the entries' — otherwise the entries read as being *inside*
+   * the algorithm block rather than beside it.
+   */
+  --qb-check-x: calc(
+    var(--qb-row-pad-left) + var(--qb-chain) + var(--qb-row-gap) +
+      var(--qb-grip) + var(--qb-row-gap)
+  );
+
+  /* Library pane (SPEC §4): a lead cell wide enough to centre the chevron,
+     and a wider one on a song row so its type badge clears it. */
+  --qb-lib-lead: 24px;
+  --qb-lib-song-lead: 52px;
+  --qb-lib-count: 64px;
+  --qb-lib-action: 120px;
+  --qb-lib-anime-h: 52px;
+  --qb-lib-song-h: 46px;
+  --qb-band-h: 50px;
+
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/*
+ * Scrollbars.
+ *
+ * The default Chromium bar is a light-grey slab that sits on our dark surfaces
+ * like a scar. This is the same hairline treatment the panes use: an inset
+ * thumb on a transparent track, so it reads as part of the surface rather than
+ * as chrome bolted to the edge of it.
+ */
+.amq-ui-root ::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.amq-ui-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.amq-ui-root ::-webkit-scrollbar-thumb {
+  /* The transparent border plus `background-clip` is what insets the thumb
+     without a wrapper — a plain narrower bar would sit against the edge. */
+  background: rgba(255, 255, 255, 0.13);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 6px;
+}
+
+.amq-ui-root ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+  background-clip: padding-box;
+}
+
+.amq-ui-root ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox has no pseudo-elements for this; these two properties are all of it.
+   The root is listed explicitly — a descendant selector alone skips it, and it
+   is itself a scroll container. */
+.amq-ui-root,
+.amq-ui-root * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* Focus is never removed, only restyled — SPEC §7. */
+.amq-ui-root :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.amq-ui-root button {
+  font-family: inherit;
+}
+
+.amq-ui-root .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.amq-ui-root .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

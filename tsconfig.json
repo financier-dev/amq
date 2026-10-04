@@ -1,0 +1,28 @@
+{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "include": [
+    "shared/**/*.ts",
+    "shared/**/*.d.ts",
+    "build/**/*.ts",
+    "ui/src/**/*.ts",
+    "ui/src/**/*.svelte",
+    "vite.config.ts",
+    "eslint.config.js"
+  ],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["vite/client", "vite-plugin-monkey/client", "node"],
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    /* Kept in step with `alias` in build/config.ts. */
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    }
+  }
+}
