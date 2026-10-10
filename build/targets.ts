@@ -39,6 +39,19 @@ export const targets: Target[] = [
       'run-at': 'document-end',
     },
   },
+  {
+    name: 'amq',
+    entry: 'scripts/main.ts',
+    fileName: 'amq.user.js',
+    userscript: {
+      name: 'AMQ Master Script',
+      namespace: 'amq',
+      description: "Financier's bundle of AMQ userscripts",
+      author: 'Financier',
+      match: AMQ_MATCH,
+      grant: ['GM_addStyle'],
+    },
+  },
 ]
 
 export const DEFAULT_TARGET = targets[0].name

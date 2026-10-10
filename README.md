@@ -4,14 +4,18 @@ Userscripts and tools for [Anime Music Quiz](https://animemusicquiz.com).
 Everything is TypeScript. Vite builds the userscripts into plain `.user.js`
 files under [`dist/`](dist).
 
-The repository has two projects:
+The repository has three projects:
 
 - **[`ui/`](ui)** replaces two screens of the game on the live site: the room
   browser and the custom quiz builder. It uses Svelte 5 and renders in a
   shadow root. See [`ui/README.md`](ui/README.md).
+- **[`scripts/`](scripts)** holds the userscripts for the game page. They
+  build into one file, `dist/amq.user.js`: chat commands, answer dropdown
+  changes, song history, player stats, styles and more. See
+  [`scripts/README.md`](scripts/README.md).
 - **[`local/`](local)** holds scripts that run on your computer, not in the
   browser. `npm run anime-titles` prints the Japanese titles of the anime on
-  your list.
+  your list. See [`local/README.md`](local/README.md).
 
 ## Install
 
@@ -89,6 +93,7 @@ Four rules:
 build/     the build: target registry, config factory, runner
 shared/    code that more than one project uses, imported as `@shared/*`
 ui/        the interface reimplementation: src/, tests/
+scripts/   userscripts for the game page, bundled into amq.user.js
 local/     scripts that run on your computer
 dist/      build output, committed
 ```

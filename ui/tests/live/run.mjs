@@ -210,7 +210,7 @@ check(
 )
 /*
  * `unreadable` counts entries our code could not read. Non-zero means the
- * payload changed shape and `shared/typings/amq.d.ts` is out of date. Only
+ * payload changed shape and `shared/globals.d.ts` is out of date. Only
  * the live suite can detect this: the offline stubs repeat our assumptions.
  */
 check(

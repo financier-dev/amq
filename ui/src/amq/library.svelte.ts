@@ -41,7 +41,7 @@ function trackCache() {
  *
  * A plain counter, not `$state`: a derivation writes it, and a derivation may
  * not write reactive state. `__amqUI.quizBuilder.unreadable()` exposes it.
- * Non-zero means the payload changed shape and `amq.d.ts` is out of date.
+ * Non-zero means the payload changed shape and `shared/globals.d.ts` is out of date.
  */
 let unreadableAnime = 0
 

@@ -12,7 +12,7 @@
 
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client'
 
-import { ensureLoad } from '@shared/amq/ready'
+import { ensureLoad } from '@shared/ready'
 import { exposeDebugApi } from './amq/debug.svelte'
 import { libraryStore } from './amq/library.svelte'
 import { quizStore } from './amq/quiz.svelte'

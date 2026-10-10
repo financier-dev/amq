@@ -307,11 +307,77 @@ declare global {
       BOSS: 5
     }
     SHOW_SELECTION_IDS: { AUTO: 1; LOOTING: 2 }
+    gameMode: string
+    teamMode: boolean
+    isSpectator: boolean
+    /** Keyed by `gamePlayerId`. */
+    players: Record<
+      number,
+      {
+        isSelf: boolean
+        teamNumber: number | null
+        _name: string
+        avatarSlot: { lifeCounterController: { currentLives: number } }
+      }
+    >
+    /** Nexus only. */
+    enemyMap: Record<
+      number,
+      { hp: number; enemyPosition: number } | null | undefined
+    >
+    scoreboard: { teamMap: Record<number, unknown> }
+    pauseButton: { pauseOn: boolean }
+    skipClicked: () => void
+    skipController: {
+      _toggled: boolean
+      highlight: boolean
+      sendSkipVote: () => void
+    }
     [key: string]: any
   }
 
+  const quizVideoController: {
+    getCurrentVideoStartPoint: () => number | null
+    getCurrentVideoLength: () => number | null
+  }
+
+  /** The fields of `lobby.settings` that scripts read are typed as present. */
+  type LobbySettings = RoomSettings &
+    Required<
+      Pick<
+        RoomSettings,
+        | 'songDifficulity'
+        | 'genre'
+        | 'tags'
+        | 'openingCategories'
+        | 'endingCategories'
+        | 'insertCategories'
+        | 'modifiers'
+        | 'extraGuessTime'
+      >
+    >
+
   const lobby: {
     ANSWERING_MODES: { TYPING: 1; MIXED: 2; MULTIPLE_CHOICE: 3 }
+    inLobby: boolean
+    isReady: boolean
+    isHost: boolean
+    isSpectator: boolean
+    settings: LobbySettings
+    numberOfPlayersReady: number
+    players: object
+    fireMainButtonEvent: () => void
+    [key: string]: any
+  }
+
+  const gameChat: any
+
+  const AfkKicker: any
+  const QuizInfoContainer: any
+
+  /** AMQ's settings object. Do not confuse it with a script's own `options`. */
+  const options: {
+    useRomajiNames: boolean
     [key: string]: any
   }
 
@@ -375,8 +441,58 @@ declare global {
     showSettings: () => void
     show: () => void
     hide: () => void
+    genreFilter: SettingDropDownFilter
+    tagFilter: SettingDropDownFilter
     [key: string]: any
   }
+
+  interface SettingDropDownFilter {
+    awesomepleteInstance: { _list: { id: number; name: string }[] }
+  }
+
+  const videoResolver: {
+    hostOrder: string[]
+    targetHost: string
+    readonly targetEndpoint: string
+    connectionTesterMap: Record<string, any>
+    updateActiveHost: () => boolean
+    testHost: (host: string) => void
+  }
+
+  const videoConnectionStatus: {
+    targetHost: string | null
+    /** `$body` is a jQuery object. */
+    hostStatusRows: Record<
+      string,
+      {
+        $body: ArrayLike<HTMLElement>
+        testing: boolean
+        status: string | null
+      }
+    >
+    updateTargetHost: (hostName: string) => void
+  }
+
+  class AmqAwesomeplete {
+    evaluate: () => any
+  }
+
+  class Suggestion {
+    constructor(...args: any)
+    label: string
+    value: string
+  }
+
+  const createAnimeSearchRegexQuery: (...args: any) => any
+  const translateShortcodeToUnicode: (text: string) => { text: string }
+  const convertSecondsToTimeString: (totalSeconds: number) => string
+  const convertTypeInfoToText: (
+    type: number,
+    typeNumber: number | null,
+    rebroadcast?: boolean | null,
+    dub?: boolean | null,
+    baseKey?: string
+  ) => { key: string; data: object }
 
   const cdnFormater: {
     AVATAR_SIZES: number[]

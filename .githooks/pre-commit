@@ -14,10 +14,10 @@ set -e
 
 staged=$(git diff --cached --name-only)
 
-if echo "$staged" | grep -qE '^(ui/src/|shared/|build/|vite\.config\.ts$|svelte\.config\.js$|package(-lock)?\.json$)'; then
+if echo "$staged" | grep -qE '^(ui/src/|scripts/|shared/|build/|vite\.config\.ts$|svelte\.config\.js$|package(-lock)?\.json$)'; then
   # The build reads the working tree, not the index, so it includes changes
   # that are not staged. Warn about them.
-  unstaged=$(git diff --name-only -- ui/src shared build vite.config.ts svelte.config.js package.json)
+  unstaged=$(git diff --name-only -- ui/src scripts shared build vite.config.ts svelte.config.js package.json)
   if [ -n "$unstaged" ]; then
     echo "pre-commit: warning — these are modified but not staged, and the rebuild will include them:"
     echo "$unstaged" | sed 's/^/  /'

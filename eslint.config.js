@@ -31,7 +31,7 @@ export default ts.config(
     rules: {
       /*
        * AMQ's payloads are only partly typed, so `any` is needed at that
-       * boundary. See shared/typings/amq.d.ts.
+       * boundary. See shared/globals.d.ts.
        */
       '@typescript-eslint/no-explicit-any': 'off',
       /*
