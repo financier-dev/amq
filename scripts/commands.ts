@@ -74,8 +74,17 @@ export default async function setup() {
         inputEl.value = ''
         return
       }
-      const args = rest.join(' ')
-      commands[cmd].callback(args)
+      // AMQ's Enter handler calls `preventDefault()` only after this function
+      // returns. A command that throws would leave the Enter key to insert a
+      // new line, so catch the error and report it.
+      try {
+        commands[cmd].callback(rest.join(' '))
+      } catch (error) {
+        console.error(`[amq] /${cmd} failed`, error)
+        gameChat.systemMessage(
+          `/${cmd} failed: ${error instanceof Error ? error.message : error}`
+        )
+      }
       inputEl.value = ''
     } else {
       sendMessageFn.apply(this)

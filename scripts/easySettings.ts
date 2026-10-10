@@ -359,44 +359,66 @@ export default async function setup() {
       longHelp: 'Usage: /settings</br>Displays the current game settings.',
     }),
     () => {
+      const settings = lobby.settings
+      if (!settings) {
+        gameChat.systemMessage('No game settings. Join a room first.')
+        return
+      }
+
       const output = ['Current game settings:']
 
-      output.push(`Room title: ${lobby.settings.roomName}`)
+      // Not every game mode sends every setting. A setting that cannot be
+      // read gets its own line and does not stop the others.
+      const add = (label: string, read: () => string | null) => {
+        try {
+          const value = read()
+          if (value !== null) output.push(`${label}: ${value}`)
+        } catch {
+          output.push(`${label}: not available`)
+        }
+      }
 
-      const songTypes = Object.entries(lobby.settings.songType.standardValue)
-        .filter(([, enabled]) => enabled)
-        .map(([type]) => type)
-      output.push(`Song types: ${songTypes.join(', ')}`)
+      add('Room title', () => settings.roomName)
 
-      const guessTime = lobby.settings.guessTime.randomOn
-        ? `[${lobby.settings.guessTime.randomValue.join(', ')}]`
-        : lobby.settings.guessTime.standardValue
-      const extraTime = lobby.settings.extraGuessTime.randomOn
-        ? `[${lobby.settings.extraGuessTime.randomValue.join(', ')}]`
-        : lobby.settings.extraGuessTime.standardValue
-      output.push(`Guess time: ${guessTime}${extraTime ? ' ' + extraTime : ''}`)
+      add('Song types', () =>
+        Object.entries(settings.songType.standardValue)
+          .filter(([, enabled]) => enabled)
+          .map(([type]) => type)
+          .join(', ')
+      )
 
-      const difficulty = lobby.settings.songDifficulity.advancedOn
-        ? lobby.settings.songDifficulity.advancedValue.join(' - ')
-        : Object.entries(lobby.settings.songDifficulity.standardValue)
-            .filter(([, enabled]) => enabled)
-            .map(([level]) => level)
-            .join(', ')
-      output.push(`Difficulty: ${difficulty}`)
+      add('Guess time', () => {
+        const guessTime = settings.guessTime.randomOn
+          ? `[${settings.guessTime.randomValue.join(', ')}]`
+          : settings.guessTime.standardValue
+        const extraTime = settings.extraGuessTime.randomOn
+          ? `[${settings.extraGuessTime.randomValue.join(', ')}]`
+          : settings.extraGuessTime.standardValue
+        return `${guessTime}${extraTime ? ' ' + extraTime : ''}`
+      })
 
-      const watchedDist =
-        lobby.settings.watchedDistribution === 1
+      add('Difficulty', () =>
+        settings.songDifficulity.advancedOn
+          ? settings.songDifficulity.advancedValue.join(' - ')
+          : Object.entries(settings.songDifficulity.standardValue)
+              .filter(([, enabled]) => enabled)
+              .map(([level]) => level)
+              .join(', ')
+      )
+
+      add('Watched distribution', () =>
+        settings.watchedDistribution === 1
           ? 'Random'
-          : lobby.settings.watchedDistribution === 2
+          : settings.watchedDistribution === 2
             ? 'Weighted'
             : 'Equal'
-      output.push(`Watched distribution: ${watchedDist}`)
+      )
 
-      const modifiers = Object.entries(lobby.settings.modifiers)
-        .filter(([, enabled]) => enabled)
-        .map(([modifier]) => modifier)
-      output.push(
-        `Modifiers:</br>${modifiers.map((m) => '  - ' + m).join('<br>')}`
+      add('Modifiers', () =>
+        Object.entries(settings.modifiers)
+          .filter(([, enabled]) => enabled)
+          .map(([modifier]) => '</br>  - ' + modifier)
+          .join('')
       )
 
       const stateToSymbol = {
@@ -404,26 +426,22 @@ export default async function setup() {
         2: '-',
         3: '?',
       }
-      const genre = lobby.settings.genre.map(
-        (g) =>
-          stateToSymbol[g.state as keyof typeof stateToSymbol] +
-          hostModal.genreFilter.awesomepleteInstance._list.find(
-            (listG) => listG.id.toString() === g.id.toString()
-          )?.name
-      )
-      if (genre.length > 0) {
-        output.push(`Genre: ${genre.join(', ')}`)
-      }
-      const tags = lobby.settings.tags.map(
-        (t) =>
-          stateToSymbol[t.state as keyof typeof stateToSymbol] +
-          hostModal.tagFilter.awesomepleteInstance._list.find(
-            (listT) => listT.id.toString() === t.id.toString()
-          )?.name
-      )
-      if (tags.length > 0) {
-        output.push(`Tags: ${tags.join(', ')}`)
-      }
+      const describeFilters = (
+        entries: RoomGenreTagEntry[],
+        filter: SettingDropDownFilter
+      ) =>
+        entries
+          .map(
+            (entry) =>
+              stateToSymbol[entry.state as keyof typeof stateToSymbol] +
+              filter.awesomepleteInstance._list.find(
+                (item) => item.id.toString() === entry.id.toString()
+              )?.name
+          )
+          .join(', ') || null
+
+      add('Genre', () => describeFilters(settings.genre, hostModal.genreFilter))
+      add('Tags', () => describeFilters(settings.tags, hostModal.tagFilter))
 
       gameChat.systemMessage(output.join('</br>'))
     }

@@ -363,6 +363,10 @@ declare global {
     isReady: boolean
     isHost: boolean
     isSpectator: boolean
+    /**
+     * Undefined at runtime until the player joins a room (`setupLobby`). Typed
+     * as present because scripts read it only inside a room.
+     */
     settings: LobbySettings
     numberOfPlayersReady: number
     players: object

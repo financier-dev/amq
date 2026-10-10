@@ -593,8 +593,14 @@
           inputEl.value = "";
           return;
         }
-        const args = rest.join(" ");
-        commands[cmd].callback(args);
+        try {
+          commands[cmd].callback(rest.join(" "));
+        } catch (error) {
+          console.error(`[amq] /${cmd} failed`, error);
+          gameChat.systemMessage(
+            `/${cmd} failed: ${error instanceof Error ? error.message : error}`
+          );
+        }
         inputEl.value = "";
       } else {
         sendMessageFn.apply(this);
@@ -2363,42 +2369,54 @@
         longHelp: "Usage: /settings</br>Displays the current game settings."
       }),
       () => {
+        const settings = lobby.settings;
+        if (!settings) {
+          gameChat.systemMessage("No game settings. Join a room first.");
+          return;
+        }
         const output = ["Current game settings:"];
-        output.push(`Room title: ${lobby.settings.roomName}`);
-        const songTypes = Object.entries(lobby.settings.songType.standardValue).filter(([, enabled]) => enabled).map(([type]) => type);
-        output.push(`Song types: ${songTypes.join(", ")}`);
-        const guessTime = lobby.settings.guessTime.randomOn ? `[${lobby.settings.guessTime.randomValue.join(", ")}]` : lobby.settings.guessTime.standardValue;
-        const extraTime = lobby.settings.extraGuessTime.randomOn ? `[${lobby.settings.extraGuessTime.randomValue.join(", ")}]` : lobby.settings.extraGuessTime.standardValue;
-        output.push(`Guess time: ${guessTime}${extraTime ? " " + extraTime : ""}`);
-        const difficulty = lobby.settings.songDifficulity.advancedOn ? lobby.settings.songDifficulity.advancedValue.join(" - ") : Object.entries(lobby.settings.songDifficulity.standardValue).filter(([, enabled]) => enabled).map(([level]) => level).join(", ");
-        output.push(`Difficulty: ${difficulty}`);
-        const watchedDist = lobby.settings.watchedDistribution === 1 ? "Random" : lobby.settings.watchedDistribution === 2 ? "Weighted" : "Equal";
-        output.push(`Watched distribution: ${watchedDist}`);
-        const modifiers = Object.entries(lobby.settings.modifiers).filter(([, enabled]) => enabled).map(([modifier]) => modifier);
-        output.push(
-          `Modifiers:</br>${modifiers.map((m) => "  - " + m).join("<br>")}`
+        const add = (label, read) => {
+          try {
+            const value = read();
+            if (value !== null) output.push(`${label}: ${value}`);
+          } catch {
+            output.push(`${label}: not available`);
+          }
+        };
+        add("Room title", () => settings.roomName);
+        add(
+          "Song types",
+          () => Object.entries(settings.songType.standardValue).filter(([, enabled]) => enabled).map(([type]) => type).join(", ")
+        );
+        add("Guess time", () => {
+          const guessTime = settings.guessTime.randomOn ? `[${settings.guessTime.randomValue.join(", ")}]` : settings.guessTime.standardValue;
+          const extraTime = settings.extraGuessTime.randomOn ? `[${settings.extraGuessTime.randomValue.join(", ")}]` : settings.extraGuessTime.standardValue;
+          return `${guessTime}${extraTime ? " " + extraTime : ""}`;
+        });
+        add(
+          "Difficulty",
+          () => settings.songDifficulity.advancedOn ? settings.songDifficulity.advancedValue.join(" - ") : Object.entries(settings.songDifficulity.standardValue).filter(([, enabled]) => enabled).map(([level]) => level).join(", ")
+        );
+        add(
+          "Watched distribution",
+          () => settings.watchedDistribution === 1 ? "Random" : settings.watchedDistribution === 2 ? "Weighted" : "Equal"
+        );
+        add(
+          "Modifiers",
+          () => Object.entries(settings.modifiers).filter(([, enabled]) => enabled).map(([modifier]) => "</br>  - " + modifier).join("")
         );
         const stateToSymbol = {
           1: "+",
           2: "-",
           3: "?"
         };
-        const genre = lobby.settings.genre.map(
-          (g) => stateToSymbol[g.state] + hostModal.genreFilter.awesomepleteInstance._list.find(
-            (listG) => listG.id.toString() === g.id.toString()
+        const describeFilters = (entries, filter) => entries.map(
+          (entry) => stateToSymbol[entry.state] + filter.awesomepleteInstance._list.find(
+            (item) => item.id.toString() === entry.id.toString()
           )?.name
-        );
-        if (genre.length > 0) {
-          output.push(`Genre: ${genre.join(", ")}`);
-        }
-        const tags = lobby.settings.tags.map(
-          (t) => stateToSymbol[t.state] + hostModal.tagFilter.awesomepleteInstance._list.find(
-            (listT) => listT.id.toString() === t.id.toString()
-          )?.name
-        );
-        if (tags.length > 0) {
-          output.push(`Tags: ${tags.join(", ")}`);
-        }
+        ).join(", ") || null;
+        add("Genre", () => describeFilters(settings.genre, hostModal.genreFilter));
+        add("Tags", () => describeFilters(settings.tags, hostModal.tagFilter));
         gameChat.systemMessage(output.join("</br>"));
       }
     );
