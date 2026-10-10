@@ -439,6 +439,42 @@ declare global {
     songEntry: LibrarySongEntry
   }
 
+  /**
+   * An artist or a group, as the library cache stores them
+   * (`libraryCacheHandler.js:558` and `:597`). The two are one shape here
+   * because search treats them alike; `IS_GROUP` is how AMQ tells them apart.
+   */
+  interface LibraryArtistEntry {
+    name: string
+    /**
+     * Lowercased name variants, **alt names included** — `addAltName` pushes
+     * them in. Precomputed at cache load, which is why search reads these
+     * rather than lowercasing `name` per keystroke.
+     */
+    searchNames?: string[]
+    searchIndex?: LibrarySearchIndex | null
+    /**
+     * Every entry a non-strict artist search tests: the entry itself, its alt
+     * names, and — for a group — its members and their groups, recursively.
+     * `libraryCacheHandler.js:581` / `:650`.
+     */
+    getFullMemberEntryList?: () => LibraryArtistEntry[]
+    IS_GROUP?: boolean
+  }
+
+  /**
+   * First-char → second-char prefilter over an entry's `searchNames`, built in
+   * a worker after the cache lands (`libraryCacheHandler.js:232`) and null
+   * until then. A miss means no name can match; a hit means nothing.
+   *
+   * Typed for completeness; `ui/src/amq/librarySearch.ts` deliberately does not
+   * use it — the worker that builds it is absent from the client capture, so
+   * what it indexes cannot be verified.
+   */
+  interface LibrarySearchIndex {
+    [firstChar: string]: { [secondChar: string]: unknown }
+  }
+
   /** `libraryCacheHandler.js:505` — the song itself, shared between anime. */
   interface LibrarySongEntry {
     songId: number
@@ -449,6 +485,16 @@ declare global {
     category: number
     dub: boolean
     rebroadcast: boolean
+    /** Lowercased `name` variants; see `LibraryArtistEntry.searchNames`. */
+    searchNames?: string[]
+    searchIndex?: LibrarySearchIndex | null
+    /**
+     * Resolved from the id pairs by `setupArtists` once the artist and group
+     * maps are in; absent when the song credits nobody in that role.
+     */
+    artist?: LibraryArtistEntry
+    composer?: LibraryArtistEntry
+    arranger?: LibraryArtistEntry
   }
 
   /**
@@ -476,6 +522,16 @@ declare global {
     seasonId: number
     mainNames: { EN?: string; JA?: string }
     names: { name: string }[]
+    /**
+     * Lowercased variants of **every** name in `names`, each also stored with
+     * its characters folded (`replaceCharactersForSeachCharacters`) when that
+     * changes it — which is how a query typed in plain ASCII finds a title
+     * stored with macrons (`Jōjō` → `jojo`) or punctuation (`Fate/Zero` →
+     * `fate zero`). The **query** is only lowercased, never folded, so the
+     * folding has to live on this side. Built once at cache load.
+     */
+    searchNames?: string[]
+    searchIndex?: LibrarySearchIndex | null
     /** Null until the watched overlay lands. */
     watched: boolean | null
     songs: {

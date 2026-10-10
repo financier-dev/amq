@@ -137,6 +137,12 @@ const library = await page.evaluate(() => {
     uploadedSongs: 0,
     artistNames: 0,
     songsChecked: 0,
+    animeSearchNames: 0,
+    songEntries: 0,
+    songSearchNames: 0,
+    memberLists: 0,
+    composers: 0,
+    arrangers: 0,
   }
   for (const anime of sample) {
     const category = anime.category
@@ -147,6 +153,9 @@ const library = await page.evaluate(() => {
     }
     if (typeof anime.year === 'number') shape.yearNumbers += 1
     if (typeof anime.seasonId === 'number') shape.seasonNumbers += 1
+    if (Array.isArray(anime.searchNames) && anime.searchNames.length) {
+      shape.animeSearchNames += 1
+    }
     const songs = [
       ...(anime.songs?.OP ?? []),
       ...(anime.songs?.ED ?? []),
@@ -156,9 +165,21 @@ const library = await page.evaluate(() => {
     for (const song of songs) {
       shape.songsChecked += 1
       if (song.uploaded) shape.uploadedSongs += 1
-      if (song.songEntry?.artist?.name) shape.artistNames += 1
+      const entry = song.songEntry
+      if (entry) shape.songEntries += 1
+      if (entry?.artist?.name) shape.artistNames += 1
+      if (Array.isArray(entry?.searchNames) && entry.searchNames.length) {
+        shape.songSearchNames += 1
+      }
+      if (typeof entry?.artist?.getFullMemberEntryList === 'function') {
+        shape.memberLists += 1
+      }
+      if (entry?.composer?.name) shape.composers += 1
+      if (entry?.arranger?.name) shape.arrangers += 1
     }
   }
+
+  shape.sampleSize = sample.length
 
   return {
     animeCount: entries.length,
@@ -204,6 +225,32 @@ check(
   library.shape.uploadedSongs > 0 && library.shape.artistNames > 0,
   `${library.shape.uploadedSongs}/${library.shape.songsChecked} uploaded, ` +
     `${library.shape.artistNames} with an artist`
+)
+/*
+ * Search reads `searchNames` rather than lowercasing names per keystroke, and
+ * those arrays are built by the client, not sent by the server — so a rename
+ * would cost the character folding that makes "re re" find "Re:Re:" and fall
+ * back to a worse search without a word. There is no offline way to notice.
+ */
+check(
+  'anime and songs carry the precomputed searchNames our search reads',
+  library.shape.animeSearchNames === library.shape.sampleSize &&
+    library.shape.songSearchNames === library.shape.songEntries,
+  `${library.shape.animeSearchNames}/${library.shape.sampleSize} anime, ` +
+    `${library.shape.songSearchNames}/${library.shape.songEntries} songs`
+)
+/*
+ * The other three search targets. `getFullMemberEntryList` is what makes an
+ * artist search non-strict — AMQ's default — so a group matches on its
+ * members' names; composer and arranger are targets of their own.
+ */
+check(
+  'credits expose their member list, and composers and arrangers exist',
+  library.shape.memberLists > 0 &&
+    library.shape.composers > 0 &&
+    library.shape.arrangers > 0,
+  `${library.shape.memberLists} member lists, ` +
+    `${library.shape.composers} composers, ${library.shape.arrangers} arrangers`
 )
 check(
   'the library pane has rows to draw',
@@ -615,6 +662,75 @@ check(
 )
 
 await page.screenshot({ path: path.join(shots, 'quiz-builder.png') })
+
+// --- the search box finds songs and artists, not just anime ---------------
+
+/*
+ * The offline suite asserts this against a fixture of five shows; this asserts
+ * it against whatever is actually in the account's library, picked at runtime.
+ * A real song title and a real artist name, each chosen so the show's own names
+ * do **not** contain them — otherwise the anime target would carry the search
+ * and a song-and-artist-blind implementation would pass.
+ */
+const searchTargets = await page.evaluate(() => {
+  const api = window.__amqUI.quizBuilder
+  const filters = api.libraryFilters
+  const cache = window.libraryCacheHandler.animeCache
+
+  // Candidates come from the rows the pane is already drawing, so they satisfy
+  // every live filter — a candidate the filters hide would look like a miss.
+  const rows = api.libraryStore.rows.filter((row) => row.kind === 'anime')
+  const pick = (field) => {
+    for (const row of rows) {
+      const names = cache[row.annId]?.searchNames ?? []
+      for (const song of row.songs) {
+        const value =
+          field === 'title'
+            ? song.songEntry?.name
+            : song.songEntry?.artist?.name
+        if (!value || value.length < 4) continue
+        const needle = value.toLowerCase()
+        if (names.some((name) => name.includes(needle))) continue
+        return { annId: row.annId, anime: row.name, needle, value }
+      }
+    }
+    return null
+  }
+
+  const probe = (candidate) => {
+    if (!candidate) return null
+    filters.state.search = candidate.needle
+    const hits = api.libraryStore.rows.filter(
+      (row) => row.kind === 'anime' && row.annId === candidate.annId
+    )
+    return {
+      ...candidate,
+      found: hits.length === 1,
+      total: api.libraryStore.total,
+    }
+  }
+
+  const title = probe(pick('title'))
+  const artist = probe(pick('artist'))
+  filters.setSearch('')
+  return { title, artist }
+})
+
+for (const [target, result] of Object.entries(searchTargets)) {
+  const label = `searching a real ${target} finds its show`
+  if (!result) {
+    skip(
+      label,
+      `no ${target} in the library that its show's names do not contain`
+    )
+  } else {
+    check(
+      label,
+      result.found,
+      `"${result.value}" → ${result.anime}, ${result.total} shows matched`
+    )
+  }
+}
 
 // --- searching the real library stays responsive --------------------------
 

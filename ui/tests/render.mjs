@@ -2921,6 +2921,143 @@ check(
   !watchFilter.hidden && watchFilter.shown
 )
 
+// --- the search box searches what AMQ's does ------------------------------
+
+/*
+ * `applySearchFilter` searches five targets, not one: anime names, song title,
+ * artist, composer and arranger, with the dropdown on its default "All". A
+ * search that only read anime names shipped once — it looks like the library is
+ * missing half the songs in it.
+ */
+const search = await page.evaluate(async () => {
+  const api = window.__amqUI.quizBuilder
+  const filters = api.libraryFilters
+
+  const run = (term) => {
+    // Committed directly: the debounce is covered by its own test below, and
+    // what matters here is the pass it defers.
+    filters.state.search = term
+    const rows = api.libraryStore.rows
+    return {
+      anime: rows
+        .filter((row) => row.kind === 'anime')
+        .map((row) => `${row.name} (${row.songCount})`),
+      songs: rows
+        .filter((row) => row.kind === 'anime')
+        .flatMap((row) => row.songs.map((song) => song.songEntry.name)),
+    }
+  }
+
+  const result = {
+    animeName: run('angel beats'),
+    altAnimeName: run('Boku dake'),
+    songTitle: run('Crow Song'),
+    artist: run('RADWIMPS'),
+    groupMember: run('LiSA'),
+    composerAltName: run('Gabriela'),
+    folded: run('re re'),
+    miss: run('no such thing anywhere'),
+  }
+  filters.setSearch('')
+  return result
+})
+
+// An anime-name hit keeps the whole show, songs included.
+check(
+  'searching an anime name keeps all of its songs',
+  search.animeName.anime.length === 1 &&
+    search.animeName.anime[0] === 'Angel Beats! (6)',
+  search.animeName.anime.join(', ')
+)
+// `searchNames` covers every name, not only the one on screen.
+check(
+  'searching a secondary anime name finds the show',
+  search.altAnimeName.anime.length === 1 &&
+    search.altAnimeName.anime[0].startsWith('Erased'),
+  search.altAnimeName.anime.join(', ')
+)
+// The reported bug: a song title matched nothing.
+check(
+  'searching a song title finds the song, and only it',
+  search.songTitle.anime.join() === 'Angel Beats! (1)' &&
+    search.songTitle.songs.join() === 'Crow Song',
+  `${search.songTitle.anime.join(', ')} → ${search.songTitle.songs.join(', ')}`
+)
+check(
+  'searching an artist finds their songs',
+  search.artist.anime.join() === 'Your Name. (3)',
+  search.artist.anime.join(', ')
+)
+/*
+ * Non-strict artist search, AMQ's default (`strictSearch` off): a group is
+ * matched on its members' names too. LiSA sang for Girls Dead Monster, which is
+ * what Angel Beats!'s four inserts are credited to.
+ */
+check(
+  'searching a group member finds the group’s songs',
+  search.groupMember.anime.join() === 'Angel Beats! (4)',
+  search.groupMember.anime.join(', ')
+)
+/*
+ * Composer and arranger are targets of their own, and an artist's alt names are
+ * inside its `searchNames` — so Yoko Kanno is findable as Gabriela Robin, which
+ * is how the library credits half of Cowboy Bebop.
+ */
+check(
+  'searching a composer’s alt name finds their songs',
+  search.composerAltName.anime.join() === 'Cowboy Bebop (2)',
+  search.composerAltName.anime.join(', ')
+)
+/*
+ * The cache stores a character-folded variant of every name beside the raw one
+ * (`replaceCharactersForSeachCharacters`), which is the only reason "re re"
+ * finds "Re:Re:". Reading `searchNames` rather than lowercasing the title
+ * ourselves is what gets this for free.
+ */
+check(
+  'a folded name variant is searchable',
+  search.folded.songs.join() === 'Re:Re:',
+  `${search.folded.anime.join(', ')} → ${search.folded.songs.join(', ')}`
+)
+check(
+  'a search that matches nothing shows nothing',
+  search.miss.anime.length === 0,
+  search.miss.anime.join(', ')
+)
+
+/*
+ * The New and Wrong tabs are song lists rather than anime lists, and AMQ tests
+ * the anime target on each row's own show (`LibrarySongSoloEntry.searchNames`
+ * delegates to the anime entry) instead of letting it decide a group of rows.
+ * Same five targets, so both of these must find the same two songs.
+ */
+const songTabSearch = await page.evaluate(async () => {
+  const api = window.__amqUI.quizBuilder
+  const filters = api.libraryFilters
+  filters.setTab('new')
+
+  const titles = (term) => {
+    filters.state.search = term
+    return api.libraryStore.rows
+      .filter((row) => row.kind === 'song')
+      .map((row) => `${row.animeName} · ${row.title}`)
+      .sort()
+  }
+
+  const result = { byGroup: titles('Seatbelts'), byAnime: titles('Cowboy') }
+  // Back to the library tab: everything after this asserts against anime rows.
+  filters.setSearch('')
+  filters.setTab('library')
+  return result
+})
+check(
+  'the song tabs search the same five targets',
+  songTabSearch.byGroup.join() ===
+    'Cowboy Bebop · Tank!,Cowboy Bebop · The Real Folk Blues' &&
+    songTabSearch.byAnime.join() === songTabSearch.byGroup.join(),
+  `artist ${songTabSearch.byGroup.length}, anime ${songTabSearch.byAnime.length}`
+)
+
 // Pressing the pick slider must move the handle, not drag the row away.
 //
 // Dispatched rather than clicked: the range input is `pointer-events: none`

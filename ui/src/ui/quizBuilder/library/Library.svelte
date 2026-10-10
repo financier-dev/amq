@@ -87,7 +87,7 @@
       <input
         id="amq-ui-library-search"
         type="search"
-        placeholder="Search the library"
+        placeholder="Search anime, songs, artists"
         value={libraryFilters.draft}
         oninput={(event) => libraryFilters.setSearch(event.currentTarget.value)}
       />

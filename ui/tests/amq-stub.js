@@ -152,9 +152,91 @@ window.messageDisplayer = {
 /*
  * The library cache. Shaped exactly as `libraryCacheHandler.js` builds it:
  * `animeCache` keyed by annId, each anime holding `songs.{OP,ED,INS}` of
- * annSong entries whose `songEntry` carries the title and a resolved `artist`.
- * The quiz builder reads every name on screen through this.
+ * annSong entries whose `songEntry` carries the title and a resolved `artist`,
+ * `composer` and `arranger`. The quiz builder reads every name on screen
+ * through this, and searches all of them.
  */
+
+/*
+ * `replaceCharactersForSeachCharacters` (`shared/animeSearchRegex.js`), trimmed
+ * to the characters the fixture names below actually contain. The real map
+ * covers every macron, accent and decorative separator AMQ has met; add to this
+ * one if a fixture name needs it, rather than letting a name fold to itself.
+ */
+const SEARCH_CHARACTER_REPLACEMENT_MAP = {
+  ō: 'o',
+  ū: 'u',
+  é: 'e',
+  '/': ' ',
+  ':': ' ',
+  '-': ' ',
+  '.': ' ',
+  '!': ' ',
+  ',': ' ',
+  '?': ' ',
+}
+
+const fold = (value) =>
+  value
+    .split('')
+    .map((char) => SEARCH_CHARACTER_REPLACEMENT_MAP[char] ?? char)
+    .join('')
+
+/*
+ * `searchNames`, as every cache entry builds it: the name lowercased, plus the
+ * folded form when folding changes it. This is why a search for "re re" finds
+ * "Re:Re:" — and why our own search reads this array rather than the name.
+ */
+const searchNames = (...names) => {
+  const out = []
+  for (const name of names) {
+    if (!name) continue
+    const lower = name.toLowerCase()
+    out.push(lower)
+    const folded = fold(lower)
+    if (folded !== lower) out.push(folded)
+  }
+  return out
+}
+
+/*
+ * `LibraryCacheArtistEntry` (`libraryCacheHandler.js:558`): one person, whose
+ * alt names are folded into `searchNames` by `addAltName` and listed again by
+ * `getFullMemberEntryList` — which is what a non-strict search walks.
+ */
+const artist = (name, altNames = []) => ({
+  name,
+  searchNames: searchNames(name, ...altNames),
+  altNames: altNames.map((alt) => artist(alt)),
+  getFullMemberEntryList() {
+    return [this, ...this.altNames]
+  },
+})
+
+/*
+ * `LibraryCacheGroupEntry` (`libraryCacheHandler.js:597`). Note its own
+ * `searchNames` does **not** contain its members' — only
+ * `getFullMemberEntryList()` reaches them, so a search for a member's name
+ * finds the group's songs exactly when Strict is off, as it is by default.
+ */
+const group = (name, members) => ({
+  name,
+  searchNames: searchNames(name),
+  artistMembers: members,
+  groupMembers: [],
+  altNames: [],
+  IS_GROUP: true,
+  getFullMemberEntryList() {
+    return [this, ...this.artistMembers, ...this.altNames]
+  },
+})
+
+const marina = artist('Marina')
+const lisa = artist('LiSA')
+const girlsDeadMonster = group('Girls Dead Monster', [marina, lisa])
+const yokoKanno = artist('Yoko Kanno', ['Gabriela Robin'])
+const seatbelts = group('Seatbelts', [yokoKanno])
+
 const LIBRARY_FIXTURE = [
   {
     annId: 3312,
@@ -163,12 +245,27 @@ const LIBRARY_FIXTURE = [
     seasonId: 1,
     mainNames: { EN: 'Angel Beats!', JA: 'Angel Beats!' },
     songs: [
-      ['My Soul, Your Beats!', 'Lia', 1, 1],
-      ['Brave Song', 'Aoi Tada', 2, 1],
-      ['Crow Song', 'Girls Dead Monster', 3, 1],
-      ['Alchemy', 'Girls Dead Monster', 3, 2],
-      ['Thousand Enemies', 'Girls Dead Monster', 3, 3],
-      ['Ichiban no Takaramono', 'Girls Dead Monster', 3, 4],
+      {
+        title: 'My Soul, Your Beats!',
+        artist: artist('Lia'),
+        type: 1,
+        number: 1,
+      },
+      { title: 'Brave Song', artist: artist('Aoi Tada'), type: 2, number: 1 },
+      { title: 'Crow Song', artist: girlsDeadMonster, type: 3, number: 1 },
+      { title: 'Alchemy', artist: girlsDeadMonster, type: 3, number: 2 },
+      {
+        title: 'Thousand Enemies',
+        artist: girlsDeadMonster,
+        type: 3,
+        number: 3,
+      },
+      {
+        title: 'Ichiban no Takaramono',
+        artist: girlsDeadMonster,
+        type: 3,
+        number: 4,
+      },
     ],
   },
   {
@@ -178,8 +275,18 @@ const LIBRARY_FIXTURE = [
     seasonId: 0,
     mainNames: { EN: 'Erased', JA: 'Boku dake ga Inai Machi' },
     songs: [
-      ['Re:Re:', 'Asian Kung-Fu Generation', 1, 1],
-      ['Sore wa Chiisana Hikari no You na', 'Sayuri', 2, 1],
+      {
+        title: 'Re:Re:',
+        artist: artist('Asian Kung-Fu Generation'),
+        type: 1,
+        number: 1,
+      },
+      {
+        title: 'Sore wa Chiisana Hikari no You na',
+        artist: artist('Sayuri'),
+        type: 2,
+        number: 1,
+      },
     ],
   },
   {
@@ -189,9 +296,9 @@ const LIBRARY_FIXTURE = [
     seasonId: 2,
     mainNames: { EN: 'Your Name.', JA: 'Kimi no Na wa.' },
     songs: [
-      ['Yume Tourou', 'RADWIMPS', 1, 1],
-      ['Nandemonaiya', 'RADWIMPS', 2, 1],
-      ['Zenzenzense', 'RADWIMPS', 3, 1],
+      { title: 'Yume Tourou', artist: artist('RADWIMPS'), type: 1, number: 1 },
+      { title: 'Nandemonaiya', artist: artist('RADWIMPS'), type: 2, number: 1 },
+      { title: 'Zenzenzense', artist: artist('RADWIMPS'), type: 3, number: 1 },
     ],
   },
   {
@@ -201,7 +308,9 @@ const LIBRARY_FIXTURE = [
     seasonId: 1,
     watched: false,
     mainNames: { EN: 'Unwatched Show', JA: 'Unwatched Show' },
-    songs: [['Never Seen', 'Nobody', 1, 1]],
+    songs: [
+      { title: 'Never Seen', artist: artist('Nobody'), type: 1, number: 1 },
+    ],
   },
   {
     annId: 9001,
@@ -210,8 +319,21 @@ const LIBRARY_FIXTURE = [
     seasonId: 3,
     mainNames: { EN: 'Cowboy Bebop', JA: 'Cowboy Bebop' },
     songs: [
-      ['Tank!', 'Seatbelts', 1, 1],
-      ['The Real Folk Blues', 'Seatbelts', 2, 1],
+      {
+        title: 'Tank!',
+        artist: seatbelts,
+        composer: yokoKanno,
+        arranger: yokoKanno,
+        type: 1,
+        number: 1,
+      },
+      {
+        title: 'The Real Folk Blues',
+        artist: seatbelts,
+        composer: yokoKanno,
+        type: 2,
+        number: 1,
+      },
     ],
   },
 ]
@@ -222,13 +344,13 @@ let nextAnnSongId = 9000
 
 for (const fixture of LIBRARY_FIXTURE) {
   const songs = { OP: [], ED: [], INS: [] }
-  for (const [name, artist, type, number] of fixture.songs) {
+  for (const song of fixture.songs) {
     nextAnnSongId += 1
     const entry = {
       annSongId: nextAnnSongId,
       annId: fixture.annId,
-      type,
-      number,
+      type: song.type,
+      number: song.number,
       playerLikeStatus: 0,
       wrongIndex: null,
       uploaded: true,
@@ -236,13 +358,16 @@ for (const fixture of LIBRARY_FIXTURE) {
       dub: false,
       songEntry: {
         songId: nextAnnSongId,
-        name,
+        name: song.title,
         category: 4,
-        artist: { name: artist },
+        searchNames: searchNames(song.title),
+        artist: song.artist,
+        composer: song.composer,
+        arranger: song.arranger,
       },
     }
     annSongIdToAnnId[entry.annSongId] = fixture.annId
-    songs[type === 1 ? 'OP' : type === 2 ? 'ED' : 'INS'].push(entry)
+    songs[song.type === 1 ? 'OP' : song.type === 2 ? 'ED' : 'INS'].push(entry)
   }
   animeCache[fixture.annId] = {
     annId: fixture.annId,
@@ -251,6 +376,9 @@ for (const fixture of LIBRARY_FIXTURE) {
     seasonId: fixture.seasonId,
     mainNames: fixture.mainNames,
     names: [{ name: fixture.mainNames.EN }, { name: fixture.mainNames.JA }],
+    // Every name, not just the main one, exactly as the cache does it — which
+    // is how searching "Boku dake" finds the show listed as "Erased".
+    searchNames: searchNames(fixture.mainNames.EN, fixture.mainNames.JA),
     watched: fixture.watched !== false,
     songs,
     get mainName() {

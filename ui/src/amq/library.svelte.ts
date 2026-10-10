@@ -16,6 +16,12 @@
 import { SvelteSet } from 'svelte/reactivity'
 
 import { t } from './derive'
+import {
+  animeSearchNames,
+  matchesSearchNames,
+  needle,
+  songMatchesSearch,
+} from './librarySearch'
 import type { LibraryLookup } from './quizCounts'
 import { libraryFilters } from './quizFilters.svelte'
 import type { IncludeSongTypesSave } from './quizSave'
@@ -284,8 +290,7 @@ export function describeSong(annSongId: number): SongDisplay {
     }
   }
 
-  const song = entry.songEntry as
-    (LibrarySongEntry & { artist?: { name: string } }) | undefined
+  const song = entry.songEntry as LibrarySongEntry | undefined
   return {
     annSongId,
     animeName: describeAnime(entry.annId).name,
@@ -382,9 +387,16 @@ export interface LibrarySongRow {
 
 export type LibraryRow = LibraryAnimeRow | LibrarySongRow
 
-/** An anime with its search keys and songs flattened once per cache load. */
+/** An anime with its name, keys and songs resolved once per cache load. */
 interface SortedAnime {
   anime: LibraryAnimeEntry
+  /**
+   * `mainName`, read here rather than at sort time. It is a getter over
+   * `mainNames` and the romaji option, so a malformed record throws on read —
+   * inside the per-entry guard below that costs one row, in the comparator it
+   * would cost the pane.
+   */
+  name: string
   search: string[]
   songs: LibraryAnimeSongEntry[]
 }
@@ -431,8 +443,7 @@ function songRow(
   song: LibraryAnimeSongEntry,
   animeName?: string
 ): LibrarySongRow {
-  const entry = song.songEntry as
-    (LibrarySongEntry & { artist?: { name: string } }) | undefined
+  const entry = song.songEntry as LibrarySongEntry | undefined
   return {
     kind: 'song',
     id: `s${song.annSongId}`,
@@ -499,18 +510,12 @@ export class LibraryStore {
       try {
         prepared.push({
           anime,
-          // Search keys folded once here rather than on every keystroke:
-          // `toLowerCase()` over 20k names per input event is most of what
-          // made typing in this box feel broken. AMQ precomputes
-          // `searchNames` for the same reason.
-          search: [
-            anime.mainName ?? '',
-            ...(anime.names ?? []).map((entry) => entry?.name ?? ''),
-          ]
-            .filter(Boolean)
-            .map((name) => String(name).toLowerCase()),
-          // Flattened once too — the per-keystroke spread allocated three
-          // arrays per anime and threw them away.
+          name: anime.mainName ?? '',
+          // AMQ precomputes these at cache load; resolved once here so a
+          // keystroke is `includes` over strings already in the right shape.
+          search: animeSearchNames(anime),
+          // Flattened once rather than per keystroke — the spread allocated
+          // three arrays per anime and threw them away.
           songs: [
             ...(anime.songs?.OP ?? []),
             ...(anime.songs?.ED ?? []),
@@ -522,9 +527,7 @@ export class LibraryStore {
       }
     }
 
-    prepared.sort((a, b) =>
-      (a.anime.mainName ?? '').localeCompare(b.anime.mainName ?? '')
-    )
+    prepared.sort((a, b) => a.name.localeCompare(b.name))
     unreadableAnime = unreadable
     return prepared
   })
@@ -543,7 +546,7 @@ export class LibraryStore {
   )
 
   #computeMatchingAnime(): MatchedAnime {
-    const needle = libraryFilters.search.trim().toLowerCase()
+    const query = needle(libraryFilters.search)
     // One snapshot, then a hot loop over plain objects — see `predicates`.
     const { matchesAnime, matchesSong } = libraryFilters.predicates
     const page: { anime: LibraryAnimeEntry; songs: LibraryAnimeSongEntry[] }[] =
@@ -553,29 +556,36 @@ export class LibraryStore {
 
     for (const entry of this.#sortedAnime) {
       if (!matchesAnime(entry.anime)) continue
-      if (needle && !entry.search.some((name) => name.includes(needle)))
-        continue
+
+      /*
+       * AMQ's two search rules, in its own order (`applySearchFilter`): an
+       * anime whose name matches keeps every one of its songs; otherwise only
+       * the songs that match themselves — title, artist, composer or arranger
+       * — are kept, and the anime survives only if one did.
+       */
+      const wholeAnime = !query || matchesSearchNames(entry.search, query)
 
       // Counted in a loop rather than built and measured: the totals in the
       // header need every match, but only the page that is drawn needs an
       // actual array, and allocating 20k of them per keystroke was the rest of
       // the cost.
+      const keep = (song: LibraryAnimeSongEntry) =>
+        matchesSong(song) &&
+        (wholeAnime || (query !== null && songMatchesSearch(song, query)))
       let matching = 0
       for (const song of entry.songs) {
-        if (matchesSong(song)) matching += 1
+        if (keep(song)) matching += 1
       }
       // An anime whose every song is filtered out is dropped — a row that
-      // expands to nothing is worse than no row.
+      // expands to nothing is worse than no row. With a search on, that now
+      // also covers an anime no part of which matched.
       if (matching === 0) continue
 
       animeTotal += 1
       songTotal += matching
 
       if (page.length < PAGE) {
-        page.push({
-          anime: entry.anime,
-          songs: entry.songs.filter((song) => matchesSong(song)),
-        })
+        page.push({ anime: entry.anime, songs: entry.songs.filter(keep) })
       }
     }
 
@@ -589,7 +599,7 @@ export class LibraryStore {
   )
 
   #computeMatchingSongs(): LibraryAnimeSongEntry[] {
-    const needle = libraryFilters.search.trim().toLowerCase()
+    const query = needle(libraryFilters.search)
     const tab = libraryFilters.state.tab
     const { matchesAnime, matchesSong } = libraryFilters.predicates
     const out: LibraryAnimeSongEntry[] = []
@@ -597,18 +607,14 @@ export class LibraryStore {
     for (const entry of this.#sortedAnime) {
       const anime = entry.anime
       if (!matchesAnime(anime)) continue
+      // These two tabs are song lists, so AMQ's anime target is tested per row
+      // against the song's own anime (`LibrarySongSoloEntry.searchNames`
+      // delegates to it) rather than deciding a group of them.
+      const animeHit = query ? matchesSearchNames(entry.search, query) : false
       for (const song of entry.songs) {
         if (!matchesSong(song)) continue
         if (tab === 'wrong' && !song.wrongIndex) continue
-        if (needle) {
-          const entry = song.songEntry as
-            (LibrarySongEntry & { artist?: { name: string } }) | undefined
-          const hit =
-            entry?.name?.toLowerCase().includes(needle) ||
-            entry?.artist?.name?.toLowerCase().includes(needle) ||
-            anime.mainName?.toLowerCase().includes(needle)
-          if (!hit) continue
-        }
+        if (query && !animeHit && !songMatchesSearch(song, query)) continue
         out.push(song)
       }
     }
