@@ -13,6 +13,23 @@ export default async function setup() {
     removeDropdownDelay: true,
   }
 
+  // Registered here, not in `setupStyles`. `setupStyles` can wait for the quiz
+  // page, and the command must exist from the start.
+  let quickAnswerAuto = true
+  registerCommand(
+    'qa',
+    () => ({
+      shortHelp: 'Toggle quick answer mode',
+      longHelp: `Usage: /qa</br>Toggles quick answer mode. In quick answer mode, pressing Enter without Ctrl will select the top dropdown option if there is no exact match selected.</br>Current value: ${quickAnswerAuto ? 'auto' : 'ctrl'}`,
+    }),
+    () => {
+      quickAnswerAuto = !quickAnswerAuto
+      gameChat.systemMessage(
+        'Quick answer: ' + (quickAnswerAuto ? 'auto' : 'ctrl')
+      )
+    }
+  )
+
   function setupStyles() {
     const dropdownCss = `
   .awesomplete li.exact-match mark {
@@ -50,10 +67,11 @@ export default async function setup() {
       return 'none'
     }
 
+    // Do not wait for `.awesomplete` here. AMQ creates it when the first quiz
+    // starts, and the observer below sees it then.
     const parent = document.getElementById('qpAnswerInputContainer')
-    const target = parent?.querySelector('.awesomplete')
 
-    if (!target || !parent) {
+    if (!parent) {
       setTimeout(setupStyles, 1000)
       return
     }
@@ -62,19 +80,6 @@ export default async function setup() {
 
     const setupQuickAnswer = () => {
       const inputEl = document.getElementById('qpAnswerInput')
-      let toggle: boolean = true
-      registerCommand(
-        'qa',
-        () => ({
-          shortHelp: 'Toggle quick answer mode',
-          longHelp: `Usage: /qa</br>Toggles quick answer mode. In quick answer mode, pressing Enter without Ctrl will select the top dropdown option if there is no exact match selected.</br>Current value: ${toggle ? 'auto' : 'ctrl'}`,
-        }),
-        () => {
-          toggle = !toggle
-          gameChat.systemMessage('Quick answer: ' + (toggle ? 'auto' : 'ctrl'))
-        }
-      )
-
       if (!(inputEl instanceof HTMLInputElement)) return
 
       inputEl.addEventListener('keydown', (event) => {
@@ -89,7 +94,10 @@ export default async function setup() {
 
         if (hasSelectedTitleInDropdown || hasExactMatchInDropdown) return
 
-        if ((!toggle && event.ctrlKey) || (toggle && !event.ctrlKey)) {
+        if (
+          (!quickAnswerAuto && event.ctrlKey) ||
+          (quickAnswerAuto && !event.ctrlKey)
+        ) {
           const option = (
             document.querySelector(
               '#qpAnswerInputContainer #awesomplete_list_undefined_item_0'

@@ -826,6 +826,20 @@
   }
 
   async function setup$d() {
+    let quickAnswerAuto = true;
+    registerCommand(
+      "qa",
+      () => ({
+        shortHelp: "Toggle quick answer mode",
+        longHelp: `Usage: /qa</br>Toggles quick answer mode. In quick answer mode, pressing Enter without Ctrl will select the top dropdown option if there is no exact match selected.</br>Current value: ${quickAnswerAuto ? "auto" : "ctrl"}`
+      }),
+      () => {
+        quickAnswerAuto = !quickAnswerAuto;
+        gameChat.systemMessage(
+          "Quick answer: " + (quickAnswerAuto ? "auto" : "ctrl")
+        );
+      }
+    );
     function setupStyles() {
       const dropdownCss = `
   .awesomplete li.exact-match mark {
@@ -858,26 +872,13 @@
         return "none";
       }
       const parent = document.getElementById("qpAnswerInputContainer");
-      const target = parent?.querySelector(".awesomplete");
-      if (!target || !parent) {
+      if (!parent) {
         setTimeout(setupStyles, 1e3);
         return;
       }
       _GM_addStyle(dropdownCss);
       const setupQuickAnswer = () => {
         const inputEl = document.getElementById("qpAnswerInput");
-        let toggle = true;
-        registerCommand(
-          "qa",
-          () => ({
-            shortHelp: "Toggle quick answer mode",
-            longHelp: `Usage: /qa</br>Toggles quick answer mode. In quick answer mode, pressing Enter without Ctrl will select the top dropdown option if there is no exact match selected.</br>Current value: ${toggle ? "auto" : "ctrl"}`
-          }),
-          () => {
-            toggle = !toggle;
-            gameChat.systemMessage("Quick answer: " + (toggle ? "auto" : "ctrl"));
-          }
-        );
         if (!(inputEl instanceof HTMLInputElement)) return;
         inputEl.addEventListener("keydown", (event) => {
           if (event.key.toLocaleLowerCase() !== "enter") return;
@@ -888,7 +889,7 @@
             ".awesomplete ul li.exact-match"
           );
           if (hasSelectedTitleInDropdown || hasExactMatchInDropdown) return;
-          if (!toggle && event.ctrlKey || toggle && !event.ctrlKey) {
+          if (!quickAnswerAuto && event.ctrlKey || quickAnswerAuto && !event.ctrlKey) {
             const option = document.querySelector(
               "#qpAnswerInputContainer #awesomplete_list_undefined_item_0"
             )?.innerText;
