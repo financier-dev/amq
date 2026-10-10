@@ -269,6 +269,74 @@ export default async function setup() {
       }
     )
   })()
+  ;(function setupHostPromotion() {
+    let promoteTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const abort = () => {
+      if (!promoteTimeout) return false
+      clearTimeout(promoteTimeout)
+      promoteTimeout = null
+      return true
+    }
+
+    // Uses the room's spelling of a player's name. A name that is not among
+    // the players is sent as typed, because it can belong to a spectator.
+    const resolveName = (typed: string) =>
+      Object.values(lobby.players)
+        .map((player) => player.name)
+        .find(
+          (name) => name.toLocaleLowerCase() === typed.toLocaleLowerCase()
+        ) ?? typed
+
+    const promoteWhenInLobby = (typed: string) => {
+      promoteTimeout = setTimeout(function fn() {
+        promoteTimeout = null
+        if (!lobby.inLobby) {
+          promoteTimeout = setTimeout(fn, 500)
+          return
+        }
+        if (!lobby.isHost) {
+          gameChat.systemMessage(
+            `Did not promote ${typed}: you are no longer the host`
+          )
+          return
+        }
+        lobby.promoteHost(resolveName(typed))
+      }, 0)
+    }
+
+    registerCommand(
+      'host',
+      () => ({
+        shortHelp: 'Promote a player to host in the lobby',
+        longHelp:
+          'Usage: /host [username]</br>Promotes [username] to host the next time the game is in the lobby. You must be the host. Without a username, cancels a pending promotion.',
+      }),
+      (args) => {
+        const username = args.trim()
+
+        if (username === '') {
+          gameChat.systemMessage(
+            abort() ? 'Host promotion cancelled' : 'Usage: /host [username]'
+          )
+          return
+        }
+
+        if (!lobby.isHost) {
+          gameChat.systemMessage('You must be the host to use this command')
+          return
+        }
+
+        abort()
+        if (!lobby.inLobby) {
+          gameChat.systemMessage(
+            `Will promote ${username} to host when the game returns to the lobby`
+          )
+        }
+        promoteWhenInLobby(username)
+      }
+    )
+  })()
   ;(function setupDropdownHider() {
     let active: boolean = true
 

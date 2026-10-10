@@ -369,8 +369,10 @@ declare global {
      */
     settings: LobbySettings
     numberOfPlayersReady: number
-    players: object
+    /** Keyed by `gamePlayerId`. */
+    players: Record<number, { name: string }>
     fireMainButtonEvent: () => void
+    promoteHost: (playerName: string) => void
     [key: string]: any
   }
 

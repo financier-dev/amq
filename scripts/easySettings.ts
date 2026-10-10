@@ -150,6 +150,15 @@ function setFullSongRange(enable: boolean) {
   })
 }
 
+function setDubSongs(enable: boolean) {
+  changeSettings({
+    modifiers: {
+      ...lobby.settings.modifiers,
+      dubSongs: enable,
+    },
+  })
+}
+
 /** Registers chat commands that change the game settings. */
 export default async function setup() {
   registerCommand(
@@ -348,6 +357,31 @@ export default async function setup() {
           break
         default:
           gameChat.systemMessage('Error: Invalid argument for fsr command.')
+      }
+    }
+  )
+
+  registerCommand(
+    'dubs',
+    () => ({
+      shortHelp: 'Toggle dub songs',
+      longHelp:
+        'Usage: /dubs [on|off]</br>Enables or disables dub songs. Without an argument, switches the current value.',
+    }),
+    (args) => {
+      const mode = args.trim().toLocaleLowerCase()
+      switch (mode) {
+        case 'on':
+          setDubSongs(true)
+          break
+        case 'off':
+          setDubSongs(false)
+          break
+        case '':
+          setDubSongs(!lobby.settings.modifiers.dubSongs)
+          break
+        default:
+          gameChat.systemMessage('Error: Invalid argument for dubs command.')
       }
     }
   )

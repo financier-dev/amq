@@ -1277,6 +1277,61 @@
         }
       );
     })();
+    (function setupHostPromotion() {
+      let promoteTimeout = null;
+      const abort = () => {
+        if (!promoteTimeout) return false;
+        clearTimeout(promoteTimeout);
+        promoteTimeout = null;
+        return true;
+      };
+      const resolveName = (typed) => Object.values(lobby.players).map((player) => player.name).find(
+        (name) => name.toLocaleLowerCase() === typed.toLocaleLowerCase()
+      ) ?? typed;
+      const promoteWhenInLobby = (typed) => {
+        promoteTimeout = setTimeout(function fn() {
+          promoteTimeout = null;
+          if (!lobby.inLobby) {
+            promoteTimeout = setTimeout(fn, 500);
+            return;
+          }
+          if (!lobby.isHost) {
+            gameChat.systemMessage(
+              `Did not promote ${typed}: you are no longer the host`
+            );
+            return;
+          }
+          lobby.promoteHost(resolveName(typed));
+        }, 0);
+      };
+      registerCommand(
+        "host",
+        () => ({
+          shortHelp: "Promote a player to host in the lobby",
+          longHelp: "Usage: /host [username]</br>Promotes [username] to host the next time the game is in the lobby. You must be the host. Without a username, cancels a pending promotion."
+        }),
+        (args) => {
+          const username = args.trim();
+          if (username === "") {
+            gameChat.systemMessage(
+              abort() ? "Host promotion cancelled" : "Usage: /host [username]"
+            );
+            return;
+          }
+          if (!lobby.isHost) {
+            gameChat.systemMessage("You must be the host to use this command");
+            return;
+          }
+          abort();
+          if (!lobby.inLobby) {
+            gameChat.systemMessage(
+              `Will promote ${username} to host when the game returns to the lobby`
+            );
+          }
+          promoteWhenInLobby(username);
+        }
+      );
+    })();
     (function setupDropdownHider() {
       let active = true;
       const allAnimeNames = getAllAnimeNames({ lowercase: true });
@@ -2180,6 +2235,14 @@
       }
     });
   }
+  function setDubSongs(enable) {
+    changeSettings({
+      modifiers: {
+        ...lobby.settings.modifiers,
+        dubSongs: enable
+      }
+    });
+  }
   async function setup$8() {
     registerCommand(
       "diff",
@@ -2359,6 +2422,29 @@
             break;
           default:
             gameChat.systemMessage("Error: Invalid argument for fsr command.");
+        }
+      }
+    );
+    registerCommand(
+      "dubs",
+      () => ({
+        shortHelp: "Toggle dub songs",
+        longHelp: "Usage: /dubs [on|off]</br>Enables or disables dub songs. Without an argument, switches the current value."
+      }),
+      (args) => {
+        const mode = args.trim().toLocaleLowerCase();
+        switch (mode) {
+          case "on":
+            setDubSongs(true);
+            break;
+          case "off":
+            setDubSongs(false);
+            break;
+          case "":
+            setDubSongs(!lobby.settings.modifiers.dubSongs);
+            break;
+          default:
+            gameChat.systemMessage("Error: Invalid argument for dubs command.");
         }
       }
     );
