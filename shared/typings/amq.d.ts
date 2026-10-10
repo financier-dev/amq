@@ -521,7 +521,7 @@ declare global {
     year: number
     seasonId: number
     mainNames: { EN?: string; JA?: string }
-    names: { name: string }[]
+    names: { name: string; language?: string }[]
     /**
      * Lowercased variants of **every** name in `names`, each also stored with
      * its characters folded (`replaceCharactersForSeachCharacters`) when that

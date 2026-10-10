@@ -18,8 +18,22 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { allowWrites, repo } from './env.mjs'
-import { LIBRARY_TIMEOUT_MS, openSession, request } from './session.mjs'
+import { repo } from '../../../shared/node/env.ts'
+import {
+  LIBRARY_TIMEOUT_MS,
+  openSession,
+  request,
+} from '../../../shared/node/session.ts'
+
+/**
+ * Whether the run may change anything on the account.
+ *
+ * Off unless asked for, and deliberately awkward to turn on. Everything these
+ * tests need — the library payload, the serializer round-trip against real
+ * quizzes — is answerable without a single write, and a quiz saved by a test
+ * is a quiz the account owner then has to clean up.
+ */
+const allowWrites = process.env.AMQ_LIVE_ALLOW_WRITES === '1'
 
 const headed = process.argv.includes('--headed')
 const shots = path.join(repo, 'ui', 'tests', 'screenshots', 'live')
@@ -74,7 +88,12 @@ process.on('uncaughtException', async (error) => {
 })
 
 console.log('logging in to animemusicquiz.com…')
-session = await openSession({ headed, userscript })
+// The test account only: this suite can write, and takes the session over.
+session = await openSession({
+  headed,
+  userscript,
+  accounts: ['AMQ_TEST_ACCOUNT'],
+})
 const { page, pageErrors } = session
 console.log('logged in')
 

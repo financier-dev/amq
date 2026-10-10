@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "test": "npm run build && node ui/tests/render.mjs",
     "test:headed": "npm run build && node ui/tests/render.mjs --headed",
-    "test:live": "npm run build && node ui/tests/live/run.mjs"
+    "test:live": "npm run build && tsx ui/tests/live/run.mjs",
+    "anime-titles": "tsx local/anime-titles.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

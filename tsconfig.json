@@ -6,6 +6,7 @@
     "build/**/*.ts",
     "ui/src/**/*.ts",
     "ui/src/**/*.svelte",
+    "local/**/*.ts",
     "vite.config.ts",
     "eslint.config.js"
   ],

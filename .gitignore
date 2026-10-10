@@ -14,5 +14,8 @@ ui/tests/screenshots/
 .env.*
 !.env.example
 
+# Personal inputs to the local scripts; each has a committed `.example`.
+local/*.overrides.json
+
 # dist/ is deliberately NOT ignored — the built userscripts are committed so
 # they can be installed straight from GitHub.
