@@ -1,17 +1,15 @@
 /**
  * The algorithm block's summary line and pool chips (SPEC §5.3).
  *
- * Its settings blob is AMQ's and stays opaque to us — we never edit it, we open
- * AMQ's own dialog for that. But the block still has to *say* what it selects,
- * so these are faithful ports of `CustomQuizAlgorithmBlock`'s own three
- * formatters (`customQuizAlgorithmBlock.js:265-325`). Porting rather than
- * inventing matters here: the chips are the only summary of a filter set the
- * player configured somewhere else, and a number that disagrees with AMQ's own
- * block face is worse than no number.
+ * The settings are AMQ's and opaque to us. We never edit them; AMQ's own
+ * dialog does. These functions only describe what the block selects. They are
+ * ports of the three formatters in `CustomQuizAlgorithmBlock`
+ * (`customQuizAlgorithmBlock.js:265-325`), so the chips agree with AMQ's own
+ * block.
  *
- * Note `convertDifficulityToText`'s quirk, reproduced deliberately: with no
- * difficulty band selected the seeds never move and it returns the inverted
- * `100-0`. That is what AMQ shows, so it is what we show.
+ * `convertDifficulityToText` has a quirk that is kept on purpose. With no
+ * difficulty band selected, `min` and `max` keep their initial values and it
+ * returns the inverted `100-0`, as AMQ shows.
  */
 
 import { t } from '../../amq/derive'
@@ -45,7 +43,7 @@ export function difficultyLabel(settings: Settings): string {
 
   if (advancedOn) return `${advancedValue[0]}-${advancedValue[1]}`
 
-  // Seeded inverted, exactly as AMQ seeds them.
+  // Start inverted, as AMQ does.
   let min = 100
   let max = 0
   const bands: [string, number, number][] = [
@@ -81,11 +79,11 @@ export function vintageLabel(settings: Settings): string {
   return `${min}-${max}`
 }
 
-/** `OP · ED · IN`, only the types the block actually draws. */
+/** `OP · ED · IN`, with only the types the block draws from. */
 export function songTypesLabel(settings: Settings): string {
   const type = settings?.songType
   if (!type) return ''
-  // Advanced mode counts songs per type; standard mode is three booleans.
+  // Advanced mode has a song count per type. Standard mode has three booleans.
   const on = type.advancedOn
     ? {
         op: (type.advancedValue?.openings ?? 0) > 0,
@@ -144,8 +142,7 @@ export function algorithmChips(settings: Settings): AlgorithmChip[] {
     )
   )
 
-  // Only when there are some: `0 Genres` and `0 Tags` are the common case, and
-  // a chip that always reads zero is noise on an already dense row.
+  // Skip zero counts. Most blocks have no genres or tags.
   const genres = settings?.genre?.length ?? 0
   const tags = settings?.tags?.length ?? 0
   if (genres > 0) {

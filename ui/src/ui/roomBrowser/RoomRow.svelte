@@ -1,8 +1,8 @@
 <!--
-  One 46px room row.
+  One room row.
 
-  Column widths are fixed px except Room/Host, which flexes — everything else
-  has to line up down the list or the table stops being scannable.
+  Every column has a fixed width except Room/Host, which flexes. The columns
+  must align down the list.
 -->
 <script lang="ts">
   import {
@@ -41,8 +41,8 @@
   const chips = $derived(chipsFor(room.settings))
   const guess = $derived(room.guessTime)
 
-  // The head crop is not published for every avatar/outfit; the fallback is the
-  // full render, cropped to the face by object-position (SPEC §3).
+  // Some avatars and outfits have no head crop. The fallback is the full
+  // render, positioned on the face with `object-position` (SPEC §3).
   let headFailed = $state(false)
 
   const joinLabel = $derived(
@@ -55,10 +55,8 @@
 </script>
 
 <div class="row" class:zebra>
-  <!-- id -->
   <div class="id mono">{room.id}</div>
 
-  <!-- room / host -->
   <div class="identity">
     <div class="avatar">
       {#if avatar}
@@ -96,12 +94,10 @@
     </div>
   </div>
 
-  <!-- mode -->
   <div class="mode-cell">
     <span class="pill tone-{modeTone(room.mode)}">{modeLabel(room.mode)}</span>
   </div>
 
-  <!-- selection -->
   <div class="selection-cell">
     <span class="sel tone-{songSelectionTone(room.songSelection)}">
       {songSelectionLabel(room.songSelection)}
@@ -113,7 +109,6 @@
   <PlayersCell {room} />
   <SongsCell {room} />
 
-  <!-- guess time -->
   <div class="time">
     {#if guess.range}
       <span class="time-base mono">{rangeLabel(guess.range)}s</span>
@@ -128,7 +123,6 @@
   <DifficultyCell {room} />
   <ChipsCell {chips} />
 
-  <!-- actions -->
   <div class="actions">
     <Tooltip
       text={t('room_browser.room_tile.popovers.all_settings', 'All settings')}
@@ -179,8 +173,7 @@
     background: var(--bg-row-hover);
   }
 
-  /* Every fixed column is `flex: 0 0 <token>` so it matches the header
-     exactly; only Room/Host flexes. */
+  /* Each fixed column is `flex: 0 0 <token>` so it matches the header. */
   .id {
     flex: 0 0 var(--col-id);
     font-size: 13px;
@@ -261,8 +254,8 @@
     min-width: 0;
   }
 
-  /* "Last Man Standing" is the longest label AMQ ships; the cell is sized for
-     it, and anything longer ellipsises rather than pushing into Players. */
+  /* The cell fits "Last Man Standing", the longest label AMQ ships. A longer
+     label gets an ellipsis. */
   .pill {
     display: inline-flex;
     align-items: center;
@@ -330,7 +323,7 @@
     color: var(--text-2);
   }
 
-  /* Extra time is a secondary fact, so it renders a step smaller and dimmer. */
+  /* Extra time is secondary, so it is smaller and dimmer. */
   .time-extra {
     font-size: 12px;
     color: var(--text-4);
@@ -374,9 +367,9 @@
   }
 
   /*
-   * Fixed widths, sized to the longest label each button can take ("Spectate"
-   * and "Playing"). Sizing to content instead made the buttons jump sideways
-   * whenever a room started or ended a game.
+   * Fixed widths that fit the longest labels, "Spectate" and "Playing". With
+   * content sizing, the buttons move sideways when a room starts or ends a
+   * game.
    */
   .join,
   .spec {

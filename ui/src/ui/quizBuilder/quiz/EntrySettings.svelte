@@ -1,15 +1,14 @@
 <!--
   Per-entry settings (SPEC §8).
 
-  Reachable from a row's settings button, an amber override chip, a ⋯ menu, or
-  the selection bar — in which case it applies to the whole selection and says
-  so in its footer.
+  Opens from a row's settings button, an amber override chip, a ⋯ menu, or the
+  selection bar. From the selection bar it applies to the whole selection, and
+  its footer says so.
 
-  The idea that makes this panel work: **an unset override is absent, not
-  zero.** "Use block default" clears the field rather than writing the block's
-  current value into it, so an entry that follows its block keeps following it
-  when the block changes. That is also exactly how AMQ stores it — the key is
-  simply not written — so the two agree without any translation.
+  **An unset override is absent, not zero.** "Use block default" clears the
+  field; it does not copy the block's current value. An entry that follows its
+  block therefore keeps following it when the block changes. AMQ stores it the
+  same way: the key is not written.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -30,7 +29,7 @@
 
   let { ids, onClose }: Props = $props()
 
-  /** Only entries that play a song can carry overrides. */
+  /** Only entries that play a song have overrides. */
   const targets = $derived.by((): PlayEntry[] => {
     const out: PlayEntry[] = []
     for (const block of quizStore.quiz.blocks) {
@@ -41,7 +40,7 @@
     return out
   })
 
-  /** The panel edits from the first target and applies to all of them. */
+  /** The panel shows the first target's values and applies edits to all. */
   const lead = $derived(targets[0])
   const multiple = $derived(targets.length > 1)
 
@@ -120,7 +119,7 @@
               guessTime!.extraGuessTime
             )}s
             <span class="why">
-              Saved unchanged. Editing a random range needs AMQ's own builder —
+              A save keeps it unchanged. To edit a random range, run
               <code>__amqUI.quizBuilder.useLegacy()</code>.
             </span>
           </p>
@@ -177,7 +176,7 @@
           <p class="readonly">
             Random range: {formatMaybeRandom(samplePoint!.samplePoint)}%
             <span class="why"
-              >Saved unchanged; edit it in AMQ's own builder.</span
+              >A save keeps it unchanged. Edit it in AMQ's own builder.</span
             >
           </p>
         {:else}
@@ -222,7 +221,7 @@
           <p class="readonly">
             Random among {(speed!.playBackSpeed as number[]).join(', ')}×
             <span class="why"
-              >Saved unchanged; edit it in AMQ's own builder.</span
+              >A save keeps it unchanged. Edit it in AMQ's own builder.</span
             >
           </p>
         {:else}
@@ -358,7 +357,7 @@
     padding: 0 8px;
     border-radius: 7px;
     background: var(--bg-sunken);
-    /* Amber: every per-entry override is "this differs from its block". */
+    /* Amber marks an override: the entry differs from its block. */
     border: 1px solid var(--chip-amber-line);
     color: var(--amber-fg);
     font-family: var(--font-mono);

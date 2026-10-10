@@ -1,10 +1,9 @@
 /*
- * Credentials for everything that logs in to the real site from Node — the
- * local scripts and the live tests.
+ * Credentials for the Node code that logs in to the real site: the local
+ * scripts and the live tests.
  *
- * Read from `.env`, which is gitignored and must stay that way — it holds a
- * real account password. Nothing here ever prints a value, and neither should
- * anything that calls it.
+ * They come from `.env`, which holds a real account password and must stay
+ * gitignored. Never print a value, here or in a caller.
  */
 
 import fs from 'node:fs'
@@ -17,7 +16,7 @@ export const repo = path.join(
   '..'
 )
 
-/** Minimal `KEY=value` parser — avoids a dependency for a few lines of config. */
+/** Minimal `KEY=value` parser, so `.env` needs no dependency. */
 function readEnvFile(file: string): Record<string, string> {
   if (!fs.existsSync(file)) return {}
   const out: Record<string, string> = {}
@@ -40,26 +39,25 @@ function readEnvFile(file: string): Record<string, string> {
 }
 
 /**
- * The `.env` prefix of an account: `<prefix>_USERNAME` / `<prefix>_PASSWORD`.
- *
- * Two, because the live tests want a throwaway account and the local scripts
- * usually want the one whose list and settings matter.
+ * The `.env` prefix of an account: `<prefix>_USERNAME` and
+ * `<prefix>_PASSWORD`. The live tests use a throwaway account. The local
+ * scripts usually need the account whose list and settings matter.
  */
 export type Account = 'AMQ_ACCOUNT' | 'AMQ_TEST_ACCOUNT'
 
 export interface Credentials {
   username: string
   password: string
-  /** Which account these belong to — safe to print, unlike the values. */
+  /** The account these belong to. Safe to print; the values are not. */
   account: Account
 }
 
 /**
- * The first of `accounts` that `.env` (or the environment) has filled in.
+ * Returns the first of `accounts` that `.env` or the environment fills in.
  *
- * The default prefers the real account and falls back to the test one. A
- * caller that must never touch the real one — the live tests, which can write
- * — passes `['AMQ_TEST_ACCOUNT']`.
+ * The default prefers the real account and falls back to the test account.
+ * The live tests can write, so they pass `['AMQ_TEST_ACCOUNT']` and never use
+ * the real account.
  */
 export function credentials(
   accounts: Account[] = ['AMQ_ACCOUNT', 'AMQ_TEST_ACCOUNT']

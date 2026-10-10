@@ -1,7 +1,7 @@
 <!--
-  The handful of glyphs the screen uses, inline so there is no icon font and no
-  second network request. Every one is decorative: the control it sits in always
-  carries its own text or `aria-label`.
+  The icons the screens use, inline: no icon font and no extra request. Every
+  icon is decorative. The control around it carries its own text or
+  `aria-label`.
 -->
 <script lang="ts">
   interface Props {
@@ -36,10 +36,9 @@
     eye: 'M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6z',
     play: '',
     caret: 'M6 9l6 6 6-6',
-    // Settings sliders — the row's "all settings" affordance.
+    // The row's "All settings" button.
     sliders: 'M4 8h10M18 8h2M4 16h4M12 16h8',
-    // Two offset sheets. A "+" here reads as "add", which is what made the
-    // duplicate buttons unguessable — they were asked about by name.
+    // Two offset sheets. Do not use a "+" for duplicate: it reads as "add".
     copy: 'M9 9h10v10H9zM5 15H4V4h11v1',
     undo: 'M4 9h11a4.5 4.5 0 010 9h-6M4 9l4-4M4 9l4 4',
   }

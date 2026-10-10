@@ -1,14 +1,12 @@
 <!--
-  An algorithm, message or title block, nested inside a rule block (SPEC §5.3).
+  An algorithm, message or title block nested in a rule block (SPEC §5.3).
 
-  Indented 14px behind a 2px rail in the containing block's colour, because the
-  one thing a reader must never lose in a flat list is which rule block a row
-  belongs to. These are the only rows that are *not* the fixed-column entry
-  table — they carry no anime, no song and no pick count — so they are drawn as
-  their own shape rather than forced through columns that would all be empty.
+  It is indented 14px behind a 2px rail in the rule block's colour, which
+  shows the rule block it belongs to. These rows have no anime, song or pick
+  count, so they do not use the fixed-column entry layout.
 
-  The algorithm block's settings button opens **AMQ's own dialog**. Its filter
-  set is large and server-backed; only the summary line and chips here are ours.
+  The algorithm block's settings button opens **AMQ's own dialog**. Only the
+  summary line and the chips are ours.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -57,9 +55,9 @@
   )
 
   /**
-   * "N matching songs · M chosen". The match count is server-supplied and
-   * arrives asynchronously, so until it lands the line says so rather than
-   * showing a confident zero.
+   * "N matching songs · M chosen". The server sends the match count
+   * asynchronously. Until it arrives, the line says the count is pending; it
+   * does not show zero.
    */
   const matchLine = $derived.by(() => {
     if (entry.kind !== 'algorithm') return ''
@@ -69,7 +67,7 @@
     return `${matched.length} matching songs · ${Math.min(wanted, matched.length || wanted)} chosen`
   })
 
-  /** Message and title blocks say when they fire, inline (SPEC §5.3). */
+  /** When a message or title block shows (SPEC §5.3). */
   const whenLine = $derived.by(() => {
     if (entry.kind === 'message') {
       const where = entry.videoDisplay ? 'during guessing' : 'chat'
@@ -108,11 +106,7 @@
 
       {#if isAlgorithm}
         <span class="match">{matchLine}</span>
-        <!--
-          On the same line as the summary rather than below it. The line had a
-          wide empty middle and the chips had a row to themselves, which cost
-          vertical space on the densest screen in the app for no gain.
-        -->
+        <!-- On the summary line, not below it, to save vertical space. -->
         {#if chips.length > 0}
           <div class="chips">
             {#each chips as chip (chip.key)}
@@ -145,7 +139,7 @@
           type="button"
           class="act"
           aria-label="Duplicate this block"
-          title="Duplicate this block — the copy is inserted just below"
+          title="Duplicate this block. The copy goes directly below."
           onclick={onDuplicate}
         >
           <Icon name="copy" size={13} />
@@ -181,7 +175,7 @@
     box-shadow: inset 3px 0 0 var(--accent);
   }
 
-  /* The rail carries the containing rule block's colour inward. */
+  /* The rail has the colour of the rule block that contains this row. */
   .rail {
     position: absolute;
     left: var(--qb-chain);
@@ -211,8 +205,8 @@
   .body {
     flex: 1 1 0;
     min-width: 0;
-    /* Pads out from the rail so the checkbox lands on `--qb-check-x`, level
-       with every entry row's. */
+    /* The padding puts the checkbox on `--qb-check-x`, aligned with the
+       entry rows. */
     padding: 0 12px 0 calc(var(--qb-check-x) - var(--qb-chain));
   }
 
@@ -318,8 +312,8 @@
     color: var(--text);
   }
 
-  /* Takes the slack between the summary and the action buttons, and clips
-     rather than wrapping — the line is a fixed height. */
+  /* Takes the free width between the summary and the action buttons. Clips;
+     the line has a fixed height and must not wrap. */
   .chips {
     flex: 1 1 0;
     min-width: 0;

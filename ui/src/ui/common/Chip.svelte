@@ -1,10 +1,10 @@
 <!--
-  One of the small tinted chips in the Modifiers · genres · tags column.
+  A small tinted chip in the Modifiers · genres · tags column.
 
-  The colour family carries meaning (SPEC §3): teal is where songs come from,
-  amber widens the pool, violet narrows it, rose excludes, blue is a play rule.
-  Colour is never the only channel — every chip has a tooltip spelling out the
-  abbreviation, because the abbreviations are opaque on their own.
+  The colour family has a meaning (SPEC §3): teal is where songs come from,
+  amber is a modifier, violet is an anime filter, rose excludes, blue is a
+  play rule. Every chip also has a tooltip that spells out its abbreviation,
+  so colour is never the only signal.
 -->
 <script lang="ts">
   import type { ChipTone } from '../../amq/derive'
@@ -40,7 +40,7 @@
     color: var(--chip-fg);
   }
 
-  /* Optional genre/tag entries read as provisional, so the border is dashed. */
+  /* A dashed border marks an optional genre or tag. */
   .dashed {
     background: transparent;
     border-style: dashed;

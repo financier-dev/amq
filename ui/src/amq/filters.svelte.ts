@@ -1,17 +1,17 @@
 /**
  * Room filter state, predicate and persistence.
  *
- * The control set is exactly `roomFilter.js`'s — SPEC §4 adds and removes
- * nothing. Two deliberate deviations from AMQ:
+ * The controls are the same as in `roomFilter.js` (SPEC §4). Two differences
+ * from AMQ:
  *
  *   - Difficulty uses the five-tier map (SPEC §3). `roomFilter.js` still ships
- *     a legacy three-tier mapping that ignores `beginner` and `expert` and can
- *     leave its bounds `undefined`.
- *   - Defaults for "Show only" are Public on, the rest off (SPEC §4). AMQ has
- *     no defaults there at all — it restores four cookies.
+ *     a three-tier map that ignores `beginner` and `expert` and can leave its
+ *     bounds `undefined`.
+ *   - "Show only" defaults to Public on and the rest off (SPEC §4). AMQ has no
+ *     defaults there; it restores four cookies.
  *
- * Persistence is one localStorage key with a version, replacing AMQ's four
- * cookies (SPEC §5).
+ * The state persists in one versioned localStorage key, which replaces AMQ's
+ * four cookies (SPEC §5).
  */
 
 import { difficultyRange, isDefaultSetting, t } from './derive'
@@ -51,9 +51,9 @@ export interface RangeSpec {
   label: () => string
   min: number
   max: number
-  /** The difficulty slider paints the five tier bands behind its track. */
+  /** Draws the five difficulty tier bands behind the track. */
   tiers?: boolean
-  /** Room size's top stop means "unlimited", not literally 40. */
+  /** The maximum means "unlimited", not the literal number. */
   maxIsUnbounded?: boolean
 }
 
@@ -76,9 +76,9 @@ function option(key: string, i18n: string, fallback: string): ToggleOption {
 }
 
 /**
- * Group order is the panel's reading order: SPEC §4 puts Show only, Scoring,
- * Show selection, Answering mode and Anime type in the left column, and Song
- * types, Song selection, the ranges and Only non-default in the right.
+ * In the panel's reading order (SPEC §4). Left column: Show only, Scoring,
+ * Show selection, Answering mode, Anime type. Right column: Song types, Song
+ * selection, the ranges, Only non-default.
  */
 export const TOGGLE_GROUPS: ToggleGroup[] = [
   group(
@@ -267,8 +267,8 @@ export function defaultState(): FilterState {
 // --- persistence ----------------------------------------------------------
 
 /**
- * Stored object is merged **over** the defaults, so a filter added in a later
- * version gets a sane value rather than `undefined` (SPEC §5).
+ * Merges the stored object **over** the defaults, so a filter added in a
+ * later version starts at its default, not `undefined` (SPEC §5).
  */
 function load(): FilterState {
   const state = defaultState()
@@ -361,9 +361,9 @@ export class FilterStore {
   }
 
   /**
-   * Count of groups and ranges that differ from default — the Filters badge and
-   * the active strip show the same set, so they can never disagree (SPEC §4).
-   * Search is deliberately excluded: it has its own visible input.
+   * How many groups and ranges differ from their default. The Filters badge
+   * and the active strip both read this set (SPEC §4). Search is excluded
+   * because its input is always visible.
    */
   readonly changedCount = $derived(
     TOGGLE_GROUPS.filter((entry) => this.groupChanged(entry.key)).length +
@@ -413,8 +413,8 @@ export class FilterStore {
   }
 
   /**
-   * Typing a low value above the high one pushes the other handle rather than
-   * rejecting the input; values clamp to the spec's bounds (SPEC §4).
+   * A bound that crosses the other one pushes it along. Values clamp to the
+   * range's limits (SPEC §4).
    */
   setBound(key: RangeKey, index: 0 | 1, raw: number) {
     const spec = RANGES_BY_KEY.get(key)!
@@ -448,7 +448,7 @@ export class FilterStore {
     this.#save()
   }
 
-  /** Leaves search and sort alone — neither is part of the "Active" set. */
+  /** Leaves search and sort unchanged. */
   resetAll() {
     const base = defaultState()
     this.state.toggles = base.toggles
@@ -467,15 +467,15 @@ export class FilterStore {
           JSON.stringify({ version: STORAGE_VERSION, ...snapshot })
         )
       } catch {
-        // Private browsing, quota, a blocked origin — filters still work for
-        // this session, they just do not survive a reload.
+        // Storage can fail (private browsing, quota, blocked origin). The
+        // filters still work; they are lost on reload.
       }
     }, SAVE_DELAY_MS)
   }
 
   // --- predicate ----------------------------------------------------------
 
-  /** Order follows `roomFilter.js` testRoom, cheapest rejections first. */
+  /** Follows the order of `testRoom` in `roomFilter.js`: cheap tests first. */
   matches(room: Room): boolean {
     const { toggles, ranges } = this.state
     const settings = room.settings
@@ -488,7 +488,7 @@ export class FilterStore {
     if (only.open && room.playerCount >= room.roomSize) return false
     if (only.friends && room.friendNames.length === 0) return false
 
-    // The top stop means "unlimited", so a room above it is not excluded.
+    // The maximum means "unlimited", so it excludes no room.
     const [sizeLow, sizeHigh] = ranges.roomSize
     if (sizeLow > room.roomSize) return false
     if (sizeHigh !== 40 && sizeHigh < room.roomSize) return false
@@ -496,7 +496,7 @@ export class FilterStore {
     const [songLow, songHigh] = ranges.songCount
     if (room.songCount < songLow || room.songCount > songHigh) return false
 
-    // SPEC §3: the filter matches on base guess time only, as AMQ's does.
+    // SPEC §3: match on base guess time only, as AMQ does.
     const [timeLow, timeHigh] = ranges.guessTime
     const guess = settings.guessTime
     if (guess) {
@@ -527,8 +527,8 @@ export class FilterStore {
     if (!scoring.lives && settings.scoreType === 4) return false
     if (!scoring.boss && settings.scoreType === 5) return false
 
-    // roomFilter.js uses a different inclusion rule here than the tile does:
-    // advanced counts only count when random is off.
+    // roomFilter.js uses a different rule here than the room tile: the
+    // advanced counts apply only when random is off.
     const songType = settings.songType
     const inclusion =
       songType.advancedOn && songType.advancedValue.random === 0
@@ -551,7 +551,7 @@ export class FilterStore {
       if (!songSelection.random && selection.random > 0) return false
     }
 
-    // MIXED (2) is not filterable, matching AMQ.
+    // Mixed (2) cannot be filtered, as in AMQ.
     const answering = toggles.answering
     if (!answering.typing && settings.answeringMode === 1) return false
     if (!answering.multipleChoice && settings.answeringMode === 3) return false
@@ -566,7 +566,7 @@ export class FilterStore {
       if (!typeFilter.special && animeType.special) return false
     }
 
-    // A checked box keeps only rooms where that setting is *not* default.
+    // An enabled option keeps only rooms where that setting is not default.
     for (const [key, on] of Object.entries(toggles.nonDefault)) {
       if (!on) continue
       if (isDefault(key, settings[key])) return false
@@ -588,7 +588,7 @@ export class FilterStore {
   }
 }
 
-/** Looks the setting's live default up and defers to the shared comparison. */
+/** Compares against the default in `hostModal.DEFUALT_SETTINGS`. */
 function isDefault(key: string, value: unknown): boolean {
   let base: unknown
   try {

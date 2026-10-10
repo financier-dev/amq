@@ -1,16 +1,13 @@
 /**
  * Adapter over AMQ's library cache.
  *
- * Quiz entries store only ids — `annId` for an anime, `annSongId` for a song —
- * so every name, title, artist and count on the screen is resolved through here
- * at render time. That is AMQ's own arrangement, not a choice: the client does
- * the same, and a quiz saved with the names baked in would go stale the moment
- * the library changed.
+ * Quiz entries store only ids: `annId` for an anime, `annSongId` for a song.
+ * Every name, title, artist and count on the screen resolves through this
+ * file at render time, as in AMQ's client.
  *
- * Everything degrades rather than throws. A quiz can legitimately reference an
- * anime that is not in the cache (AMQ's own loader silently drops those
- * entries), and the list must still render — showing the id is far more useful
- * to someone diagnosing it than an empty row.
+ * Nothing here throws on a missing entry. A quiz can reference an anime that
+ * is not in the cache, and the list must still render. The row then shows the
+ * id.
  */
 
 import { SvelteSet } from 'svelte/reactivity'
@@ -27,12 +24,11 @@ import { libraryFilters } from './quizFilters.svelte'
 import type { IncludeSongTypesSave } from './quizSave'
 
 /**
- * Bumped whenever AMQ's cache changes under us.
+ * Increased whenever AMQ's cache changes.
  *
  * `libraryCacheHandler.animeCache` is a plain object built outside Svelte, so
- * nothing that reads it is reactive on its own — the screen would render every
- * entry as "Anime #4591" and never re-render once the real cache arrived.
- * Every reader below calls `trackCache()` so a bump re-runs it.
+ * reading it creates no dependency. Every reader below calls `trackCache()`,
+ * which makes it re-run after a change.
  */
 let cacheRevision = $state(0)
 
@@ -41,12 +37,11 @@ function trackCache() {
 }
 
 /**
- * Library entries whose shape we could not read at all.
+ * Library entries we could not read.
  *
- * Deliberately a plain counter, not `$state`: it is written from inside a
- * derivation, which may not touch reactive state. It exists for diagnosis via
- * `__amqUI.quizBuilder.unreadable()` — if this is ever non-zero the payload has
- * changed shape and the typings in `amq.d.ts` need revisiting.
+ * A plain counter, not `$state`: a derivation writes it, and a derivation may
+ * not write reactive state. `__amqUI.quizBuilder.unreadable()` exposes it.
+ * Non-zero means the payload changed shape and `amq.d.ts` is out of date.
  */
 let unreadableAnime = 0
 
@@ -55,14 +50,12 @@ export function unreadableAnimeCount() {
 }
 
 /**
- * Set when a whole filter pass threw; the pane says the library is unusable.
+ * Set when a whole filter pass threw. The pane then reports the library as
+ * unavailable.
  *
- * A plain variable, **not `$state`** — this is written from inside a
- * derivation, and Svelte forbids mutating reactive state there
- * (`state_unsafe_mutation`). Making it reactive turned a caught error into an
- * uncaught one and blanked the screen anyway, which rather defeated the guard.
- * It needs no reactivity of its own: it only ever changes in the same pass that
- * changes `rows`, and that is what re-renders the pane.
+ * A plain variable, **not `$state`**: a derivation writes it, and Svelte
+ * forbids that for reactive state (`state_unsafe_mutation`). It needs no
+ * reactivity, because it changes only in the pass that also changes `rows`.
  */
 let passFailed = false
 
@@ -71,13 +64,12 @@ export function libraryPassFailed() {
 }
 
 /**
- * Runs a library pass, degrading to `fallback` if it throws outright.
+ * Runs a library pass and returns `fallback` if it throws.
  *
- * The per-entry guards catch a bad *record*; this catches a bad *assumption* —
- * a field that changed shape breaks every record at once, and no per-entry
- * guard helps. Either way a throw inside a `$derived` aborts the render and
- * blanks the whole screen, which has now happened twice, so the library pane
- * fails to "unavailable" rather than taking the quiz pane down with it.
+ * The per-entry guards catch one bad record. This catches a field that
+ * changed shape in every record. A throw inside a `$derived` aborts the
+ * render of the whole screen, so the library pane fails alone and the quiz
+ * pane stays usable.
  */
 function guardPass<T>(label: string, run: () => T, fallback: T): T {
   try {
@@ -94,27 +86,26 @@ function guardPass<T>(label: string, run: () => T, fallback: T): T {
   }
 }
 
-/** How long to wait for the cache before giving up and saying so. */
 const LOAD_TIMEOUT_MS = 45_000
 
 let loadPromise: Promise<boolean> | null = null
 
-/**
- * Loads AMQ's library cache, resolving true once it is populated.
- *
- * `getCache` is the only entry point (`libraryCacheHandler.js:94`): it asks for
- * the current master list id and then fetches whatever is stale — the master
- * list over HTTP, then the watched, rated, uploaded and recently-wrong overlays
- * over the socket. Reading `animeCache` without calling it gets you `{}`.
- *
- * It keeps **one** callback slot, so a second concurrent call orphans the
- * first. Hence the shared promise rather than a call per caller.
- */
-/** Test seam: forces the re-read a real cache load would trigger. */
+/** For tests: makes every reader re-run, as a cache load does. */
 export function bumpCache() {
   cacheRevision += 1
 }
 
+/**
+ * Loads AMQ's library cache. Resolves true once it is populated.
+ *
+ * `getCache` is the only way in (`libraryCacheHandler.js:94`). It requests the
+ * current master list id and then fetches what is stale: the master list over
+ * HTTP, then the watched, rated, uploaded and recently-wrong overlays over the
+ * socket. Until it is called, `animeCache` is `{}`.
+ *
+ * `getCache` keeps **one** callback slot, so a second concurrent call
+ * replaces the first callback. All callers therefore share one promise.
+ */
 export function loadLibraryCache(): Promise<boolean> {
   if (loadPromise) return loadPromise
 
@@ -127,8 +118,8 @@ export function loadLibraryCache(): Promise<boolean> {
       resolve(ok)
     }
 
-    // A cache that never arrives must not leave the screen saying "Loading…"
-    // forever; the player needs to be told so they can fall back.
+    // Resolve false after the timeout so the screen can report the failure
+    // and stop showing "Loading…".
     const timer = setTimeout(() => {
       loadPromise = null
       finish(false)
@@ -158,9 +149,9 @@ export const SONG_TYPE_INSERT = 3
 /**
  * The badge on a song row: `OP 2`, `ED 1`, `IN`.
  *
- * Inserts are deliberately unnumbered — `quiz_builder.song_block.song_types`
- * has a `_NUMBER_` slot for openings and endings and none for inserts, and
- * `customQuizBuilder.js:427` skips the suffix for them.
+ * Inserts have no number. `quiz_builder.song_block.song_types` has a
+ * `_NUMBER_` placeholder for openings and endings only, and
+ * `customQuizBuilder.js:427` adds no suffix for inserts.
  */
 export function songTypeBadge(type: number, number: number): string {
   if (type === SONG_TYPE_OPENING) {
@@ -177,9 +168,9 @@ export function songTypeBadge(type: number, number: number): string {
 }
 
 /**
- * Normalises an anime type to the key its locale entry uses: `TV Special`
- * becomes `tv_special`. Exactly what `convertCategoryToKey` does before
- * looking the key up, so filter options and display can never disagree.
+ * The key an anime type's locale entry uses: `TV Special` becomes
+ * `tv_special`. `convertCategoryToKey` does the same before its lookup, so
+ * filter options and row labels agree.
  */
 export function animeTypeKey(
   category: LibraryAnimeCategory | undefined
@@ -187,21 +178,21 @@ export function animeTypeKey(
   return (category?.name ?? '').toLowerCase().replace(/ /g, '_')
 }
 
-/** The type as it should read on a row: `TV`, `OVA 2`, `Music Video`. */
+/** The type as a row shows it: `TV`, `OVA 2`, `Music Video`. */
 export function animeTypeLabel(
   category: LibraryAnimeCategory | undefined
 ): string {
   if (!category?.name) return ''
   const number = category.number
-  // Prefer AMQ's own key resolution, so a type we have never seen still reads
-  // correctly rather than falling back to a raw field.
+  // Use AMQ's own key resolution first, so a type we do not know still gets
+  // its translated name.
   try {
     const { key, parameters } =
       localizationHandler.convertCategoryToKey(category)
     const label = localizationHandler.translate(key, parameters)
     if (label && label !== key) return label.trim()
   } catch {
-    // Falls through to the plain name below.
+    // Fall back to the plain name below.
   }
   return number ? `${category.name} ${number}` : category.name
 }
@@ -209,7 +200,7 @@ export function animeTypeLabel(
 export interface AnimeDisplay {
   annId: number
   name: string
-  /** Anime type, ready to render: `TV`, `OVA 2`. */
+  /** Ready to render: `TV`, `OVA 2`. */
   category: string
   year: number
   seasonId: number
@@ -217,7 +208,7 @@ export interface AnimeDisplay {
   opCount: number
   edCount: number
   insCount: number
-  /** False when the anime is not in the cache; the row says so. */
+  /** False when the anime is not in the cache. */
   known: boolean
 }
 
@@ -257,8 +248,7 @@ export function describeAnime(annId: number): AnimeDisplay {
 
   return {
     annId,
-    // `mainName` honours the player's romaji preference, so the builder agrees
-    // with every other screen about what a show is called.
+    // `mainName` follows the player's romaji setting, as on AMQ's screens.
     name: anime.mainName ?? unknownAnime(annId).name,
     category: animeTypeLabel(anime.category),
     year: anime.year ?? 0,
@@ -295,15 +285,15 @@ export function describeSong(annSongId: number): SongDisplay {
     annSongId,
     animeName: describeAnime(entry.annId).name,
     title: song?.name ?? '',
-    // `artist` is resolved onto the song entry from whichever of the artist or
-    // group map applies (`libraryCacheHandler.js:541`).
+    // The cache sets `artist` from the artist map or the group map
+    // (`libraryCacheHandler.js:541`).
     artist: song?.artist?.name ?? '',
     badge: songTypeBadge(entry.type, entry.number),
     known: true,
   }
 }
 
-/** The song ids an anime row lists, in AMQ's order: OP, then ED, then insert. */
+/** An anime's songs in AMQ's order: OP, ED, insert. */
 export function animeSongEntries(annId: number): LibraryAnimeSongEntry[] {
   trackCache()
   const anime = libraryCacheHandler?.getCachedAnime(annId)
@@ -315,10 +305,7 @@ export function animeSongEntries(annId: number): LibraryAnimeSongEntry[] {
   ]
 }
 
-/**
- * What the derived counts need. Kept to this narrow shape so the counts stay
- * testable against a fixture rather than a cached library.
- */
+/** The cache as the counts read it. Tests pass a fixture instead. */
 export const amqLibrary: LibraryLookup = {
   animeSongIds(annId: number, types: IncludeSongTypesSave) {
     trackCache()
@@ -346,16 +333,13 @@ export const amqLibrary: LibraryLookup = {
 /**
  * The left pane's list (SPEC §4).
  *
- * Three tabs, matching AMQ's own (`library/library.js:97-115`): the whole
- * library by anime, the newest 200 songs, and songs you recently got wrong.
- * The latter two are song lists rather than anime lists, which is why a row can
- * be either shape.
+ * Three tabs, as in AMQ (`library/library.js:97-115`): the whole library by
+ * anime, the newest 200 songs, and recently wrong songs. The last two are
+ * song lists, so a row can be an anime or a song.
  *
- * **The rendered list is capped.** The real library is tens of thousands of
- * anime; AMQ virtualises it with clusterize. Rendering every match would hang
- * the page, and a virtual scroller is a lot of machinery for a pane you search
- * in — so this renders the first `PAGE` matches and reports the total, which
- * keeps the honest number in front of the player.
+ * **The rendered list is limited to `PAGE` rows.** The real library has
+ * thousands of anime and AMQ virtualises it with clusterize. We render the
+ * first `PAGE` matches and report the total.
  */
 
 /** `library.js:252` */
@@ -381,43 +365,41 @@ export interface LibrarySongRow {
   title: string
   artist: string
   badge: string
-  /** Set on a song row that stands alone, i.e. in the New / Wrong tabs. */
+  /** Set on a song row in the New and Wrong tabs, which show no anime row. */
   animeName?: string
 }
 
 export type LibraryRow = LibraryAnimeRow | LibrarySongRow
 
-/** An anime with its name, keys and songs resolved once per cache load. */
+/** An anime with its name, search names and songs, resolved once per load. */
 interface SortedAnime {
   anime: LibraryAnimeEntry
   /**
-   * `mainName`, read here rather than at sort time. It is a getter over
-   * `mainNames` and the romaji option, so a malformed record throws on read —
-   * inside the per-entry guard below that costs one row, in the comparator it
-   * would cost the pane.
+   * `mainName`, read once here. It is a getter over `mainNames` and the
+   * romaji option and can throw on a malformed record. The per-entry guard
+   * below catches that; the sort comparator would not.
    */
   name: string
   search: string[]
   songs: LibraryAnimeSongEntry[]
 }
 
-/** The drawn page plus the totals for the whole match set. */
+/** The rendered page and the totals for all matches. */
 interface MatchedAnime {
   page: { anime: LibraryAnimeEntry; songs: LibraryAnimeSongEntry[] }[]
   animeTotal: number
   songTotal: number
 }
 
-/** `libraryAnimeEntry.js:296` — the same four keys AMQ's own rows use. */
+/** `libraryAnimeEntry.js:296`. */
 const SEASON_KEYS = ['winter', 'spring', 'summer', 'fall'] as const
 
 /**
- * An anime's vintage, as one string: `Winter 2006`.
+ * An anime's vintage: `Winter 2006`.
  *
- * The locale entry is `"Winter _YEAR_"` — the season and the year are one
- * phrase, not a season to which a year gets appended. Translating without the
- * parameter and gluing the year on afterwards produces `Winter _YEAR_ 2006`,
- * which is exactly what shipped. The parameter is lowercase `year`.
+ * The locale entry is `"Winter _YEAR_"`, so pass the year as the lowercase
+ * `year` parameter. Do not translate without it and append the year: that
+ * renders `Winter _YEAR_ 2006`.
  */
 function vintageLabel(year: number, seasonId: number): string {
   const key = SEASON_KEYS[seasonId]
@@ -457,21 +439,19 @@ function songRow(
 }
 
 export class LibraryStore {
-  /** Anime whose songs are showing. Expanding lists exactly its songs. */
+  /** Anime whose songs are listed below their row. */
   readonly expanded = new SvelteSet<number>()
   /** True once AMQ's cache is populated. */
   loaded = $state(false)
-  /** True while the request is in flight, so the pane can say so. */
   loading = $state(false)
-  /** The cache did not arrive; the pane offers the escape hatch. */
+  /** The cache did not arrive. */
   failed = $state(false)
 
   /**
-   * Asks AMQ for the library and resolves when it is usable.
+   * Loads the library and resolves when it is usable.
    *
-   * Everything on this screen resolves ids through the cache, so this is not a
-   * nicety: without it every entry renders as `Anime #4591` with a song count
-   * of zero, which is exactly what shipping it unloaded looked like.
+   * Everything on this screen resolves ids through the cache. Without it,
+   * every entry renders as `Anime #4591` with zero songs.
    */
   async load(): Promise<boolean> {
     if (this.loaded) return true
@@ -492,30 +472,25 @@ export class LibraryStore {
   /**
    * The whole library in display order, sorted once per cache load.
    *
-   * The sort is the expensive part of this pane: `localeCompare` over ~20k
-   * anime costs a few hundred milliseconds, and doing it inside the filter
-   * derivation meant paying it again on every keystroke. Keeping it in its own
-   * `$derived` — which depends only on `trackCache()` — means a search re-runs
-   * the cheap predicate over an already-ordered list.
+   * The sort is the expensive step: `localeCompare` over the whole library
+   * takes a few hundred milliseconds. This `$derived` depends only on
+   * `trackCache()`, so a search re-runs only the cheap predicate over the
+   * sorted list.
    */
   readonly #sortedAnime = $derived.by((): SortedAnime[] => {
     const prepared: SortedAnime[] = []
     let unreadable = 0
 
     for (const anime of allAnime()) {
-      // Guarded per entry, not around the whole pass. This reads a payload we
-      // do not control, and one odd record throwing inside a `$derived` takes
-      // the entire screen down — which is exactly what `category` being an
-      // object rather than a string did.
+      // Guard each entry, not the whole pass. The payload is not ours, and
+      // one bad record that throws inside a `$derived` breaks the whole
+      // screen.
       try {
         prepared.push({
           anime,
           name: anime.mainName ?? '',
-          // AMQ precomputes these at cache load; resolved once here so a
-          // keystroke is `includes` over strings already in the right shape.
+          // Resolved once here, not per keystroke.
           search: animeSearchNames(anime),
-          // Flattened once rather than per keystroke — the spread allocated
-          // three arrays per anime and threw them away.
           songs: [
             ...(anime.songs?.OP ?? []),
             ...(anime.songs?.ED ?? []),
@@ -533,9 +508,8 @@ export class LibraryStore {
   })
 
   /**
-   * Anime matching the filters, each with the songs that survive them.
-   * An anime whose every song is filtered out is dropped — showing a row that
-   * expands to nothing is worse than not showing it.
+   * Anime that match the filters, each with the songs that match. An anime
+   * with no matching song is dropped.
    */
   readonly #matchingAnime = $derived.by((): MatchedAnime =>
     guardPass('anime', () => this.#computeMatchingAnime(), {
@@ -547,7 +521,7 @@ export class LibraryStore {
 
   #computeMatchingAnime(): MatchedAnime {
     const query = needle(libraryFilters.search)
-    // One snapshot, then a hot loop over plain objects — see `predicates`.
+    // Take one snapshot for the loop. See `predicates`.
     const { matchesAnime, matchesSong } = libraryFilters.predicates
     const page: { anime: LibraryAnimeEntry; songs: LibraryAnimeSongEntry[] }[] =
       []
@@ -558,17 +532,15 @@ export class LibraryStore {
       if (!matchesAnime(entry.anime)) continue
 
       /*
-       * AMQ's two search rules, in its own order (`applySearchFilter`): an
-       * anime whose name matches keeps every one of its songs; otherwise only
-       * the songs that match themselves — title, artist, composer or arranger
-       * — are kept, and the anime survives only if one did.
+       * AMQ's two search rules (`applySearchFilter`). An anime whose name
+       * matches keeps all its songs. Otherwise only songs that match on
+       * title, artist, composer or arranger stay, and the anime stays only if
+       * one did.
        */
       const wholeAnime = !query || matchesSearchNames(entry.search, query)
 
-      // Counted in a loop rather than built and measured: the totals in the
-      // header need every match, but only the page that is drawn needs an
-      // actual array, and allocating 20k of them per keystroke was the rest of
-      // the cost.
+      // Count matches without building arrays. The header totals need every
+      // match, but only the rendered page needs the song arrays.
       const keep = (song: LibraryAnimeSongEntry) =>
         matchesSong(song) &&
         (wholeAnime || (query !== null && songMatchesSearch(song, query)))
@@ -576,9 +548,7 @@ export class LibraryStore {
       for (const song of entry.songs) {
         if (keep(song)) matching += 1
       }
-      // An anime whose every song is filtered out is dropped — a row that
-      // expands to nothing is worse than no row. With a search on, that now
-      // also covers an anime no part of which matched.
+      // Drop an anime with no matching song.
       if (matching === 0) continue
 
       animeTotal += 1
@@ -589,11 +559,11 @@ export class LibraryStore {
       }
     }
 
-    // Already in display order: `#sortedAnime` was iterated in it.
+    // `#sortedAnime` is in display order, so `page` is too.
     return { page, animeTotal, songTotal }
   }
 
-  /** Songs matching the filters, for the two song-shaped tabs. */
+  /** Songs that match the filters, for the New and Wrong tabs. */
   readonly #matchingSongs = $derived.by((): LibraryAnimeSongEntry[] =>
     guardPass('songs', () => this.#computeMatchingSongs(), [])
   )
@@ -607,9 +577,9 @@ export class LibraryStore {
     for (const entry of this.#sortedAnime) {
       const anime = entry.anime
       if (!matchesAnime(anime)) continue
-      // These two tabs are song lists, so AMQ's anime target is tested per row
-      // against the song's own anime (`LibrarySongSoloEntry.searchNames`
-      // delegates to it) rather than deciding a group of them.
+      // These tabs list songs, so an anime-name hit applies to each song of
+      // that anime (`LibrarySongSoloEntry.searchNames` delegates to the
+      // anime).
       const animeHit = query ? matchesSearchNames(entry.search, query) : false
       for (const song of entry.songs) {
         if (!matchesSong(song)) continue
@@ -620,11 +590,11 @@ export class LibraryStore {
     }
 
     if (tab === 'new') {
-      // Newest first, then AMQ's own cap of 200.
+      // Newest first, limited to 200 as in AMQ.
       out.sort((a, b) => b.annSongId - a.annSongId)
       return out.slice(0, NEW_SONG_DISPLAY_AMOUNT)
     }
-    // Recently wrong, most recent first.
+    // Most recently wrong first.
     out.sort((a, b) => (a.wrongIndex ?? 0) - (b.wrongIndex ?? 0))
     return out
   }
@@ -641,7 +611,7 @@ export class LibraryStore {
       : this.#matchingSongs.length
   )
 
-  /** How many rows the pane is actually drawing, of how many matched. */
+  /** How many of the matched rows the pane renders. */
   readonly shown = $derived(
     Math.min(
       libraryFilters.state.tab === 'library'
@@ -672,8 +642,8 @@ export class LibraryStore {
 
     const rows: LibraryRow[] = []
     for (const { anime, songs } of this.#matchingAnime.page) {
-      // `category` is an object; `animeTypeLabel` is the only thing that may
-      // render it, or the row reads "[object Object]".
+      // `category` is an object. Render it only through `animeTypeLabel`, or
+      // the row reads "[object Object]".
       const parts = [
         animeTypeLabel(anime.category),
         vintageLabel(anime.year ?? 0, anime.seasonId ?? -1),
@@ -701,11 +671,11 @@ export class LibraryStore {
   }
 
   /**
-   * True when a whole pass failed — the payload has moved under us.
+   * True when a whole pass failed, which means the payload changed shape.
    *
-   * A getter rather than a `$derived`: it reads a non-reactive flag, so a
-   * derived would cache `false` forever. Templates re-read it each render, and
-   * the render that sets it is the one that empties `rows`.
+   * A getter, not a `$derived`: it reads a non-reactive flag, and a derived
+   * would cache `false`. The render that sets the flag also empties `rows`,
+   * so templates re-read it.
    */
   get broken() {
     return libraryPassFailed()

@@ -1,15 +1,14 @@
 <!--
-  How many songs to take from an anime rule (SPEC §5.6).
+  How many songs to take from an anime entry (SPEC §5.6).
 
-  Fixed 74px, vertically centred, deliberately *without* a box around it — at
-  34px of row height a bordered control would dominate the row it sits in.
+  Fixed 74px, vertically centred, with no border. A bordered control would
+  dominate the entry row.
 
-  A 3px track carries the fill, a real `<input type="range">` sits on top of it
-  with a transparent track of its own, and the typed value lives underneath as
-  `− 3/13 +`. The slider and both buttons write the same clamped value, so the
-  three can never disagree; toggling a song type off re-clamps immediately and
-  the fill follows, which is the whole reason the fill is derived rather than
-  stored.
+  A 3px track shows the fill. An `<input type="range">` with a transparent
+  track lies over it, and the value shows below as `− 3/13 +`. The slider and
+  both buttons write the same clamped value. The fill is derived from the
+  value, so it follows when a song type is turned off and the value is
+  clamped.
 -->
 <script lang="ts">
   interface Props {
@@ -21,8 +20,8 @@
 
   let { value, pool, onChange, label }: Props = $props()
 
-  // A pool of zero still shows 1: an anime with every type switched off has
-  // nothing to give, and `1/0` reads as the mistake it is.
+  // An empty pool still shows a maximum of 1, so the control never reads
+  // `1/0`.
   const max = $derived(Math.max(pool, 1))
   const pct = $derived(max <= 1 ? 100 : ((value - 1) / (max - 1)) * 100)
 </script>
@@ -95,8 +94,8 @@
 
   /*
    * The input covers the track so the whole width is draggable, but only the
-   * thumb takes the pointer — otherwise a click anywhere in the cell jumps the
-   * value, which at 74px wide is almost always an accident.
+   * thumb accepts the pointer. Otherwise any click in the 74px cell would
+   * change the value.
    */
   .rng {
     position: absolute;

@@ -1,8 +1,8 @@
 /**
- * Typed wrapper around AMQ's `Listener` / socket event system.
+ * Typed wrapper around AMQ's `Listener` and socket commands.
  *
- * `socket.addListerner` (sic) pushes onto an array per command, so binding our
- * own listeners never displaces AMQ's — both fire.
+ * `socket.addListerner` (sic) pushes onto an array per command, so our
+ * listeners never displace AMQ's. Both fire.
  */
 
 export type AMQEventMap = {
@@ -13,7 +13,6 @@ export type AMQEventMap = {
   'Host Game': any
   'friend state change': { name: string; online: boolean }
   'game invite': { sender: string; gameId: number }
-  // --- quiz builder ---
   'load custom quiz': {
     quizId: number
     failed?: boolean
@@ -24,7 +23,7 @@ export type AMQEventMap = {
     quizId?: number
     quizSave?: import('./quizSave').QuizSave
   }
-  /** Reply to `get algorithm songs`, keyed by the block id we sent. */
+  /** `blockId` is the id we sent with the request. */
   'get algorithm songs': { blockId: number; annSongIds: number[] }
 }
 
@@ -32,9 +31,8 @@ export type AMQEvent = keyof AMQEventMap
 export type AMQEventData<T extends AMQEvent> = AMQEventMap[T]
 
 /**
- * Binds a listener and returns an unbind function. Unlike the tampermonkey
- * repo's `addListener`, the handle is required here: screens bind on
- * `openView` and must unbind on `closeView`, or stale rooms accumulate.
+ * Returns the unbind function. Screens bind on `openView` and must unbind on
+ * `closeView`, or stale rooms accumulate.
  */
 export function addListener<T extends AMQEvent>(
   event: T,
@@ -45,7 +43,6 @@ export function addListener<T extends AMQEvent>(
   return () => listener.unbindListener()
 }
 
-/** Binds several listeners, returning a single unbind for all of them. */
 export function addListeners(bindings: {
   [K in AMQEvent]?: (data: AMQEventData<K>) => void
 }): () => void {

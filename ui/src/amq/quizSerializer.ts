@@ -1,21 +1,19 @@
 /**
- * Our model ⇄ AMQ's custom-quiz save payload.
+ * Converts between our model and AMQ's custom-quiz save payload.
  *
- * This is the highest-risk file in the screen: everything else can look wrong
- * and be fixed, but a serializer bug silently corrupts a quiz the player has
- * already saved. Two rules keep it honest.
+ * This is the highest-risk file of the quiz builder. A bug here silently
+ * corrupts a quiz the player has already saved. Two rules:
  *
- * **Round-trip, don't reconstruct.** `toSave(fromSave(p))` must deep-equal `p`
- * for any real payload. Anything we do not model — a field added in a capture
- * newer than ours, the message block's avatar blob, the algorithm block's
- * settings — is carried through untouched rather than rebuilt. The README
- * warns that payload shapes drift between captures; an unknown-field bag is
- * what stops that drift from eating a player's quiz.
+ * **Round-trip, do not reconstruct.** `toSave(fromSave(p))` must deep-equal
+ * `p` for any real payload. Carry through unchanged everything we do not
+ * model: a field a newer client added, the message block's avatar, the
+ * algorithm block's settings. Payload shapes change between client versions,
+ * and the unknown-field bag keeps such a change from losing data.
  *
- * **Emit absence, not `undefined`.** AMQ reads an override's *presence* as
- * "this entry overrides its block" (`customQuizPlayEntryBlock.js:72-87`), and a
- * key set to `undefined` survives a structuredClone and an equality check
- * differently than a missing one. Every optional field is added conditionally.
+ * **Omit a key; never set it to `undefined`.** AMQ reads the presence of an
+ * override as "this entry overrides its block"
+ * (`customQuizPlayEntryBlock.js:72-87`), and `undefined` does not compare
+ * equal to a missing key. Add every optional field conditionally.
  */
 
 import {
@@ -39,18 +37,13 @@ import type {
   UnknownFields,
 } from './quizModel'
 
-/**
- * Ids are ours and client-local; AMQ identifies blocks and entries by position.
- * They come from one app-wide counter — see `lib/ids.ts` for why.
- */
 export { resetIds as __resetIds } from '../lib/ids'
 
 /**
- * Splits an incoming object into the fields we model and everything else.
+ * Returns the fields of `source` that are not in `known`.
  *
- * `known` is listed rather than derived so that adding a field to our model is
- * a deliberate act: forget to list it and it stays in the unknown bag, which is
- * harmless, instead of being dropped, which is not.
+ * `known` is an explicit list on purpose. A model field missing from it lands
+ * in the unknown bag and still round-trips. A derived list could drop it.
  */
 function rest(
   source: Record<string, unknown>,
@@ -67,7 +60,6 @@ function rest(
   return found ? extra : undefined
 }
 
-/** Spreads the unknown bag back out, or nothing when there wasn't one. */
 function withUnknown<T extends object>(value: T, unknown?: UnknownFields): T {
   return unknown ? { ...value, ...unknown } : value
 }
@@ -147,8 +139,8 @@ function entryFromSave(save: EntrySave): Entry {
       kind: 'algorithm',
       settings: save.settings,
       overrides: readOverrides(raw),
-      // The server pre-supplies matches on load and the client deletes them off
-      // the payload; keep them out of the unknown bag or they'd be saved back.
+      // The server sends matches on load and the client deletes them from the
+      // payload. Listing `annSongIds` as known keeps it out of the save.
       matchedAnnSongIds: raw.annSongIds as number[] | undefined,
       unknown: rest(raw, [...PLAY_ENTRY_KEYS, 'settings', 'annSongIds']),
     }
@@ -185,9 +177,9 @@ function entryFromSave(save: EntrySave): Entry {
     }
   }
 
-  // AMQ's loader silently skips a block it cannot classify. Ours refuses
-  // instead: dropping an entry here would round-trip as data loss, and the
-  // caller can fall back to `useLegacy()` with the quiz intact.
+  // AMQ's loader silently skips a block it cannot classify. We throw: a
+  // dropped entry would be lost on the next save. The caller can fall back to
+  // `useLegacy()` with the quiz intact.
   throw new Error(
     `[amq-ui] unrecognised quiz block: ${JSON.stringify(Object.keys(raw))}`
   )
@@ -202,8 +194,8 @@ const RULE_BLOCK_KEYS = [
   'duplicates',
   'guessModes',
   'blocks',
-  // Server-added on load; listed so it lands neither in the model nor the
-  // unknown bag, and so is not echoed back on save.
+  // Listed so they reach neither the model nor the unknown bag, and are not
+  // sent back on save.
   ...SERVER_ONLY_BLOCK_FIELDS,
 ]
 
@@ -247,9 +239,9 @@ export function fromSave(save: QuizSave): Quiz {
 // --- save -------------------------------------------------------------------
 
 function entryToSave(entry: Entry, index: number): EntrySave {
-  // The first entry of a block has nothing to connect up to. AMQ's loader only
-  // ever consults the flag for index > 0, so a stale `true` here is invisible
-  // in game and would still break an equality check — clear it.
+  // The first entry of a block has nothing above it. AMQ's loader reads the
+  // flag only for index > 0, so clear a stale `true` to keep round-trip
+  // equality.
   const base = { connectUp: index > 0 && entry.connectUp, locked: entry.locked }
 
   switch (entry.kind) {
@@ -285,9 +277,9 @@ function entryToSave(entry: Entry, index: number): EntrySave {
         entry.unknown
       ) as EntrySave
 
-    // Message and title spread the base *last* in the client
+    // The client spreads the base last for message and title
     // (`customQuizMessageBlock.js:129`). Key order does not affect equality,
-    // but matching it keeps a diff of the two payloads readable.
+    // but the same order keeps a diff of the two payloads readable.
     case 'message':
       return withUnknown(
         {

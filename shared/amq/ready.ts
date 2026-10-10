@@ -1,6 +1,6 @@
 /**
- * Any script here runs before AMQ's own bundle has finished booting, so every
- * entry point waits on the globals it needs.
+ * A userscript runs before AMQ's own bundle has finished booting, so every
+ * entry point must wait for the globals it needs.
  */
 
 const POLL_INTERVAL_MS = 200
@@ -25,7 +25,7 @@ function poll(isReady: () => boolean, timeoutMs: number): Promise<void> {
   })
 }
 
-/** Resolves once the socket is connected and the view system is wired up. */
+/** Resolves once the socket exists and the view controllers are registered. */
 export function ensureLoad(timeoutMs = 60_000) {
   return poll(
     () =>

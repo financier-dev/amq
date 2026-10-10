@@ -1,7 +1,4 @@
-/**
- * Column sorting. Every column header is a button (SPEC §3), so every column
- * needs a comparator; `dir` flips on a second click.
- */
+/** Room browser column sorting (SPEC §3). */
 
 import { difficultyRange, modeLabel, songSelectionLabel } from './derive'
 import type { Room } from './rooms.svelte'
@@ -30,24 +27,24 @@ function by<T extends number | string>(pick: (room: Room) => T): Comparator {
   }
 }
 
-/** Enabled types as a bitfield, so O/E/I sorts in a stable, readable order. */
+/** Enabled types as a bitfield, which gives O/E/I a fixed order. */
 function typeWeight(room: Room) {
   const { openings, endings, inserts } = room.songTypes
   return (openings ? 4 : 0) + (endings ? 2 : 0) + (inserts ? 1 : 0)
 }
 
 export const COMPARATORS: Record<SortKey, Comparator> = {
-  // Room ids ascend with creation order, so this is "oldest first".
+  // Room ids ascend with creation order: oldest first.
   id: by((room) => room.id),
   room: by((room) => room.name.toLowerCase()),
   mode: by((room) => modeLabel(room.mode)),
   players: by((room) => room.playerCount),
   songs: by((room) => room.songCount),
-  // A randomised range sorts by its floor, which is what the cell leads with.
+  // A random range sorts by its minimum, the value the cell shows first.
   time: by((room) => room.guessTime.range?.min ?? -1),
   types: by(typeWeight),
   selection: by((room) => songSelectionLabel(room.songSelection)),
-  // Lower % correct is harder; sorting on the floor puts the hardest first.
+  // A lower % correct is harder, so ascending puts the hardest first.
   difficulty: by((room) => difficultyRange(room.settings).min),
 }
 
@@ -59,7 +56,7 @@ export function sortRooms(
   const compare = COMPARATORS[key as SortKey]
   if (!compare) return rooms
   const sign = dir === 'desc' ? -1 : 1
-  // Ties fall back to room id so the order never jitters as rooms update.
+  // Break ties by room id so the order stays fixed as rooms update.
   return [...rooms].sort((a, b) => {
     const result = compare(a, b)
     return result !== 0 ? result * sign : a.id - b.id

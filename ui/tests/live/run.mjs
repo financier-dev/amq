@@ -1,19 +1,16 @@
 /*
- * The live suite: the built userscript, running on animemusicquiz.com, against
- * a real account's real library and real saved quizzes.
+ * The live suite: the built userscript on animemusicquiz.com, against a real
+ * account's library and saved quizzes.
  *
  *   npm run test:live            # assert, headless
  *   npm run test:live -- --headed
  *
- * **Read-only.** Nothing here saves, deletes, publishes or hosts anything.
- * Every question worth asking — does the library payload still match our
- * typings, do real quizzes round-trip byte-for-byte — is answerable without a
- * single write, and a quiz saved by a test is one the account owner has to go
- * and clean up. Writes are gated behind AMQ_LIVE_ALLOW_WRITES=1 and, for now,
- * nothing uses it.
+ * **Read-only by default.** The library and round-trip checks need no write.
+ * Only the save, reload and delete check writes, and it runs only with
+ * AMQ_LIVE_ALLOW_WRITES=1.
  *
- * This is deliberately *not* part of `npm test`. That suite has to stay fast,
- * offline and deterministic; this one needs the network, a login and patience.
+ * Not part of `npm test`, which must stay fast, offline and deterministic.
+ * This suite needs the network and a login.
  */
 
 import fs from 'node:fs'
@@ -26,12 +23,8 @@ import {
 } from '../../../shared/node/session.ts'
 
 /**
- * Whether the run may change anything on the account.
- *
- * Off unless asked for, and deliberately awkward to turn on. Everything these
- * tests need — the library payload, the serializer round-trip against real
- * quizzes — is answerable without a single write, and a quiz saved by a test
- * is a quiz the account owner then has to clean up.
+ * Whether the run may change the account. A quiz that a test leaves behind
+ * must be deleted by hand.
  */
 const allowWrites = process.env.AMQ_LIVE_ALLOW_WRITES === '1'
 
@@ -51,11 +44,8 @@ const check = (label, pass, detail = '') =>
   results.push({ label, pass, detail })
 
 /**
- * A check that could not run because a precondition was missing.
- *
- * Distinct from a failure — nothing is broken — but loud, because a skipped
- * check verifies nothing and the quiet ones are how a suite ends up green and
- * meaningless.
+ * Records a check that could not run because a precondition was missing.
+ * It is not a failure, but it is reported: a skipped check verifies nothing.
  */
 const skip = (label, why) => results.push({ label, skipped: true, detail: why })
 
@@ -88,7 +78,7 @@ process.on('uncaughtException', async (error) => {
 })
 
 console.log('logging in to animemusicquiz.com…')
-// The test account only: this suite can write, and takes the session over.
+// The test account only. This suite can write, and it takes over the session.
 session = await openSession({
   headed,
   userscript,
@@ -121,8 +111,8 @@ check(
   boot.failed ?? ''
 )
 check('the quiz builder devtools are exposed', boot.quizBuilder)
-// Replacing the controller leaves the original on the prototype chain, so the
-// own-property check is what distinguishes ours from AMQ's.
+// The original controller stays on the prototype chain, so an own-property
+// check tells ours from AMQ's.
 check('the quiz builder screen is installed', boot.controllerIsOurs)
 
 // --- the library: does the real payload still match our typings? ----------
@@ -219,10 +209,9 @@ check(
   `${library.animeCount} anime in ${librarySeconds}s`
 )
 /*
- * The single most valuable assertion here. `unreadable` counts entries whose
- * shape our code could not read at all; a non-zero value means the payload has
- * moved and `src/typings/amq.d.ts` is out of date. No offline stub can tell us
- * this, because an offline stub is just our own assumptions played back.
+ * `unreadable` counts entries our code could not read. Non-zero means the
+ * payload changed shape and `shared/typings/amq.d.ts` is out of date. Only
+ * the live suite can detect this: the offline stubs repeat our assumptions.
  */
 check(
   'every library entry matches the shape we expect',
@@ -246,10 +235,9 @@ check(
     `${library.shape.artistNames} with an artist`
 )
 /*
- * Search reads `searchNames` rather than lowercasing names per keystroke, and
- * those arrays are built by the client, not sent by the server — so a rename
- * would cost the character folding that makes "re re" find "Re:Re:" and fall
- * back to a worse search without a word. There is no offline way to notice.
+ * Search reads `searchNames`, which the client builds; the server does not
+ * send them. If AMQ renames the field, search silently falls back to names
+ * without character folding, and "re re" no longer finds "Re:Re:".
  */
 check(
   'anime and songs carry the precomputed searchNames our search reads',
@@ -259,9 +247,9 @@ check(
     `${library.shape.songSearchNames}/${library.shape.songEntries} songs`
 )
 /*
- * The other three search targets. `getFullMemberEntryList` is what makes an
- * artist search non-strict — AMQ's default — so a group matches on its
- * members' names; composer and arranger are targets of their own.
+ * The other search targets. `getFullMemberEntryList` makes an artist search
+ * non-strict (AMQ's default), so a group matches on its members' names.
+ * Composer and arranger are separate targets.
  */
 check(
   'credits expose their member list, and composers and arrangers exist',
@@ -355,9 +343,9 @@ if (quizIds.length === 0 && !allowWrites) {
     }
     const result = await page.evaluate((save) => {
       const api = window.__amqUI.quizBuilder
-      // The server enriches a load with fields no save carries — `annSongIds`,
-      // `matchSongCount`, `version`. Dropping them is the correct behaviour,
-      // so the comparison drops them too.
+      // The server adds fields that no save carries: `annSongIds`,
+      // `matchSongCount`, `version`. The serializer drops them, so the
+      // comparison drops them too.
       const fields = api.serverOnlyFields
       const expected = JSON.parse(JSON.stringify(save))
       for (const key of fields.quiz) delete expected[key]
@@ -381,7 +369,7 @@ if (quizIds.length === 0 && !allowWrites) {
         const a = JSON.stringify(sortKeys(actual))
         const b = JSON.stringify(sortKeys(expected))
         if (a === b) return { ok: true }
-        // Report a bounded slice rather than dumping two large payloads.
+        // Report a short slice, not two large payloads.
         return {
           ok: false,
           why: 'differs',
@@ -413,12 +401,12 @@ if (quizIds.length === 0 && !allowWrites) {
 // --- end-to-end: save a quiz, read it back, delete it ---------------------
 
 /*
- * The only check that proves the *whole* path — our model out through AMQ's
- * `save quiz`, into the server, and back through `load custom quiz`. Everything
- * above verifies one half or the other.
+ * The only check of the whole path: our model out through AMQ's `save quiz`
+ * to the server, and back through `load custom quiz`.
  *
- * It writes, so it is off unless AMQ_LIVE_ALLOW_WRITES=1, and it cleans up
- * after itself. The name is stamped so an abandoned one is obvious.
+ * It writes, so it runs only with AMQ_LIVE_ALLOW_WRITES=1, and it deletes
+ * its quiz afterwards. The quiz name is stamped so a leftover is easy to
+ * find.
  */
 if (!allowWrites) {
   skip(
@@ -436,7 +424,7 @@ if (!allowWrites) {
     const built = await page.evaluate((quizName) => {
       const api = window.__amqUI.quizBuilder
       const cache = window.libraryCacheHandler.animeCache
-      // Two real anime from the account's own library, so the entries resolve.
+      // Two anime from the account's library, so the entries resolve.
       const [first, second] = Object.values(cache)
         .filter((anime) => (anime.songs?.OP?.length ?? 0) > 0)
         .slice(0, 2)
@@ -461,7 +449,7 @@ if (!allowWrites) {
         annId: second.annId,
         includeSongTypes: { op: true, ed: false, in: false },
         numberOfSongs: 1,
-        // An override and a chain, so the round-trip has something to lose.
+        // An override, so the round-trip has an optional field to keep.
         overrides: { guessTime: { guessTime: 25, extraGuessTime: 2 } },
       })
       const block = store.quiz.blocks[0]
@@ -530,10 +518,7 @@ if (!allowWrites) {
           const same = (a, b) =>
             JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b))
 
-          /*
-           * Where two payloads differ, by path — dumping both is unreadable at
-           * this size, and "they differ" is not a diagnosis.
-           */
+          // Lists the paths where two payloads differ.
           const diff = (a, b, path = '', out = []) => {
             if (out.length > 12) return out
             const bothObjects =
@@ -598,7 +583,7 @@ if (!allowWrites) {
       )
     }
   } finally {
-    // Always clean up, even if an assertion above threw.
+    // Delete the quiz even if an assertion above threw.
     if (createdId !== null) {
       await request(page, {
         type: 'quizCreator',
@@ -630,9 +615,8 @@ const screen = await page.evaluate(() => {
   const host = hosts[hosts.length - 1]
   const shadow = host?.shadowRoot
   const screenBox = shadow?.querySelector('.screen')?.getBoundingClientRect()
-  // `#footerMenuBar` is the real id — `#mainMenuBar` is what the offline
-  // harness calls it, and a selector that matches nothing quietly turns this
-  // assertion into a no-op.
+  // The real id is `#footerMenuBar`. The offline harness calls it
+  // `#mainMenuBar`. A selector that matches nothing would skip this check.
   const menuBar = document
     .querySelector('#footerMenuBar')
     ?.getBoundingClientRect()
@@ -646,8 +630,8 @@ const screen = await page.evaluate(() => {
       screenBox && menuBar ? screenBox.bottom <= menuBar.top + 1 : null,
     screenBottom: screenBox ? Math.round(screenBox.bottom) : null,
     menuBarTop: menuBar ? Math.round(menuBar.top) : null,
-    // Our layout reserves a fixed 45px for it; if the real bar is taller we
-    // are covering it, and if it is shorter we are wasting a strip.
+    // Our layout reserves 45px for the bar. A taller bar would be covered;
+    // a shorter one would leave a gap.
     menuBarHeight: menuBar ? Math.round(menuBar.height) : null,
     sidewaysScroll: document.body.scrollWidth > document.body.clientWidth,
   }
@@ -685,19 +669,18 @@ await page.screenshot({ path: path.join(shots, 'quiz-builder.png') })
 // --- the search box finds songs and artists, not just anime ---------------
 
 /*
- * The offline suite asserts this against a fixture of five shows; this asserts
- * it against whatever is actually in the account's library, picked at runtime.
- * A real song title and a real artist name, each chosen so the show's own names
- * do **not** contain them — otherwise the anime target would carry the search
- * and a song-and-artist-blind implementation would pass.
+ * The offline suite checks this against a fixture of five shows. This checks
+ * it against the account's library, with a song title and an artist name
+ * picked at runtime. Each is chosen so that the show's own names do **not**
+ * contain it. Otherwise the anime-name match alone would pass the test.
  */
 const searchTargets = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   const filters = api.libraryFilters
   const cache = window.libraryCacheHandler.animeCache
 
-  // Candidates come from the rows the pane is already drawing, so they satisfy
-  // every live filter — a candidate the filters hide would look like a miss.
+  // Candidates come from the rows the pane renders, so they pass every
+  // active filter. A filtered-out candidate would look like a search miss.
   const rows = api.libraryStore.rows.filter((row) => row.kind === 'anime')
   const pick = (field) => {
     for (const row of rows) {
@@ -777,10 +760,9 @@ check(
 // --- nothing threw --------------------------------------------------------
 
 /*
- * AMQ's own login page throws `Cookies is not defined` — an inline script runs
- * before the bundle that defines it. Failing on the site's pre-existing errors
- * would make this assertion useless noise, so only errors that are plausibly
- * ours count.
+ * AMQ's login page throws `Cookies is not defined`: an inline script runs
+ * before the bundle that defines it. Only errors that are not known site
+ * errors count.
  */
 const KNOWN_SITE_ERRORS = [/Cookies is not defined/]
 const ourErrors = pageErrors.filter(

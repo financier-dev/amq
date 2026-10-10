@@ -1,7 +1,7 @@
 <!--
-  Song types as OP / ED / IN chips. An enabled type is filled; a disabled one
-  keeps its slot as a dashed outline, so the three positions stay comparable
-  down the column instead of shifting when a room drops a type.
+  Song types as OP / ED / IN chips. An enabled type is filled. A disabled type
+  keeps its slot as a dashed outline, so the three positions stay aligned down
+  the column.
 -->
 <script lang="ts">
   import type { SongTypes } from '../../../amq/derive'
@@ -68,12 +68,10 @@
   }
 
   /*
-   * These labels are all capitals, so their ink stops at the baseline while the
-   * line box still reserves room for descenders — centring the box therefore
-   * leaves the letters sitting high. Measured against the rendered pixels at
-   * 12px IBM Plex Mono: 5.4px of space above the glyphs and 7.9px below. One
-   * pixel down splits the difference and stays on the pixel grid, which a
-   * fractional transform would not.
+   * The labels are all capitals, so nothing goes below the baseline, but the
+   * line box still reserves room for descenders. Centring the box leaves the
+   * letters too high: at 12px IBM Plex Mono there is 5.4px above the glyphs
+   * and 7.9px below. A 1px shift evens that out and stays on the pixel grid.
    */
   .glyph {
     position: relative;

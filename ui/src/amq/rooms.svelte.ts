@@ -1,13 +1,12 @@
 /**
  * Room browser state.
  *
- * The whole screen is a reducer over two socket events:
- *   `New Rooms`   — full snapshot, sent in reply to the `get rooms` command
- *   `Room Change` — incremental patches, keyed by roomId
+ * The store reduces two socket events:
+ *   `New Rooms`   — snapshot, sent in reply to the `get rooms` command
+ *   `Room Change` — incremental patch, keyed by roomId
  *
- * Nothing here reads the DOM, and nothing here writes it. Actions delegate to
- * AMQ's own `roomBrowser` so the lobby handoff, password prompts and error
- * messages keep working.
+ * Nothing here reads or writes the DOM. Actions call AMQ's own `roomBrowser`,
+ * so the lobby handoff, password prompts and error messages keep working.
  */
 
 import { SvelteMap } from 'svelte/reactivity'
@@ -44,7 +43,7 @@ export interface Room {
   spectatorCount: number
   players: RoomPlayer[]
   spectators: RoomPlayer[]
-  /** Friends of yours in this room, players and spectators alike. */
+  /** The player's friends in this room, among players and spectators. */
   friendNames: string[]
   songCount: number
   songsLeft: number
@@ -79,7 +78,7 @@ function toRoom(info: RoomInfo): Room {
   }
 }
 
-/** Recomputes everything derived from `settings` after a patch. */
+/** Recomputes the fields derived from `settings` after a patch. */
 function applySettings(room: Room, settings: RoomSettings): Room {
   return {
     ...room,
@@ -96,9 +95,9 @@ function applySettings(room: Room, settings: RoomSettings): Room {
 }
 
 /**
- * roomTile.js:267-281 — presence in the roster decides join vs leave. The
- * player count is *not* what distinguishes them: it is assigned from the
- * payload either way.
+ * roomTile.js:267-281. A name already in the roster leaves; a name not in it
+ * joins. The player count does not tell the two apart: the payload sets it in
+ * both cases.
  */
 function toggleRosterEntry(
   roster: RoomPlayer[],
@@ -112,7 +111,7 @@ function toggleRosterEntry(
   return [...roster, { name, level }]
 }
 
-/** Friends are tracked by the server; `friend` is only set when one moved. */
+/** The server tracks friends. `friend` is set only when a friend moved. */
 function toggleFriend(friends: string[], name: string, joined: boolean) {
   if (joined) {
     return friends.includes(name) ? friends : [...friends, name]
@@ -125,12 +124,11 @@ function toggleFriend(friends: string[], name: string, joined: boolean) {
 export class RoomStore {
   #rooms = new SvelteMap<number, Room>()
   #unbind: (() => void) | null = null
-  /** Room whose settings the host modal is previewing, if any. */
+  /** The room whose settings the host modal is previewing. */
   #previewRoomId: number | null = null
 
-  /** True between `bind()` and `unbind()`. */
   bound = $state(false)
-  /** False until the first `New Rooms` snapshot lands. */
+  /** False until the first `New Rooms` snapshot arrives. */
   loaded = $state(false)
 
   readonly rooms = $derived([...this.#rooms.values()])
@@ -161,14 +159,14 @@ export class RoomStore {
     this.#rooms.clear()
   }
 
-  /** Asks the server for a fresh snapshot; the reply arrives as `New Rooms`. */
+  /** The reply arrives as `New Rooms`. */
   refresh() {
     sendCommand('roombrowser', 'get rooms')
   }
 
   #onNewRooms(data: NewRoomsData) {
-    // The server streams snapshots in batches rather than one complete list,
-    // so this merges instead of replacing.
+    // The server sends a snapshot in several batches, so merge; do not
+    // replace.
     for (const info of data.standard ?? []) {
       this.#rooms.set(info.id, toRoom(info))
     }
@@ -186,7 +184,7 @@ export class RoomStore {
           room.id,
           applySettings(room, { ...room.settings, ...payload.change })
         )
-        // roomTile.js:237 — a room being previewed keeps the modal in sync.
+        // roomTile.js:237. Keep the modal in step with the room it previews.
         if (this.#previewRoomId === room.id) {
           hostModal.changeSettings(payload.change)
         }
@@ -258,7 +256,7 @@ export class RoomStore {
         break
       }
 
-      // roomTile.js:325 — any unrecognised changeType means the room closed.
+      // roomTile.js:325. Any other changeType means the room closed.
       default: {
         if (this.#previewRoomId === room.id) {
           this.#previewRoomId = null
@@ -271,10 +269,10 @@ export class RoomStore {
   }
 
   // --- actions ------------------------------------------------------------
-  // Delegated to AMQ's roomBrowser so `lobby.setupLobby` +
-  // `viewChanger.changeView('lobby')` keep running unchanged.
+  // These call AMQ's roomBrowser, which runs `lobby.setupLobby` and
+  // `viewChanger.changeView('lobby')`.
 
-  /** roomTile.js `joinGame` — a private room prompts before it joins. */
+  /** roomTile.js `joinGame`. A private room asks for the password first. */
   join(room: Room) {
     if (!room.isPrivate) {
       roomBrowser.fireJoinLobby(room.id)
@@ -298,7 +296,7 @@ export class RoomStore {
     })
   }
 
-  /** roomTile.js `spectateGame` — AMQ owns the private-room prompt here. */
+  /** roomTile.js `spectateGame`. AMQ shows the private-room prompt itself. */
   spectate(room: Room) {
     if (room.isPrivate) {
       roomBrowser.spectateGameWithPassword(room.id)
@@ -312,16 +310,16 @@ export class RoomStore {
   }
 
   /**
-   * Opens AMQ's host modal read-only on a room's settings — the same view its
-   * own `.rbrAllOptionsIcon` opens (roomTile.js `previewSettings`).
+   * Opens AMQ's host modal read-only on a room's settings, as
+   * `.rbrAllOptionsIcon` does (roomTile.js `previewSettings`).
    *
-   * Call order matters and is copied verbatim: `changeSettings` is what sets
-   * `hostModal.gameMode`, which `setModePreviewGame` then reads for its title.
+   * Keep this call order. `changeSettings` sets `hostModal.gameMode`, and
+   * `setModePreviewGame` reads it for the title.
    */
   previewSettings(room: Room) {
     this.#previewRoomId = room.id
-    // Read the room back at click time so a room that changed while the modal
-    // was open still joins with its current privacy setting.
+    // Look the room up again on click. It may have changed while the modal
+    // was open, for example from public to private.
     const live = () => this.#rooms.get(room.id) ?? room
     hostModal.changeSettings(live().settings)
     hostModal.setModePreviewGame({

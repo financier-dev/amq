@@ -1,8 +1,6 @@
 <!--
-  Hover/focus tooltip.
-
-  Opens on pointer or keyboard focus and renders through `Floating`, so it
-  escapes the list's scroll clipping and the chips cell's overflow.
+  Tooltip that opens on hover or keyboard focus. It renders through
+  `Floating`, so the list's scroll container and the chips cell do not clip it.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte'

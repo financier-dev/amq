@@ -1,18 +1,22 @@
 # amq
 
-Userscripts and tooling for [Anime Music Quiz](https://animemusicquiz.com).
-TypeScript throughout, built with Vite into plain `.user.js` files under [`dist/`](dist).
+Userscripts and tools for [Anime Music Quiz](https://animemusicquiz.com).
+Everything is TypeScript. Vite builds the userscripts into plain `.user.js`
+files under [`dist/`](dist).
 
-So far one project lives here:
+The repository has two projects:
 
-- **[`ui/`](ui)** — a reimplementation of parts of the game's interface (the
-  room browser and the custom quiz builder), injected over the live site.
-  Svelte 5, rendered in a shadow root. See [`ui/README.md`](ui/README.md).
+- **[`ui/`](ui)** replaces two screens of the game on the live site: the room
+  browser and the custom quiz builder. It uses Svelte 5 and renders in a
+  shadow root. See [`ui/README.md`](ui/README.md).
+- **[`local/`](local)** holds scripts that run on your computer, not in the
+  browser. `npm run anime-titles` prints the Japanese titles of the anime on
+  your list.
 
 ## Install
 
-`dist/` is committed, so a script can be installed without a toolchain: open
-the raw file on GitHub and Tampermonkey offers to install it.
+`dist/` is committed, so you do not need to build anything. Open the raw
+file on GitHub, and Tampermonkey offers to install it.
 
 ## Build
 
@@ -20,76 +24,76 @@ the raw file on GitHub and Tampermonkey offers to install it.
 npm install
 npm run build            # every target → dist/
 npm run build -- amq-ui  # one target
-npm run dev              # live edit loop against the game (see below)
+npm run dev              # dev server for the game page (see below)
 npm run check            # svelte-check
 npm run lint             # eslint
 npm run format           # prettier
 npm test                 # build, then render in headless Chromium and assert
+npm run anime-titles     # print the anime titles on your list
 ```
 
-One output file is one **target**, declared in
-[`build/targets.ts`](build/targets.ts) with its entry module and its
-`==UserScript==` metadata. `build/config.ts` turns a target into a Vite config
-and `build/build.ts` builds them all, so adding a script means adding an entry
-there rather than another build setup.
+One output file is one **target**. [`build/targets.ts`](build/targets.ts)
+declares each target with its entry module and its `==UserScript==` metadata.
+`build/config.ts` turns a target into a Vite config, and `build/build.ts`
+builds all targets. To add a script, add a target to `build/targets.ts`.
 
-Configuration is shared: one `tsconfig.json`, `eslint.config.js`,
-`.prettierrc.js` and `package.json` at the root, covering every project folder.
-Code any of them may import lives in [`shared/`](shared) and is reached as
-`@shared/…`.
+All projects share one configuration at the root: `tsconfig.json`,
+`eslint.config.js`, `.prettierrc.js` and `package.json`. Code that more than
+one project uses is in [`shared/`](shared). Import it as `@shared/…`.
 
 ## Developing with HMR
 
-Rebuilding a userscript and re-importing it into Tampermonkey for every change
-gets old fast. `npm run dev` replaces that with a dev server the installed
-script reads from, so edits reach the running game by themselves.
+`npm run dev` starts a dev server that sends your edits to the open game
+page. You do not rebuild the userscript or install it again for each change.
 
 ```
 npm run dev                    # the default target
-AMQ_TARGET=amq-ui npm run dev  # a specific one
+AMQ_TARGET=amq-ui npm run dev  # one named target
 ```
 
-It prints a URL. Open it once and Tampermonkey offers to install a **loader**
-script — named `server:<target>`, carrying that target's own `@match` and
-`@run-at`, and about a hundred lines long. It is not your script: it injects a
-module `<script>` pointing at the dev server. From then on, every visit to the
-game pulls the current source through Vite.
+The command prints a URL. Open it once, and Tampermonkey offers to install a
+**loader** script named `server:<target>`. The loader has the target's
+`@match` and `@run-at`. It does not contain your script. It adds a module
+`<script>` that points at the dev server, so each visit to the game loads the
+current source through Vite.
 
 What an edit does:
 
-| you change                                    | what happens                                 |
-| --------------------------------------------- | -------------------------------------------- |
-| a Svelte component (markup, logic, `<style>`) | hot-swapped in place, no reload              |
-| `ui/src/ui/app.css`                           | hot-swapped in place, no reload              |
-| anything else, including a plain-TS script    | Vite reloads the page and the script re-runs |
+| You change                                    | Result                                          |
+| --------------------------------------------- | ----------------------------------------------- |
+| A Svelte component (markup, logic, `<style>`) | The page updates without a reload               |
+| `ui/src/ui/app.css`                           | The page updates without a reload               |
+| Anything else, including a plain-TS script    | Vite reloads the page and the script runs again |
 
-So a plain userscript needs no setup to get reload-on-save. One that can tear
-itself down cleanly may opt into a hot update with `import.meta.hot.accept`;
-`import.meta.hot` is `undefined` in a build, so nothing extra ships.
+A plain userscript therefore reloads on save with no setup. A script that can
+remove everything it added can accept a hot update with
+`import.meta.hot.accept`. `import.meta.hot` is `undefined` in a build, so
+that code does not ship.
 
-Four things to keep in mind:
+Four rules:
 
-- **Disable the built script while developing.** The loader is a separate
-  userscript, so Tampermonkey runs both, and both will try to claim the same
-  screens or patch the same methods.
-- **The loader does nothing when the dev server is down.** The game simply
-  behaves as if the script were not installed.
-- **One target at a time.** The dev server serves a single entry, which is what
-  `AMQ_TARGET` picks.
-- **`run-at: document-start` does not really hold in dev.** The dev entry is a
-  deferred module, so a script that has to patch something before the game's own
-  JS boots can only do that from a real build. Test those with `npm run build`.
+- **Disable the built script while you develop.** The loader is a separate
+  userscript. If both are enabled, Tampermonkey runs both, and both try to
+  replace the same screens or patch the same methods.
+- **The loader does nothing when the dev server is not running.** The game
+  then behaves as if the script is not installed.
+- **The dev server serves one target at a time.** `AMQ_TARGET` selects it.
+- **`run-at: document-start` does not apply in dev.** The dev entry is a
+  deferred module. A script that must patch something before the game's own
+  JS starts can do that only from a real build. Test such a script with
+  `npm run build`.
 
 ## Layout
 
 ```
 build/     the build: target registry, config factory, runner
-shared/    code every project may import, as `@shared/*`
-ui/        interface reimplementation — src/, tests/
+shared/    code that more than one project uses, imported as `@shared/*`
+ui/        the interface reimplementation: src/, tests/
+local/     scripts that run on your computer
 dist/      build output, committed
 ```
 
 ## Licence
 
-MIT, except the font subsets under `ui/tests/fonts/`, which are under the SIL
-Open Font License 1.1 — see [`ui/tests/fonts/README.md`](ui/tests/fonts/README.md).
+MIT. The font subsets under `ui/tests/fonts/` use the SIL Open Font License
+1.1. See [`ui/tests/fonts/README.md`](ui/tests/fonts/README.md).

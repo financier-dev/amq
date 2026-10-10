@@ -1,19 +1,16 @@
 <!--
   A rule block's header, two lines (SPEC §5.2).
 
-  Line 1 identifies the block and reports what it contains; line 2 is its
-  settings as chips. The distinction between them is load-bearing and easy to
-  lose: **the one configurable count (`Plays`) is a chip, the derived counts are
-  plain text.** An earlier draft of the design merged the two and it was
-  unreadable — you could not tell what you were allowed to change.
+  Line 1 identifies the block and reports what it contains. Line 2 shows its
+  settings as chips. Keep this split: **the one configurable count is a chip,
+  and the derived counts are plain text.** The player can then see what can
+  be changed.
 
-  The block is identified by its *position*, not a name. AMQ's rule blocks have
-  no names and nothing in this UI renames one, so "Rule Block 2" is a fact about
-  where it sits, and renumbering on reorder is correct rather than surprising.
+  The block is identified by its *position*. AMQ's rule blocks have no names,
+  so "Rule Block 2" renumbers when blocks are reordered.
 
-  The info line is AMQ's own Block Info tooltip, inline and always visible — the
-  numbers come from a faithful port of its computation, so the two can never
-  disagree.
+  The info line shows the numbers of AMQ's Block Info tooltip, always
+  visible. They come from the port in `quizCounts.ts`.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -62,7 +59,7 @@
     `${info.uniqueAnime} anime · ${info.uniqueSongs} unique songs · ${chosen} chosen`
   )
 
-  // The same three numbers spelled out, using AMQ's own popover wording.
+  // The same three numbers in the wording of AMQ's popover.
   const infoTooltip = $derived(
     t(
       'quiz_builder.rule_block.popovers.block_info_content',
@@ -121,7 +118,7 @@
     </span>
 
     {#if isTarget}
-      <Tooltip text="Adds from the library land in this block">
+      <Tooltip text="Items you add from the library go to this block">
         <span class="badge target">Adding here</span>
       </Tooltip>
     {/if}
@@ -144,7 +141,7 @@
         type="button"
         class="act"
         aria-label="Duplicate this rule block"
-        title="Duplicate this rule block — entries, settings and all, inserted just below"
+        title="Duplicate this rule block with its entries and settings. The copy goes directly below."
         onclick={onDuplicate}
       >
         <Icon name="copy" size={14} />
@@ -163,13 +160,13 @@
   </div>
 
   <div class="line two">
-    <!-- The one configurable count, and the only chip here that is a number. -->
+    <!-- The one configurable count. -->
     <button type="button" class="chip plays" onclick={onSettings}>
       {t('quiz_builder.rule_block.song_count.label', 'Song Count')}
       {block.songCount}
     </button>
 
-    <!-- Order toggles in place; everything else opens the panel (SPEC §5.2). -->
+    <!-- Order toggles in place. Every other chip opens the panel (SPEC §5.2). -->
     <Tooltip
       text={t(
         'quiz_builder.rule_block.order_rule.description',
@@ -214,7 +211,7 @@
       </button>
     </Tooltip>
 
-    <!-- Only shown when it differs from the default, as the spec asks. -->
+    <!-- Shown only when it differs from the default (SPEC §5.2). -->
     {#if !isSongOnly(block.guessModes)}
       <Tooltip
         text={t(
@@ -229,9 +226,8 @@
     {/if}
 
     <!--
-      Not in the mock, but real: AMQ's own rule blocks carry it and it changes
-      how the info line above counts. Off is the notable state, so only that
-      one gets a chip.
+      Not in the mock. AMQ's rule blocks have this setting, and it changes how
+      the info line counts. Only the off state gets a chip.
     -->
     {#if !block.duplicates}
       <Tooltip
@@ -355,7 +351,7 @@
     color: var(--blue-fg);
   }
 
-  /* Plain text, deliberately: these are derived, not settable. */
+  /* Plain text: these counts are derived and cannot be set. */
   .info {
     flex: 1 1 0;
     min-width: 0;

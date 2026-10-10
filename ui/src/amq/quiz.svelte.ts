@@ -1,19 +1,17 @@
 /**
  * Quiz builder state.
  *
- * Unlike the room browser, this screen is not a reducer over a live feed — the
- * quiz is a document we own between a load and a save. So the shape here is a
- * document plus an undo stack, and the socket only bookends it: `load custom
- * quiz` fills the document, `save quiz` hands it back.
+ * The quiz is a document we own between a load and a save, with an undo
+ * stack. The socket is used only at the ends: `load custom quiz` fills the
+ * document and `save quiz` sends it back.
  *
- * **Reads are ours, writes are delegated.** The save goes out through AMQ's own
- * command so its validation, its caps and its error toasts stay AMQ's; we never
- * invent a payload the client would not have produced. The serializer is what
- * guarantees that, and it is tested to round-trip real quizzes exactly.
+ * **Reads are ours, writes go through AMQ.** The save uses AMQ's own command,
+ * so validation, limits and error messages stay AMQ's. The serializer
+ * guarantees the payload has the shape the client sends.
  *
- * The library must be loaded before a quiz is, or entries resolve to nothing —
- * AMQ nests its own load inside `library.setup(callback)` for the same reason,
- * and its loader silently drops uncached entries. Ours refuses instead.
+ * Load the library before a quiz, or entries resolve to nothing. AMQ nests
+ * its own load inside `library.setup(callback)` for the same reason and
+ * silently drops uncached entries. We refuse the load instead.
  */
 
 import { SvelteSet } from 'svelte/reactivity'
@@ -50,10 +48,10 @@ import {
   type RuleBlock,
 } from './quizModel'
 
-/** How many steps back `undo()` can walk. */
+/** The maximum number of undo steps. */
 const UNDO_DEPTH = 50
 
-/** Correlates `get algorithm songs` replies; AMQ uses a plain counter too. */
+/** Pairs `get algorithm songs` replies with their requests. */
 let nextAlgorithmId = 0
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
@@ -61,25 +59,24 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 export class QuizStore {
   #unbind: (() => void) | null = null
   /**
-   * The quiz as the server last had it — the target of `revert()`.
-   *
-   * Captured on load, on a new quiz, and after a successful save.
+   * The quiz as the server last had it, which `revert()` restores. Set on
+   * load, on a new quiz, and after a successful save.
    */
   #saved: Quiz | null = null
-  /** Snapshots for step-by-step undo, oldest first. */
+  /** Snapshots for undo, oldest first. */
   #history: Quiz[] = []
-  // Declared with a default so the `$derived` fields below, which run at
-  // field-initialisation time, never read it before the constructor assigns it.
+  // The default matters: the `$derived` fields below run at field
+  // initialisation, before the constructor assigns this.
   #library: LibraryLookup = amqLibrary
 
   quiz = $state<Quiz>(emptyQuiz(nextId('block')))
-  /** Server id; null for a quiz that has never been saved. */
+  /** Server id. Null for a quiz that was never saved. */
   quizId = $state<number | null>(null)
   loaded = $state(false)
   loadFailed = $state(false)
   saveState = $state<SaveState>('idle')
 
-  /** Entries and nested blocks that are selected, by id, across blocks. */
+  /** Ids of the selected entries, across all blocks. */
   readonly selection = new SvelteSet<string>()
   /** The rule block the library's "Adds to" strip targets (SPEC §4). */
   targetBlockId = $state<string | null>(null)
@@ -96,24 +93,17 @@ export class QuizStore {
       this.quiz.blocks.reduce((total, block) => total + block.songCount, 0)
   )
   /**
-   * Whether anything has changed since the last save.
+   * Whether the quiz changed since the last save.
    *
-   * `$state`, not a `$derived` over a private array: the array was a plain
-   * field, so the derived never invalidated and the Undo button stayed greyed
-   * out forever no matter what you did.
+   * `$state`, not a `$derived` over `#history`: that is a plain field, and a
+   * derived over it never invalidates.
    */
   dirty = $state(false)
-  /**
-   * How many steps `undo()` can walk back.
-   *
-   * Mirrored into reactive state rather than derived from `#history.length`:
-   * a `$derived` over a plain field never invalidates, which is what left the
-   * button permanently greyed out the first time round.
-   */
+  /** `#history.length`, copied into reactive state for the same reason. */
   undoDepth = $state(0)
   readonly entryCount = $derived(totalEntryCount(this.quiz))
 
-  /** The block every library add lands in; falls back to the first block. */
+  /** The block library adds go to. Falls back to the first block. */
   readonly targetBlock = $derived(
     this.quiz.blocks.find((block) => block.id === this.targetBlockId) ??
       this.quiz.blocks[0]
@@ -131,7 +121,7 @@ export class QuizStore {
     return songCountCeiling(this.quiz, block)
   }
 
-  /** Songs an anime entry can draw from, for the pick slider's range. */
+  /** How many songs an entry can draw from. Sets the pick slider's range. */
   pool(entry: Entry) {
     if (entry.kind === 'anime') {
       return this.#library.animeSongIds(entry.annId, entry.includeSongTypes)
@@ -147,9 +137,9 @@ export class QuizStore {
   }
 
   /**
-   * Why a given kind of block cannot be added right now, or null when it can.
-   * The UI disables at the cap rather than letting AMQ reject the action, so
-   * these mirror `customQuizBuilder.js:26-82` exactly.
+   * The reason a block of this kind cannot be added now, or null when it can.
+   * The limits follow `customQuizBuilder.js:26-82`, so the UI can disable the
+   * action before AMQ rejects it.
    */
   capReached(kind: Entry['kind'] | 'rule'): string | null {
     if (totalEntryCount(this.quiz) >= MAX_BLOCK_COUNT && kind !== 'rule') {
@@ -160,7 +150,7 @@ export class QuizStore {
         if (this.quiz.blocks.length >= MAX_RULE_BLOCKS) {
           return `A quiz can hold ${MAX_RULE_BLOCKS} rule blocks.`
         }
-        // A new rule block needs at least one song of the budget to be useful.
+        // A new rule block needs at least one song of the 250.
         if (this.songBudgetLeft <= 0) {
           return `All ${MAX_SONG_COUNT} songs are already assigned to rule blocks.`
         }
@@ -198,7 +188,7 @@ export class QuizStore {
     this.#unbind = null
   }
 
-  /** Blank quiz, one empty rule block — what AMQ's `setupNewQuiz` produces. */
+  /** A blank quiz with one empty rule block, as `setupNewQuiz` produces. */
   startNew() {
     this.quiz = emptyQuiz(nextId('block'))
     this.quizId = null
@@ -210,7 +200,7 @@ export class QuizStore {
     this.#markSaved()
   }
 
-  /** Marks the load as impossible — used when the library never arrived. */
+  /** Marks the load as failed. Used when the library did not load. */
   failLoad() {
     this.loadFailed = true
     this.loaded = true
@@ -232,9 +222,9 @@ export class QuizStore {
     try {
       this.quiz = fromSave(data.quizSave)
     } catch (error) {
-      // An unrecognised block means our serializer is behind the client. Better
-      // to refuse the whole quiz than to load it minus a block and save that
-      // back over the original.
+      // An unrecognised block means the serializer is behind the client.
+      // Refuse the quiz: loading it without that block and saving would
+      // overwrite the original.
       console.error('[amq-ui] could not read this quiz', error)
       this.loadFailed = true
       this.loaded = true
@@ -248,8 +238,8 @@ export class QuizStore {
   }
 
   /**
-   * Hands the quiz to AMQ. The name check is AMQ's too, but doing it here keeps
-   * the button honest rather than firing a command we know will be refused.
+   * Sends the quiz through AMQ's `save quiz` command. `QuizBuilder.svelte`
+   * checks the name before it opens the save dialog.
    */
   save() {
     this.saveState = 'saving'
@@ -266,11 +256,11 @@ export class QuizStore {
     }
     if (data.quizId !== undefined) this.quizId = data.quizId
     this.saveState = 'saved'
-    // What is on the server now is what reverting should come back to.
+    // `revert()` must now return to what the server has.
     this.#markSaved()
   }
 
-  /** Match counts arrive per algorithm block, keyed by the id we sent. */
+  /** Stores the matches on the algorithm entry whose id we sent. */
   #onAlgorithmSongs(data: { blockId: number; annSongIds: number[] }) {
     for (const block of this.quiz.blocks) {
       for (const entry of block.entries) {
@@ -287,9 +277,8 @@ export class QuizStore {
   // --- undo ----------------------------------------------------------------
 
   /**
-   * Marks the quiz as changed. Every mutation below calls this first, so being
-   * dirty is a property of the store rather than something each caller
-   * remembers to set.
+   * Records an undo step and marks the quiz as changed. Every mutation calls
+   * it first.
    */
   #checkpoint() {
     this.#history.push($state.snapshot(this.quiz) as Quiz)
@@ -299,27 +288,26 @@ export class QuizStore {
   }
 
   /**
-   * Steps back one mutation.
+   * Undoes one mutation.
    *
-   * Like `revert()`, this swaps the whole document, so a reference held across
-   * it points into the discarded tree. Components re-read from `quiz` each
-   * render; anything caching an entry must look it up again by id.
+   * Replaces the whole document, as `revert()` does. See the warning there
+   * about stale references.
    */
   undo() {
     const previous = this.#history.pop()
     if (!previous) return false
     this.undoDepth = this.#history.length
     this.quiz = previous
-    // Ids survive a snapshot, but a row that came back may no longer exist.
+    // Drop selected ids whose rows no longer exist.
     for (const id of [...this.selection]) {
       if (!this.blockOf(id)) this.selection.delete(id)
     }
-    // Back at the saved state exactly when there is nothing left to undo.
+    // With nothing left to undo, the quiz equals the saved state.
     this.dirty = this.#history.length > 0
     return true
   }
 
-  /** Records the current quiz as the saved state; clears the dirty flag. */
+  /** Sets the current quiz as the saved state and clears the undo history. */
   #markSaved() {
     this.#saved = $state.snapshot(this.quiz) as Quiz
     this.#history = []
@@ -328,14 +316,14 @@ export class QuizStore {
   }
 
   /**
-   * Throws away every change since the last save.
+   * Discards every change since the last save.
    *
-   * This replaces the whole document, so **any entry or block reference held
-   * across it is stale** — it points into the discarded tree and its edits go
-   * nowhere. Components re-read from `quiz` every render and are fine; code
-   * that caches an entry between calls must look it up again by id.
+   * Replaces the whole document, so **any entry or block reference held
+   * across the call is stale** and edits to it are lost. Components re-read
+   * from `quiz` on every render. Code that caches an entry must look it up
+   * again by id.
    *
-   * Destructive and not itself undoable, so the caller confirms first.
+   * Cannot be undone. The caller must confirm first.
    */
   revert() {
     if (!this.#saved) return false
@@ -354,16 +342,15 @@ export class QuizStore {
     if (this.capReached('rule')) return null
     this.#checkpoint()
     const block = defaultRuleBlock(nextId('block'))
-    // A new block may not claim more of the 250 than is left.
+    // A new block takes at most what is left of the 250.
     block.songCount = Math.min(block.songCount, this.songBudgetLeft)
     this.quiz.blocks.push(block)
-    // Read it back out: `$state` deep-proxies on write, so the object we just
-    // pushed is not the one now in the store. Handing the caller the raw object
-    // would give them a detached copy whose edits never reach the UI.
+    // Return the stored block, not `block`. `$state` proxies deeply on write,
+    // so edits to the raw object would not reach the UI.
     return this.quiz.blocks[this.quiz.blocks.length - 1]
   }
 
-  /** AMQ refuses to delete the last rule block; so do we. */
+  /** AMQ refuses to delete the last rule block. So do we. */
   removeRuleBlock(blockId: string) {
     if (this.quiz.blocks.length <= 1) return false
     this.#checkpoint()
@@ -377,8 +364,8 @@ export class QuizStore {
   }
 
   /**
-   * SPEC §7: a duplicated rule block carries its entries, its nested blocks,
-   * every setting and every override, and lands directly after the original.
+   * SPEC §7: the copy carries the entries, nested blocks, settings and
+   * overrides, and goes directly after the original.
    */
   duplicateRuleBlock(blockId: string) {
     if (this.capReached('rule')) return null
@@ -397,12 +384,10 @@ export class QuizStore {
   }
 
   /**
-   * A detached copy of an entry.
+   * A detached copy of an entry with a new id.
    *
-   * `$state.snapshot`, not `structuredClone`: entries are deep reactive
-   * proxies, and cloning one directly can throw — which is what made the
-   * algorithm block's duplicate button look dead, since the error surfaced
-   * nowhere the player could see it.
+   * Uses `$state.snapshot`, not `structuredClone`: entries are deep reactive
+   * proxies, and `structuredClone` can throw on one.
    */
   #copyEntry(entry: Entry): Entry {
     const plain = $state.snapshot(entry) as Entry
@@ -421,7 +406,7 @@ export class QuizStore {
     Object.assign(block, patch)
   }
 
-  /** Clamped to what the 250-song budget leaves this block. */
+  /** Clamped to what the 250-song limit leaves for this block. */
   setSongCount(blockId: string, value: number) {
     const block = this.quiz.blocks.find((entry) => entry.id === blockId)
     if (!block) return
@@ -434,7 +419,7 @@ export class QuizStore {
 
   // --- entries -------------------------------------------------------------
 
-  /** Adds into the "Adds to" block unless a one-off target is given (SPEC §7). */
+  /** Adds to the "Adds to" block unless `blockId` is given (SPEC §7). */
   addEntry(entry: NewEntry, blockId?: string): Entry | null {
     const block =
       this.quiz.blocks.find(
@@ -454,20 +439,19 @@ export class QuizStore {
     this.#checkpoint()
     for (const block of this.quiz.blocks) {
       block.entries = block.entries.filter((entry) => !doomed.has(entry.id))
-      // An entry that was chained to a removed one above it would otherwise
-      // connect to whatever slid into that slot.
+      // Clear the flag on the new first entry. It may have been chained to a
+      // removed entry above it.
       if (block.entries.length > 0) block.entries[0].connectUp = false
     }
     for (const id of doomed) this.selection.delete(id)
   }
 
   /**
-   * SPEC §6: moving preserves each entry's overrides, and their order.
+   * SPEC §6: a move keeps each entry's overrides and the entries' order.
    *
-   * `at` inserts before that index in the target block; omitted or -1 appends.
-   * The index is resolved **after** the entries are taken out, because removing
-   * rows above the drop point shifts it — dropping onto row 5 of the block you
-   * are dragging out of would otherwise land in the wrong place.
+   * `at` inserts before that index in the target block. Omitted or -1
+   * appends. The index is adjusted for moved entries that sat above it in the
+   * target block, because removing them shifts the drop point.
    */
   moveEntries(ids: Iterable<string>, toBlockId: string, at = -1) {
     const moving = new Set(ids)
@@ -475,7 +459,7 @@ export class QuizStore {
     if (!target || moving.size === 0) return
     this.#checkpoint()
 
-    // How many of the target's own rows above the drop point are leaving.
+    // Count the target's own entries above the drop point that are moving.
     let removedBefore = 0
     if (at >= 0) {
       target.entries.forEach((entry, index) => {
@@ -499,14 +483,14 @@ export class QuizStore {
     } else {
       target.entries.splice(Math.max(0, at - removedBefore), 0, ...taken)
     }
-    // A chain cannot start a block, wherever the rows landed.
+    // The first entry of a block cannot continue a chain.
     if (target.entries.length > 0) target.entries[0].connectUp = false
   }
 
   duplicateEntries(ids: Iterable<string>) {
     const wanted = new Set(ids)
     if (wanted.size === 0) return
-    // Duplicating is still an add, so it is still subject to the caps.
+    // A duplicate is an add, so the limits apply.
     for (const id of wanted) {
       const entry = this.#entry(id)
       if (entry && this.capReached(entry.kind)) return
@@ -517,7 +501,7 @@ export class QuizStore {
       for (const entry of block.entries) {
         out.push(entry)
         if (wanted.has(entry.id)) {
-          // The copy is a fresh link in no chain of its own.
+          // The copy starts unchained.
           out.push({ ...this.#copyEntry(entry), connectUp: false })
         }
       }
@@ -549,9 +533,9 @@ export class QuizStore {
   }
 
   /**
-   * SPEC §5.5's chain button sits between two rows and toggles the *lower*
-   * entry's `connectUp`. The first entry of a block has nothing above it, so
-   * it can never be chained.
+   * SPEC §5.5: the chain button sits between two rows and toggles
+   * `connectUp` on the *lower* entry. The first entry of a block has nothing
+   * above it and cannot be chained.
    */
   toggleChain(entryId: string) {
     const block = this.blockOf(entryId)
@@ -565,8 +549,8 @@ export class QuizStore {
   // --- anime entry controls ------------------------------------------------
 
   /**
-   * SPEC §5.6: toggling a type re-clamps the pick count immediately, so the
-   * slider's fill can never point past the pool it draws from.
+   * SPEC §5.6: toggling a type clamps the pick count at once, so it never
+   * exceeds the pool.
    */
   toggleSongType(entryId: string, type: 'op' | 'ed' | 'in') {
     const entry = this.#entry(entryId)
@@ -584,24 +568,24 @@ export class QuizStore {
   }
 
   /**
-   * Writes back the settings AMQ's host modal produced for an algorithm block,
-   * and asks the server for a fresh match count.
+   * Stores the settings AMQ's host modal produced for an algorithm block and
+   * requests a new match count.
    *
-   * The blob is stored verbatim — we never inspect or normalise it, because the
-   * filter set is AMQ's and a field we did not know about would be lost.
+   * The settings are stored unchanged. Never inspect or normalise them: a
+   * field we do not know would be lost.
    */
   updateAlgorithmSettings(entryId: string, settings: Record<string, unknown>) {
     const entry = this.#entry(entryId)
     if (entry?.kind !== 'algorithm') return
     this.#checkpoint()
     entry.settings = settings
-    // The old count describes the old filters; clear it so the row says
-    // "pending" rather than showing a number that is now wrong.
+    // The old matches belong to the old settings. Clear them so the row
+    // shows "pending".
     entry.matchedAnnSongIds = undefined
     this.requestAlgorithmSongs(entry.id)
   }
 
-  /** Asks the server how many songs an algorithm block matches. */
+  /** Requests the songs an algorithm block matches. */
   requestAlgorithmSongs(entryId: string) {
     const entry = this.#entry(entryId)
     if (entry?.kind !== 'algorithm') return
@@ -617,7 +601,7 @@ export class QuizStore {
 
   // --- per-entry overrides -------------------------------------------------
 
-  /** Applies an override to every selected play entry (SPEC §8's footer). */
+  /** Applies an override to every given play entry (SPEC §8's footer). */
   setOverride<K extends keyof EntryOverrides>(
     ids: Iterable<string>,
     key: K,
@@ -632,7 +616,7 @@ export class QuizStore {
     }
   }
 
-  /** "Reset to block" — absence is what makes an entry follow its block. */
+  /** "Reset to block". An entry with no override key follows its block. */
   clearOverride(ids: Iterable<string>, key?: keyof EntryOverrides) {
     this.#checkpoint()
     for (const id of ids) {
@@ -645,8 +629,8 @@ export class QuizStore {
   }
 
   /**
-   * At least one guess mode must stay on — AMQ refuses the last toggle rather
-   * than allowing a mode-less block, and so do we.
+   * At least one guess mode must stay on. AMQ refuses to turn the last one
+   * off, and so do we.
    */
   static toggleGuessMode(modes: GuessModes, key: keyof GuessModes): GuessModes {
     const next = { ...modes, [key]: !modes[key] }
@@ -656,7 +640,7 @@ export class QuizStore {
 
   // --- selection -----------------------------------------------------------
 
-  /** The flat list the list renders, used for shift-range selection. */
+  /** Entry ids in render order, for shift-range selection. */
   get flatIds() {
     return this.quiz.blocks.flatMap((block) =>
       block.entries.map((entry) => entry.id)
@@ -668,7 +652,7 @@ export class QuizStore {
     else this.selection.add(id)
   }
 
-  /** Shift-click extends across blocks (SPEC §6). */
+  /** A shift-click range can span blocks (SPEC §6). */
   selectRange(fromId: string, toId: string) {
     const ids = this.flatIds
     const start = ids.indexOf(fromId)

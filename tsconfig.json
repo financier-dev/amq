@@ -20,7 +20,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    /* Kept in step with `alias` in build/config.ts. */
+    /* Keep in step with `alias` in build/config.ts. */
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["shared/*"]

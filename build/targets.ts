@@ -1,34 +1,26 @@
 /**
- * Every buildable thing in this repo, in one place.
+ * The registry of build targets. One target is one output file.
  *
- * One target is one output file. `build/config.ts` turns a target into a vite
- * config, `build/build.ts` builds them all, and `vite.config.ts` picks a single
- * one for the dev server. Adding a script means adding an entry here — no new
- * config file, and nothing to keep in step with `dist/`.
- *
- * Projects live in their own folders (`ui/`, later `scripts/`, `local/`) but
- * share this build, so any of them can import from `shared/` via `@shared/*`.
+ * `build/config.ts` turns a target into a vite config, `build/build.ts` builds
+ * them all, and `vite.config.ts` picks one for the dev server. To add a
+ * script, add an entry here.
  */
 
 import type { MonkeyUserScript } from 'vite-plugin-monkey'
 
 export interface Target {
-  /** Script id. `AMQ_TARGET=<name>` selects it; also the dist file's stem. */
+  /** `AMQ_TARGET=<name>` selects it for the dev server. */
   name: string
-  /** Entry module, relative to the repo root. */
+  /** Relative to the repo root. */
   entry: string
   /** Output file under `dist/`. */
   fileName: string
-  /**
-   * `==UserScript==` metadata. vite-plugin-monkey writes the header from this,
-   * so it is typed rather than a comment block that can drift from the build.
-   */
+  /** vite-plugin-monkey writes the `==UserScript==` header from this. */
   userscript: MonkeyUserScript
-  /** Svelte needed? Keeps the compiler out of plain-TS script builds. */
+  /** Set for targets that need the Svelte compiler. */
   svelte?: boolean
 }
 
-/** Shared by everything that runs on the game's pages. */
 const AMQ_MATCH = ['https://animemusicquiz.com/*']
 
 export const targets: Target[] = [

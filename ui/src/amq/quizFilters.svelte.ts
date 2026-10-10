@@ -1,32 +1,29 @@
 /**
  * Library filter state, predicate and persistence for the quiz builder
- * (SPEC §10), modelled on `filters.svelte.ts`.
+ * (SPEC §10). Follows the structure of `filters.svelte.ts`.
  *
- * The control set is **exactly what the library payload can actually answer**,
- * which is narrower than the spec drew. Verified against
- * `library/libraryFilterApplier.js` and `libraryCacheHandler.js`:
+ * The controls cover only what the library payload contains, checked against
+ * `library/libraryFilterApplier.js` and `libraryCacheHandler.js`. That is less
+ * than SPEC §10 lists:
  *
- *   - **Difficulty is gone.** It is not in the bulk library at all — it exists
- *     only per song behind `get song extended info`, so filtering on it would
- *     mean one round-trip per song.
- *   - **Genres and tags are gone.** Per-anime, on demand, same problem.
+ *   - **No difficulty.** The bulk library does not carry it. It is available
+ *     only per song through `get song extended info`, one request per song.
+ *   - **No genres or tags.** They are also fetched per anime, on demand.
  *
- * Both were in SPEC §10, and the spec's own instruction is to drop a control
- * rather than fake it. Two additions the spec asked for and the payload does
- * support are here: **anime type** (`category`) and **vintage** (`year`).
+ * The payload does support two controls the spec asks for: **anime type**
+ * (`category`) and **vintage** (`year`).
  *
- * One deviation from AMQ worth knowing: its custom-quiz library forces
- * `uploadedButtonSelected = true` (`customQuizLibrary.js:202`), because a song
- * with no video cannot be played. We do the same, and it is not a control —
- * offering an unplayable song is a bug, not a preference.
+ * Songs without an upload are always hidden, with no control for it. AMQ's
+ * custom-quiz library forces `uploadedButtonSelected = true`
+ * (`customQuizLibrary.js:202`) because such a song cannot be played.
  */
 
 import { t } from './derive'
 import { animeTypeKey } from './library.svelte'
 
 export const STORAGE_KEY = 'amq-quiz-library-filters'
-// Bumped when a default changed: stored toggles would otherwise keep the old
-// one forever, since persistence records the whole group once anything moves.
+// Increase when a default changes. Stored toggles keep the old default
+// otherwise, because a group is stored whole.
 const STORAGE_VERSION = 2
 
 /** `libraryFilterApplier.js:396` */
@@ -66,9 +63,8 @@ function option(key: string, i18n: string, fallback: string): ToggleOption {
 }
 
 /**
- * `on` defaults to every option enabled — a filter panel that hides things
- * before it is touched is the behaviour people report as "the library is
- * missing songs". Pass a list to enable only those.
+ * `on` defaults to every option enabled, so an untouched panel hides nothing.
+ * Pass a list to enable only those options.
  */
 function group(
   key: ToggleGroupKey,
@@ -84,9 +80,8 @@ function group(
 }
 
 export const TOGGLE_GROUPS: ToggleGroup[] = [
-  // Watched only. The builder is for picking songs you know, and the full
-  // library is ~9,500 anime against a watch list an order of magnitude smaller
-  // — starting unfiltered buries the shows you actually recognise.
+  // Defaults to watched only. The full library has about ten times as many
+  // anime as a typical watch list, which hides the ones the player knows.
   group(
     'watchStatus',
     () => t('song_library.filters.watch_status', 'Watch status'),
@@ -121,11 +116,10 @@ export const TOGGLE_GROUPS: ToggleGroup[] = [
     option('character', 'song_catagory.character', 'Character'),
   ]),
   /*
-   * The real set, not the five the spec listed. `anime_types_base` ships ten,
-   * and a type with no chip can never be filtered out — so listing only five
-   * would quietly make Music Videos and Doujin unfilterable. Keys match what
-   * `convertCategoryToKey` derives from `category.name`, and the labels come
-   * from `anime_types_base` because they carry no `_NUMBER_` slot.
+   * All ten types from `anime_types_base`, not the five SPEC lists. A type
+   * with no option could never be filtered out. Keys match what
+   * `convertCategoryToKey` derives from `category.name`. Labels come from
+   * `anime_types_base` because those strings have no `_NUMBER_` placeholder.
    */
   group(
     'animeType',
@@ -177,7 +171,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
 }
 
-/** Merged **over** the defaults, so a control added later gets a sane value. */
+/** Merges the stored object **over** the defaults. */
 function load(): LibraryFilterState {
   const state = defaultState()
   let stored: any
@@ -206,33 +200,31 @@ function load(): LibraryFilterState {
       clamp(pair[1], YEAR_MIN, YEAR_MAX),
     ]
   }
-  // Search and tab are deliberately not restored: both are things you are
-  // doing right now, not preferences.
+  // Search and tab are not restored. They belong to the current session.
   return state
 }
 
 const SAVE_DELAY_MS = 300
 
 /**
- * How long to wait after a keystroke before re-filtering.
+ * Delay between a keystroke and the re-filter.
  *
- * The room browser searches ~20 rooms and needs none of this; this pane filters
- * tens of thousands of anime, which costs tens of milliseconds a pass. Typing
- * stays instant because the field is bound to the draft, and the expensive
- * derivation runs once the typing stops.
+ * A filter pass over the whole library takes tens of milliseconds. The field
+ * is bound to `draft`, so typing stays instant, and the filter runs once
+ * typing stops.
  */
 const SEARCH_DEBOUNCE_MS = 120
 
 export class LibraryFilterStore {
   state = $state<LibraryFilterState>(load())
-  /** What the field shows — updated on every keystroke. */
+  /** The field's text, updated on every keystroke. */
   draft = $state('')
 
   #saveTimer: ReturnType<typeof setTimeout> | null = null
   #searchTimer: ReturnType<typeof setTimeout> | null = null
   #defaults = defaultState()
 
-  /** What the filters actually use; trails `draft` by the debounce. */
+  /** The query the filters use. Follows `draft` after the debounce. */
   get search() {
     return this.state.search
   }
@@ -251,7 +243,6 @@ export class LibraryFilterStore {
     this.state.vintage[0] !== YEAR_MIN || this.state.vintage[1] !== YEAR_MAX
   )
 
-  /** Drives the Filters badge, as the room browser's does. */
   readonly changedCount = $derived(
     TOGGLE_GROUPS.filter((entry) => this.groupChanged(entry.key)).length +
       (this.vintageChanged ? 1 : 0)
@@ -260,8 +251,7 @@ export class LibraryFilterStore {
   setSearch(value: string) {
     this.draft = value
     if (this.#searchTimer) clearTimeout(this.#searchTimer)
-    // An empty box is the one case worth applying at once: clearing a search
-    // should feel like undoing it, not like waiting for it.
+    // Apply an empty query at once, so that clearing the search is instant.
     if (value === '') {
       this.state.search = ''
       return
@@ -287,7 +277,7 @@ export class LibraryFilterStore {
     const value = clamp(Math.round(raw), YEAR_MIN, YEAR_MAX)
     const pair: [number, number] = [...this.state.vintage]
     pair[index] = value
-    // Pushing rather than rejecting, same rule as the room browser's ranges.
+    // A bound that crosses the other one pushes it along.
     if (index === 0 && value > pair[1]) pair[1] = value
     if (index === 1 && value < pair[0]) pair[0] = value
     this.state.vintage = pair
@@ -326,8 +316,8 @@ export class LibraryFilterStore {
           })
         )
       } catch {
-        // Private browsing, quota, a blocked origin — filters still work for
-        // this session, they just do not survive a reload.
+        // Storage can fail (private browsing, quota, blocked origin). The
+        // filters still work; they are lost on reload.
       }
     }, SAVE_DELAY_MS)
   }
@@ -335,14 +325,12 @@ export class LibraryFilterStore {
   // --- predicates ----------------------------------------------------------
 
   /**
-   * Predicates closed over a **plain** snapshot of the filter state.
+   * Predicates over a **plain** snapshot of the filter state.
    *
-   * Reading `this.state` inside a loop is what made searching a real library
-   * slow: it is a deep `$state` proxy, so every property access in the hot path
-   * goes through a proxy trap, and the pane makes ~80k of them per keystroke
-   * over 20k anime. Taking one snapshot up front and testing against plain
-   * objects removes all of it, while still registering the dependency so the
-   * derivation re-runs when a filter changes.
+   * `this.state` is a deep `$state` proxy, and reading it inside the filter
+   * loop costs a proxy trap per property access, tens of thousands of times
+   * per pass. One snapshot up front avoids that and still registers the
+   * dependency, so the derivation re-runs when a filter changes.
    */
   get predicates() {
     const toggles = $state.snapshot(this.state.toggles) as Toggles
@@ -354,7 +342,7 @@ export class LibraryFilterStore {
     }
   }
 
-  /** Anime-level tests: everything that does not depend on a specific song. */
+  /** Tests that do not depend on a specific song. */
   matchesAnime(anime: LibraryAnimeEntry): boolean {
     return animeMatches(
       anime,
@@ -363,7 +351,6 @@ export class LibraryFilterStore {
     )
   }
 
-  /** Song-level tests. */
   matchesSong(song: LibraryAnimeSongEntry): boolean {
     return songMatches(song, $state.snapshot(this.state.toggles) as Toggles)
   }
@@ -379,9 +366,8 @@ function animeMatches(
   if (!watch.watched && watched) return false
   if (!watch.unwatched && !watched) return false
 
-  // `category` is `{ name, number }`, not a string — see LibraryAnimeCategory.
-  // An unrecognised type is shown rather than hidden: a library entry the
-  // filter does not understand is not a reason to make it unreachable.
+  // `category` is `{ name, number }`, not a string; see LibraryAnimeCategory.
+  // An unrecognised type passes the filter, so the entry stays reachable.
   const key = animeTypeKey(anime.category)
   if (key && key in toggles.animeType && !toggles.animeType[key]) return false
 
@@ -392,8 +378,8 @@ function animeMatches(
 }
 
 function songMatches(song: LibraryAnimeSongEntry, toggles: Toggles): boolean {
-  // AMQ's custom-quiz library only offers uploaded songs, because an
-  // un-uploaded one cannot be played. Not a control — a correctness rule.
+  // Always applied: a song without an upload cannot be played, so AMQ's
+  // custom-quiz library never offers one.
   if (!song.uploaded) return false
 
   const types = toggles.songTypes

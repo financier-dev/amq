@@ -1,19 +1,17 @@
 /*
- * Fixture custom quizzes, shaped like the `load custom quiz` reply's `quizSave`
- * from the 2026-09-19 client.
+ * Fixture custom quizzes in the shape of `quizSave` in the `load custom quiz`
+ * reply of the 2026-09-19 client.
  *
- * Every shape here is transcribed from `generateBlockSave()` in
- * `scripts/pages/gamePage/customQuiz/creator/`, not invented — the README is
- * emphatic that a stub which drifts from the real payload renders fine here and
- * breaks in game, and for the serializer that failure mode is a corrupted quiz
- * rather than a misaligned column.
+ * Every shape is copied from `generateBlockSave()` in
+ * `scripts/pages/gamePage/customQuiz/creator/`. Do not invent shapes: a stub
+ * that differs from the real payload passes here and corrupts a quiz in game.
  *
- * `__quizRoundTrip` is deliberately hostile: it carries every branch the
- * serializer has, including the ones a hand-built quiz would never produce.
+ * `__quizRoundTrip` covers every branch of the serializer, including shapes a
+ * hand-built quiz would not produce.
  */
 
-// A quiz that exercises all five block kinds, chaining, every override, and
-// both the scalar and the random form of each rule value.
+// All five block kinds, chaining, every override, and both the fixed and the
+// random form of each rule value.
 window.__quizRoundTrip = {
   name: 'round trip',
   description: 'every branch the serializer has',
@@ -23,14 +21,14 @@ window.__quizRoundTrip = {
     {
       randomOrder: true,
       songCount: 20,
-      // Scalar form.
+      // Fixed form.
       guessTime: { guessTime: 20, extraGuessTime: 0 },
       samplePoint: { samplePoint: 50 },
       playBackSpeed: { playBackSpeed: 1 },
       duplicates: true,
       guessModes: { song: true, tinyVideo: false, blurVideo: false },
       blocks: [
-        // Anime entry, no overrides at all — the common case.
+        // Anime entry with no overrides, the common case.
         {
           connectUp: false,
           locked: false,
@@ -62,7 +60,7 @@ window.__quizRoundTrip = {
           playBackSpeed: { playBackSpeed: [1, 1.5, 2] },
           guessModes: { song: false, tinyVideo: true, blurVideo: true },
         },
-        // Exactly one override — the presence rule matters most here.
+        // Exactly one override. The other keys must stay absent.
         {
           connectUp: false,
           locked: false,
@@ -77,12 +75,11 @@ window.__quizRoundTrip = {
       guessTime: { guessTime: 15, extraGuessTime: 3 },
       samplePoint: { samplePoint: [0, 100] },
       playBackSpeed: { playBackSpeed: 2 },
-      // Duplicates off — changes how the block info line counts.
+      // Duplicates off, which changes how the block info line counts.
       duplicates: false,
       guessModes: { song: true, tinyVideo: true, blurVideo: false },
       blocks: [
-        // Algorithm block: `settings` is an opaque host-modal blob and must
-        // come back out byte-identical.
+        // Algorithm block. `settings` is opaque and must round-trip unchanged.
         {
           connectUp: false,
           locked: false,
@@ -115,8 +112,8 @@ window.__quizRoundTrip = {
             },
           },
         },
-        // Message block: `avatar` is an opaque blob too, and the base fields are
-        // spread *after* the body ones in the client.
+        // Message block. `avatar` is opaque too. The client spreads the base
+        // fields *after* the body fields.
         {
           message: 'halfway there',
           avatar: { characterId: 14, avatarId: 3, colorId: 2, poseId: 1 },
@@ -126,8 +123,8 @@ window.__quizRoundTrip = {
           connectUp: false,
           locked: false,
         },
-        // Title block, and an empty string is a legitimate value — which is why
-        // the loader tests `!= undefined` rather than truthiness.
+        // Title block. An empty string is a valid title, which is why the
+        // loader tests `!= undefined`.
         {
           title: '',
           connectUp: false,
@@ -139,9 +136,9 @@ window.__quizRoundTrip = {
 }
 
 /*
- * The same quiz with a field our model does not know about, at all three
- * levels. A capture newer than ours will do exactly this, and the round-trip
- * must carry the field through rather than silently dropping it.
+ * The same quiz with a field our model does not know, at all three levels. A
+ * newer client can add such fields, and the round-trip must carry them
+ * through.
  */
 window.__quizWithUnknownFields = (() => {
   const quiz = JSON.parse(JSON.stringify(window.__quizRoundTrip))
@@ -152,17 +149,16 @@ window.__quizWithUnknownFields = (() => {
 })()
 
 /*
- * A freshly-loaded quiz as the *server* sends it: algorithm blocks arrive with
- * `annSongIds` pre-computed. The client consumes and deletes them
- * (`customQuizAlgorithmBlock.js:126-131`), so they are not part of a save —
- * this is the one field a round-trip is expected to drop.
+ * A quiz as the *server* sends it on load. Algorithm blocks arrive with
+ * `annSongIds`. The client consumes and deletes them
+ * (`customQuizAlgorithmBlock.js:126-131`), so a save does not carry them and
+ * the round-trip must drop them.
  */
 window.__quizAsLoaded = (() => {
   const quiz = JSON.parse(JSON.stringify(window.__quizRoundTrip))
   quiz.ruleBlocks[1].blocks[0].annSongIds = [101, 102, 103]
-  // Found by the live suite: the server also stamps a quiz `version` and a
-  // per-block `matchSongCount`. Neither is in `generateQuizSave`, so a save
-  // must not echo them back.
+  // The server also adds a quiz `version` and a per-block `matchSongCount`.
+  // Neither is in `generateQuizSave`, so a save must not send them back.
   quiz.version = 10
   quiz.ruleBlocks[0].matchSongCount = 4
   return quiz

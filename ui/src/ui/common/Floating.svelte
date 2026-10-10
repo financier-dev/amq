@@ -1,23 +1,22 @@
 <!--
   A panel positioned against an anchor in viewport coordinates.
 
-  Everything that escapes a row has to be `position: fixed`: the list is a
-  scroll container and the chips cell clips its overflow, so an absolutely
-  positioned tooltip gets cut off at the row edge — which is why the modifier
-  tooltips never appeared in game. Fixed positioning escapes both, as long as
-  no ancestor has a transform (none do).
+  The panel is `position: fixed` because the list is a scroll container and
+  the chips cell clips its overflow. An absolutely positioned panel would be
+  cut off at the row edge. Fixed positioning escapes both as long as no
+  ancestor has a transform, and none has.
 
-  Placement flips when there isn't room, and the panel closes on scroll rather
-  than chasing the anchor.
+  The placement flips when there is no room. The panel closes on scroll; it
+  does not follow the anchor.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte'
 
   interface Props {
     anchor: HTMLElement | null
-    /** Preferred side; flipped automatically when it doesn't fit. */
+    /** Preferred side. Flips when the panel does not fit. */
     placement?: 'above' | 'below'
-    /** Which edge of the anchor the panel lines up with. */
+    /** The edge of the anchor that the panel aligns with. */
     align?: 'start' | 'end'
     width?: number
     maxWidth?: number
@@ -25,11 +24,8 @@
     onLeave?: () => void
     onDismiss?: () => void
     /**
-     * Close when a pointer goes down anywhere outside the panel.
-     *
-     * On by default. A panel that cannot be dismissed by clicking away does
-     * not merely linger — it sits over the page swallowing every later click,
-     * so the whole screen reads as broken rather than the menu as stuck.
+     * Close when a pointer goes down outside the panel. On by default: a
+     * panel that stays open covers the page and takes every later click.
      */
     dismissOnOutside?: boolean
     children: Snippet
@@ -69,8 +65,8 @@
 
       const below = from.bottom + GAP
       const above = from.top - box.height - GAP
-      // Honour the caller's preference unless the panel would leave the
-      // viewport, then take whichever side has room.
+      // Use the preferred side unless the panel would leave the viewport.
+      // Then use the side that has room.
       const fitsBelow = below + box.height <= window.innerHeight - MARGIN
       const fitsAbove = above >= MARGIN
       let y: number
@@ -84,20 +80,21 @@
 
     position()
 
-    // Re-measure once the panel has its final size (fonts, images).
+    // Measure again once fonts and images have set the panel's final size.
     const frame = requestAnimationFrame(position)
-    // Scrolling invalidates the anchor; dismissing beats drifting.
+    // A scroll moves the anchor, so close the panel.
     const dismiss = () => onDismiss?.()
     window.addEventListener('scroll', dismiss, true)
     window.addEventListener('resize', dismiss)
 
     /*
-     * `composedPath()` rather than `event.target`: the panel lives in a shadow
-     * root, so a listener on the document sees the host element for anything
-     * inside it and would treat every click on the panel as an outside click.
+     * Use `composedPath()`, not `event.target`. The panel is in a shadow
+     * root, so a document listener sees the host element as the target of
+     * any click inside it, and every click on the panel would count as
+     * outside.
      *
-     * The anchor is excluded deliberately. Its own handler toggles the panel
-     * shut, and dismissing here as well would close and immediately reopen it.
+     * The anchor is excluded. Its own handler closes the panel, and a second
+     * dismiss here would close and reopen it.
      */
     const onPointerDown = (event: PointerEvent) => {
       if (!dismissOnOutside) return
@@ -144,7 +141,7 @@
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
     color: var(--text);
     text-align: left;
-    /* Hidden until measured, so it never flashes at the wrong spot. */
+    /* Hidden until measured, so it never appears in the wrong place. */
     visibility: hidden;
   }
 

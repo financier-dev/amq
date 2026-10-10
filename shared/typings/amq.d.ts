@@ -1,14 +1,12 @@
 /**
  * Ambient types for AMQ's runtime globals.
  *
- * Reverse-engineered and partial, seeded from the older userscripts' own
- * typings and from the mirrored client source at
- * `~/amq-source/<YYYY-MM-DD>/animemusicquiz.com` (use the latest dated
- * capture). Only the surface actually touched here is typed; extend it as more
- * of the game gets reimplemented.
+ * Reverse-engineered and partial. The sources are the runtime objects and
+ * the client source at `~/amq-source/<YYYY-MM-DD>/animemusicquiz.com` (use
+ * the latest dated capture). Only what this repo uses is typed. Extend it as
+ * needed.
  *
- * Shared by every project in this repo — reach it as `@shared/typings/amq`,
- * though the declarations are global and need no import.
+ * The declarations are global and need no import.
  */
 
 declare global {
@@ -16,7 +14,7 @@ declare global {
 
   /** `quiz.SCORE_TYPE_IDS` */
   type ScoreTypeId = 1 | 2 | 3 | 4 | 5
-  /** `quiz.SHOW_SELECTION_IDS` — 2 (LOOTING) means battle royale */
+  /** `quiz.SHOW_SELECTION_IDS`. 2 (LOOTING) means battle royale. */
   type ShowSelectionId = 1 | 2
   /** `lobby.ANSWERING_MODES` */
   type AnsweringModeId = 1 | 2 | 3
@@ -87,17 +85,17 @@ declare global {
     advancedValueList: { years: [number, number]; seasons: [number, number] }[]
   }
 
-  /** One entry of `settings.genre` / `settings.tags`. `state` is a filter type. */
+  /** One entry of `settings.genre` or `settings.tags`. */
   interface RoomGenreTagEntry {
     id: number
-    /** 1 include, 2 exclude, 3 optional — `game_settings.filter_types.*` */
+    /** 1 include, 2 exclude, 3 optional (`game_settings.filter_types.*`). */
     state: number
   }
 
   /**
-   * `room.settings` as it arrives on the `New Rooms` payload. Field set follows
-   * schema v22 in `settingSerilizer.js`; `hostModal.DEFUALT_SETTINGS` (sic) is
-   * the runtime default for every one of them.
+   * `room.settings` as the `New Rooms` payload carries it. The fields follow
+   * schema v22 in `settingSerilizer.js`. `hostModal.DEFUALT_SETTINGS` (sic)
+   * holds the runtime default of each.
    */
   interface RoomSettings {
     roomName: string
@@ -134,10 +132,10 @@ declare global {
     bossPowerUps?: number
     bossMaxSongs?: number
     samplePoint?: RoomRandomRange
-    /** `randomValue` is four booleans (0.5×/1×/1.5×/2×), not a numeric pair. */
+    /** `randomValue` is four booleans (0.5×, 1×, 1.5×, 2×), not a range. */
     playbackSpeed?: RoomRandomRange<boolean>
 
-    /** sic, AMQ's spelling. `standardValue` is the five-tier map. */
+    /** AMQ's spelling (sic). `standardValue` is the five-tier map. */
     songDifficulity?: RoomAdvancedRange<{
       beginner: boolean
       easy: boolean
@@ -180,7 +178,7 @@ declare global {
     optionName: string
     optionActive: boolean
     colorName: string
-    /** 0 | 20 | 51 — a CSS crop concern, not part of the CDN url. */
+    /** 0, 20 or 51. Used for CSS positioning; not part of the CDN url. */
     sizeModifier: string
     animated: boolean
   }
@@ -190,17 +188,17 @@ declare global {
     background: { backgroundHori: string; backgroundVert?: string }
   }
 
-  /** An entry of `room.allPlayers.players` / `.spectators`. */
+  /** An entry of `room.allPlayers.players` or `.spectators`. */
   interface RoomPlayerInfo {
     name: string
     level: number
   }
 
   /**
-   * One entry of the `standard` array on the `New Rooms` payload.
+   * One entry of the `standard` array in the `New Rooms` payload.
    *
-   * `friendNames` and `allPlayers` replaced the old flat `players: string[]`
-   * in the 2026-09-19 client capture — see roomBrowser.js:28-42.
+   * `friendNames` and `allPlayers` replaced the flat `players: string[]` in
+   * the 2026-09-19 client capture. See roomBrowser.js:28-42.
    */
   interface RoomInfo {
     id: number
@@ -221,9 +219,8 @@ declare global {
   }
 
   /**
-   * `Room Change` payload. `changeType` drives a small state machine; see
-   * roomTile.js:230-325. Anything other than the listed types means the room
-   * closed.
+   * `Room Change` payload. See roomTile.js:230-325 for how `changeType` is
+   * handled. Any type not listed here means the room closed.
    */
   interface RoomChangeData {
     roomId: number
@@ -236,10 +233,10 @@ declare global {
       | 'game over'
       | (string & {})
     change?: Partial<RoomSettings>
-    /** Name of the player who joined or left; absent on count-only updates. */
+    /** The player who joined or left. Absent on count-only updates. */
     playerName?: string
     playerLevel?: number
-    /** Set when the joining/leaving player is a friend of yours. */
+    /** Set when the player who joined or left is a friend. */
     friend?: string
     playerCount?: number
     spectatorCount?: number
@@ -267,8 +264,8 @@ declare global {
 
   /**
    * `viewChanger.__controllers` is a plain mutable object of
-   * `{ openView(callback, arg), closeView(arg) }` pairs — the injection seam
-   * for replacing a whole screen (viewChanger.js:17-41).
+   * `{ openView(callback, arg), closeView(arg) }` pairs. Swapping an entry
+   * replaces a whole screen (viewChanger.js:17-41).
    */
   interface ViewController {
     openView: (callback: () => void, arg?: any) => void
@@ -329,20 +326,20 @@ declare global {
     translate: (key: string, data?: object, translateData?: boolean) => string
     convertAnimeGenreToKey: (name: string) => string
     convertAnimeTagToKey: (name: string) => string
-    /** `{ key, parameters }` for an anime type; see `LibraryAnimeCategory`. */
+    /** `{ key, parameters }` for an anime type. See `LibraryAnimeCategory`. */
     convertCategoryToKey: (category: LibraryAnimeCategory) => {
       key: string
       parameters: { number?: number | string }
     }
   }
 
-  /** Populated from the login payload's `genreInfo` / `tagInfo`. */
+  /** Filled from `genreInfo` and `tagInfo` in the login payload. */
   const idTranslator: {
     genreNames: Record<number, string>
     tagNames: Record<number, string>
   }
 
-  /** Localised names and values for every setting key (lobby setting messages). */
+  /** Localised names and values for every setting key. */
   const settingMessageFormater: {
     translateSettingNameToText: (key: string) => string
     translateSettingValueToText: (key: string, value: any) => string
@@ -362,7 +359,7 @@ declare global {
     [key: string]: any
   }
 
-  /** The tile-shaped object `setModePreviewGame` drives its buttons through. */
+  /** The object whose methods `setModePreviewGame` calls from its buttons. */
   interface SettingPreviewTarget {
     joinGame: () => void
     spectateGame: () => void
@@ -370,7 +367,7 @@ declare global {
   }
 
   const hostModal: {
-    /** sic — AMQ's spelling. The runtime default for every room setting. */
+    /** AMQ's spelling (sic). The runtime default of every room setting. */
     DEFUALT_SETTINGS: RoomSettings
     openHostModal: () => void
     changeSettings: (changes: Partial<RoomSettings>) => void
@@ -421,17 +418,17 @@ declare global {
 
   // --- quiz builder -------------------------------------------------------
 
-  /** One song of an anime in the library cache (`libraryCacheHandler.js:452`). */
+  /** One song of an anime in the cache (`libraryCacheHandler.js:452`). */
   interface LibraryAnimeSongEntry {
     annSongId: number
     annId: number
     /** 1 = OP, 2 = ED, 3 = insert. */
     type: number
-    /** Ordinal within its type; inserts are not numbered in the UI. */
+    /** Position within its type. The UI does not number inserts. */
     number: number
     /** `{ NONE: 0, LIKED: 1, DISLIKED: 2 }` */
     playerLikeStatus: number
-    /** 1-based recency among songs recently guessed wrong; null otherwise. */
+    /** 1-based rank among recently wrong songs, newest first. Else null. */
     wrongIndex: number | null
     uploaded: boolean
     rebroadcast: boolean
@@ -440,42 +437,41 @@ declare global {
   }
 
   /**
-   * An artist or a group, as the library cache stores them
-   * (`libraryCacheHandler.js:558` and `:597`). The two are one shape here
-   * because search treats them alike; `IS_GROUP` is how AMQ tells them apart.
+   * An artist or a group in the library cache (`libraryCacheHandler.js:558`
+   * and `:597`). One type covers both because search treats them alike.
+   * `IS_GROUP` tells them apart.
    */
   interface LibraryArtistEntry {
     name: string
     /**
-     * Lowercased name variants, **alt names included** — `addAltName` pushes
-     * them in. Precomputed at cache load, which is why search reads these
-     * rather than lowercasing `name` per keystroke.
+     * Lowercased name variants, **alt names included** (`addAltName` adds
+     * them). Built at cache load, so search never lowercases per keystroke.
      */
     searchNames?: string[]
     searchIndex?: LibrarySearchIndex | null
     /**
-     * Every entry a non-strict artist search tests: the entry itself, its alt
-     * names, and — for a group — its members and their groups, recursively.
-     * `libraryCacheHandler.js:581` / `:650`.
+     * Every entry a non-strict artist search tests: the entry, its alt names
+     * and, for a group, its members and their groups, recursively
+     * (`libraryCacheHandler.js:581` and `:650`).
      */
     getFullMemberEntryList?: () => LibraryArtistEntry[]
     IS_GROUP?: boolean
   }
 
   /**
-   * First-char → second-char prefilter over an entry's `searchNames`, built in
-   * a worker after the cache lands (`libraryCacheHandler.js:232`) and null
-   * until then. A miss means no name can match; a hit means nothing.
+   * A first-char → second-char prefilter over an entry's `searchNames`. A
+   * worker builds it after the cache loads (`libraryCacheHandler.js:232`);
+   * it is null until then. A miss means no name can match. A hit proves
+   * nothing.
    *
-   * Typed for completeness; `ui/src/amq/librarySearch.ts` deliberately does not
-   * use it — the worker that builds it is absent from the client capture, so
-   * what it indexes cannot be verified.
+   * `ui/src/amq/librarySearch.ts` does not use it: the worker is missing from
+   * the client capture, so what it indexes cannot be checked.
    */
   interface LibrarySearchIndex {
     [firstChar: string]: { [secondChar: string]: unknown }
   }
 
-  /** `libraryCacheHandler.js:505` — the song itself, shared between anime. */
+  /** `libraryCacheHandler.js:505`. The song itself, shared between anime. */
   interface LibrarySongEntry {
     songId: number
     name: string
@@ -485,12 +481,12 @@ declare global {
     category: number
     dub: boolean
     rebroadcast: boolean
-    /** Lowercased `name` variants; see `LibraryArtistEntry.searchNames`. */
+    /** Lowercased variants of `name`. See `LibraryArtistEntry.searchNames`. */
     searchNames?: string[]
     searchIndex?: LibrarySearchIndex | null
     /**
-     * Resolved from the id pairs by `setupArtists` once the artist and group
-     * maps are in; absent when the song credits nobody in that role.
+     * `setupArtists` sets these from the id pairs once the artist and group
+     * maps exist. Absent when the song credits nobody in that role.
      */
     artist?: LibraryArtistEntry
     composer?: LibraryArtistEntry
@@ -498,23 +494,23 @@ declare global {
   }
 
   /**
-   * `libraryCacheHandler.js:382`. Note there is **no difficulty and no song
-   * length here or anywhere else client-side** — difficulty exists only per
-   * song behind `get song extended info`, and length not at all.
-   */
-  /**
-   * An anime's type, as the library stores it: `{ name: 'TV', number: 2 }`.
+   * An anime's type as the library stores it: `{ name: 'TV', number: 2 }`.
    *
-   * **Not a string.** It goes through
-   * `localizationHandler.convertCategoryToKey` (`localizationHandler.js:423`),
-   * which lowercases `name` and swaps spaces for underscores to build an
-   * `anime_types.*` key, then fills `_NUMBER_` from `number`.
+   * **Not a string.** `localizationHandler.convertCategoryToKey`
+   * (`localizationHandler.js:423`) lowercases `name`, replaces spaces with
+   * underscores to build an `anime_types.*` key, and fills `_NUMBER_` from
+   * `number`.
    */
   interface LibraryAnimeCategory {
     name: string
     number?: number | null
   }
 
+  /**
+   * `libraryCacheHandler.js:382`. **The client has no difficulty and no song
+   * length**, here or elsewhere. Difficulty is available only per song
+   * through `get song extended info`.
+   */
   interface LibraryAnimeEntry {
     annId: number
     category: LibraryAnimeCategory
@@ -523,16 +519,15 @@ declare global {
     mainNames: { EN?: string; JA?: string }
     names: { name: string; language?: string }[]
     /**
-     * Lowercased variants of **every** name in `names`, each also stored with
-     * its characters folded (`replaceCharactersForSeachCharacters`) when that
-     * changes it — which is how a query typed in plain ASCII finds a title
-     * stored with macrons (`Jōjō` → `jojo`) or punctuation (`Fate/Zero` →
-     * `fate zero`). The **query** is only lowercased, never folded, so the
-     * folding has to live on this side. Built once at cache load.
+     * Lowercased variants of **every** name in `names`. Each is also stored
+     * with its characters folded (`replaceCharactersForSeachCharacters`) when
+     * that changes it, so a plain ASCII query finds a title with macrons
+     * (`Jōjō` → `jojo`) or punctuation (`Fate/Zero` → `fate zero`). The
+     * **query** is only lowercased, never folded. Built once at cache load.
      */
     searchNames?: string[]
     searchIndex?: LibrarySearchIndex | null
-    /** Null until the watched overlay lands. */
+    /** Null until the watched overlay arrives. */
     watched: boolean | null
     songs: {
       OP: LibraryAnimeSongEntry[]
@@ -554,12 +549,9 @@ declare global {
     [key: string]: any
   }
 
-  /**
-   * AMQ's own creator. We replace its view but still call into it — saving goes
-   * through its path so validation and the save dialog stay AMQ's.
-   */
+  /** AMQ's own creator. We replace its view but still call into it. */
   const customQuizCreator: {
-    /** Set before `changeView('customQuizCreator')` to start a blank quiz. */
+    /** Call before `changeView('customQuizCreator')` to start a blank quiz. */
     setupNewQuiz: () => void
     /** Builds an algorithm block from the host modal's settings. */
     createAlgorithmBlock: (settings: Record<string, unknown>) => void
@@ -576,7 +568,7 @@ declare global {
   const selfName: string
   const messageDisplayer: any
 
-  /** AMQ ships jQuery globally; the profile modal takes jQuery objects. */
+  /** AMQ's jQuery. The profile modal takes jQuery objects. */
   const $: any
 
   /** SweetAlert2, used for the private-room password prompt. */

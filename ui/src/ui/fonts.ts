@@ -1,14 +1,12 @@
 /**
- * Webfonts for the room browser.
+ * Webfonts for our screens.
  *
- * `@font-face` does not inherit into a shadow root, so the faces have to be
- * declared in the document even though everything that uses them lives inside
- * one. A stylesheet `<link>` is enough — the shadow tree then resolves the
- * family names normally.
+ * `@font-face` rules do not apply from inside a shadow root, so the faces are
+ * declared in the document with a stylesheet `<link>`. The shadow tree then
+ * resolves the family names.
  *
- * Every declaration in `app.css` keeps a real system fallback, so if this
- * request is blocked by CSP or the page is offline the screen renders in the
- * fallback stack rather than breaking.
+ * Every font declaration in `app.css` keeps a system fallback. If CSP blocks
+ * this request or the page is offline, the screen renders in the fallback.
  */
 
 const FONT_HREF =

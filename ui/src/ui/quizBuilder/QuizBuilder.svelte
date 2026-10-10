@@ -1,15 +1,14 @@
 <!--
   The Quiz Builder screen (SPEC §1).
 
-  A 60px top bar over two independently scrolling panes: the library at 38%, the
-  quiz at 62%, 16px apart inside a 24px gutter. AMQ's menu bar keeps the bottom
-  ~45px of the viewport and is not ours — the screen reserves that strip rather
-  than covering it, exactly as the room browser does.
+  A 60px top bar over two panes that scroll independently: the library at 38%
+  and the quiz at 62%, 16px apart inside a 24px gutter. AMQ's menu bar keeps
+  the bottom 45px of the viewport, so the screen stops above it, as the room
+  browser does.
 
-  Overlays are owned here rather than by the panes that trigger them, because
-  several of them are opened from more than one place: the block picker serves
-  both "Adds to" and "Move", and the entry settings panel is reachable from a
-  row, an override chip, a ⋯ menu and the selection bar.
+  This component owns the overlays, because several open from more than one
+  place. The block picker serves "Adds to" and "Move". The entry settings
+  panel opens from a row, an override chip, a ⋯ menu and the selection bar.
 -->
 <script lang="ts">
   import { t } from '../../amq/derive'
@@ -25,10 +24,10 @@
   import SelectionBar from './quiz/SelectionBar.svelte'
   import TopBar from './TopBar.svelte'
 
-  /** Which overlay is open, if any. One at a time, by construction. */
+  /** The open overlays. The handlers below open one at a time. */
   let picker = $state<{
     anchor: HTMLElement
-    /** Set for a one-off add; absent means "re-aim the pane". */
+    /** Set for a one-off add. Absent means "change the pane's target". */
     then?: () => void
   } | null>(null)
   let moving = $state<HTMLElement | null>(null)
@@ -47,8 +46,8 @@
   }
 
   /**
-   * AMQ checks the name before opening its save dialog, and so do we — a dialog
-   * whose only button is disabled explains nothing.
+   * Checks the name before the save dialog opens, as AMQ does. A dialog with
+   * only a disabled button would not say what is wrong.
    */
   function save() {
     if (!quizStore.quiz.name.trim()) {
@@ -65,19 +64,18 @@
   }
 
   /**
-   * Throws away every change since the last save.
+   * Discards every change since the last save.
    *
-   * Confirmed through AMQ's own Swal so it looks like every other destructive
-   * prompt in the game, and worded as what it does rather than as its button
-   * label — "Undo" is the affordance, discarding your work is the effect.
+   * Asks for confirmation through AMQ's Swal, like the game's other
+   * destructive prompts. The text says what happens: the changes are lost.
    */
   function revert() {
     if (!quizStore.dirty) return
     Swal.fire({
       title: 'Discard changes?',
       text: quizStore.quizId
-        ? 'This puts the quiz back to the last version you saved. It cannot be undone.'
-        : 'This clears the quiz back to empty. It cannot be undone.',
+        ? 'This restores the last saved version of the quiz. You cannot undo it.'
+        : 'This removes everything from the quiz. You cannot undo it.',
       showCancelButton: true,
       confirmButtonText: 'Discard',
       cancelButtonText: t('common.ui.cancel_button', 'Cancel'),
@@ -93,8 +91,8 @@
         connectUp: false,
         locked: false,
         annId,
-        // Openings on, endings on, inserts off — AMQ's own default for a new
-        // anime block, and the one people change least often.
+        // AMQ's default for a new anime block: openings and endings on,
+        // inserts off.
         includeSongTypes: { op: true, ed: true, in: false },
         numberOfSongs: 1,
         overrides: {},
@@ -117,11 +115,11 @@
   }
 
   /**
-   * The algorithm dialog is AMQ's. `setModeQuizBuilder` takes the settings to
-   * edit and an object it will call `updateSettings` on when the player
-   * confirms — so we hand it a shim that writes back into our model. With no
-   * entry id it creates instead, and AMQ routes that through
-   * `customQuizCreator.createAlgorithmBlock`, which we also own.
+   * Opens AMQ's algorithm dialog. `setModeQuizBuilder` takes the settings to
+   * edit and an object on which it calls `updateSettings` when the player
+   * confirms. We pass a shim that writes to our model. With no entry id the
+   * dialog creates a block, which AMQ routes through
+   * `customQuizCreator.createAlgorithmBlock`. We own that too.
    */
   function openAlgorithm(entryId: string) {
     const block = quizStore.quiz.blocks.find((item) =>
@@ -142,10 +140,9 @@
   }
 
   /*
-   * Opening is a toggle: clicking the button that opened a menu closes it.
-   * `Floating` deliberately ignores its own anchor when dismissing on an
-   * outside click, so without this the second click would close and reopen it
-   * in the same gesture and the menu would look stuck.
+   * A second click on the button that opened a menu closes it. `Floating`
+   * ignores its own anchor on an outside click, so without this toggle the
+   * second click would close and reopen the menu.
    */
   function openMenu(anchor: HTMLElement, kind: 'block' | 'entry', id: string) {
     rowMenu =
@@ -155,11 +152,11 @@
   }
 
   /**
-   * Whether a key belongs to whatever has focus rather than to the screen.
+   * Whether the focused element takes typed text.
    *
-   * Checking `tagName === 'INPUT'` is not enough: clicking a row's checkbox
-   * focuses it, and every shortcut below would then be dead until you clicked
-   * somewhere else. Only controls you actually *type* into swallow keys.
+   * `tagName === 'INPUT'` is not enough. A click on a row's checkbox focuses
+   * it, and the shortcuts below would then stop working until focus moved.
+   * Only text controls keep their keys.
    */
   const TYPING_TYPES = new Set([
     'text',
@@ -179,7 +176,7 @@
     return TYPING_TYPES.has((target as HTMLInputElement).type)
   }
 
-  /** SPEC §11's shortcuts. Ignored while a text field has focus. */
+  /** The shortcuts of SPEC §11. Ignored while a text field has focus. */
   function onKeydown(event: KeyboardEvent) {
     const target = event.target as HTMLElement | null
     if (isTyping(target)) {
@@ -229,19 +226,19 @@
       (event.ctrlKey || event.metaKey)
     ) {
       event.preventDefault()
-      // Anchor on the quiz pane itself — there is no button under the cursor.
+      // No button is under the cursor, so anchor on the focused element.
       const anchor = document.activeElement as HTMLElement
       if (anchor) moving = anchor
     }
   }
 
   /**
-   * Keeps our own key events inside the shadow root.
+   * Keeps our key events inside the shadow root.
    *
-   * `setup.js:56` blocks Backspace unless `event.target` is an input — but an
-   * event crossing a shadow boundary is retargeted to the host, so AMQ sees our
-   * wrapper div, decides the key came from outside a field, and cancels it. The
-   * result is that Backspace does nothing in either search box.
+   * `setup.js:56` blocks Backspace unless `event.target` is an input. An
+   * event that crosses a shadow boundary is retargeted to the host, so AMQ
+   * sees our wrapper div and cancels the key. Backspace then does nothing in
+   * either search box.
    */
   function keepKeysLocal(event: KeyboardEvent) {
     if (isTyping(event.target as HTMLElement | null)) {
@@ -266,7 +263,6 @@
         'quiz_builder.alerts.error_loading.description',
         'An error occurred while trying to load the quiz.'
       )}
-      <!-- The escape hatch is the honest next step, so name it. -->
       <span class="hint"
         >Run <code>__amqUI.quizBuilder.useLegacy()</code> to open it in AMQ's own
         builder.</span
@@ -303,7 +299,8 @@
     anchor={picker.anchor}
     currentId={quizStore.targetBlock?.id ?? null}
     onPick={(blockId) => {
-      // Picking from any "add to…" popover re-targets the pane too (SPEC §4).
+      // A pick from any "add to" popover also sets the pane's target
+      // (SPEC §4).
       quizStore.targetBlockId = blockId
       picker?.then?.()
       picker = null
@@ -363,10 +360,7 @@
 {/if}
 
 <style>
-  /*
-   * Fixed, and stopping short of AMQ's menu bar. `bottom: 45px` is that bar's
-   * height, not a margin — the strip belongs to AMQ.
-   */
+  /* Fixed. `bottom: 45px` is the height of AMQ's menu bar. */
   .screen {
     position: fixed;
     inset: 0 0 45px 0;
@@ -383,7 +377,7 @@
     padding: 12px var(--gutter) 12px;
   }
 
-  /* Positions the selection island over this pane rather than the viewport. */
+  /* Positions the selection bar over this pane, not the viewport. */
   .quiz-host {
     position: relative;
     flex: 1 1 62%;

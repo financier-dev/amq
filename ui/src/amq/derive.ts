@@ -1,10 +1,10 @@
 /**
  * Pure derivations from a room's `settings`.
  *
- * Everything the row, the filter predicate and the tooltips read lives here, so
- * the three can never disagree about what a room is. Nothing in this file
- * touches the DOM; the only AMQ globals it reads are lookup tables
- * (`idTranslator`, `localizationHandler`, `cdnFormater`, `hostModal`).
+ * The row, the filter predicate and the tooltips all read from here, so they
+ * agree about a room. Nothing touches the DOM. The only AMQ globals read are
+ * lookup tables (`idTranslator`, `localizationHandler`, `cdnFormater`,
+ * `hostModal`).
  */
 
 import { pageGlobal } from './pageGlobal'
@@ -30,9 +30,8 @@ export interface SongTypes {
 // --- localisation ---------------------------------------------------------
 
 /**
- * AMQ's globals are not all present at every point in the boot sequence, and a
- * missing key throws inside i18next. Falling back to the supplied text keeps a
- * single missing string from taking the whole list down.
+ * Returns `fallback` when the translation is missing. Some AMQ globals are
+ * absent early in boot, and i18next throws on a missing key.
  */
 export function t(key: string, fallback: string, data?: object): string {
   try {
@@ -49,7 +48,7 @@ export function isCommunityMode(settings: RoomSettings) {
   return settings.gameMode === 'Community' || settings.gameMode === 'Themed'
 }
 
-/** roomTile.js:54-71 — first match wins, order matters. */
+/** roomTile.js:54-71. The first match wins, so the order matters. */
 export function modeOf(settings: RoomSettings): GameMode {
   if (isCommunityMode(settings)) return 'community'
   if (settings.showSelection === 2) return 'battle-royale'
@@ -81,9 +80,8 @@ export function modeLabel(mode: GameMode) {
  * Colour family for the Mode pill.
  *
  * Rose already means "room full" in the Players cell and "excluded" in the
- * chips, so it is reserved here for the rare modes. Last Man Standing is one
- * of the most common modes in public rooms and was reading as a warning on
- * every other row; it takes teal.
+ * chips, so only the rare boss-fight mode uses it. Last Man Standing is common
+ * in public rooms and takes teal, so it does not read as a warning.
  */
 export function modeTone(mode: GameMode) {
   switch (mode) {
@@ -105,8 +103,8 @@ export function modeTone(mode: GameMode) {
 }
 
 /**
- * roomTile.js:37-52 — a type counts as enabled only when the standard toggle is
- * on AND the advanced value allows it (or advanced random is on).
+ * roomTile.js:37-52. A type is enabled only when the standard toggle is on
+ * and the advanced value allows it, or advanced random is on.
  */
 export function songTypesOf(settings: RoomSettings): SongTypes {
   if (isCommunityMode(settings)) {
@@ -158,7 +156,7 @@ export function songSelectionTone(selection: SongSelection) {
     case 'mix':
       return 'amber'
     default:
-      // Custom takes the blue that random vacated, so all four stay distinct.
+      // Blue, so all four selections have distinct colours.
       return 'blue'
   }
 }
@@ -166,7 +164,7 @@ export function songSelectionTone(selection: SongSelection) {
 // --- guess time -----------------------------------------------------------
 
 export interface GuessTime {
-  /** Null in community/custom-song rooms, where the number is meaningless. */
+  /** Null in community rooms, which have no single guess time. */
   range: { min: number; max: number } | null
   extra: { min: number; max: number } | null
 }
@@ -191,7 +189,7 @@ function positiveRange(setting: RoomRandomRange | undefined) {
   return range && range.max > 0 ? range : null
 }
 
-/** `20`, `25–30` — the unit is added by the cell so it can size the suffix. */
+/** `20` or `25–30`. The cell adds the unit. */
 export function rangeLabel(range: { min: number; max: number }) {
   return range.min === range.max ? `${range.min}` : `${range.min}–${range.max}`
 }
@@ -206,11 +204,11 @@ export interface DifficultyTier {
 }
 
 /**
- * customQuizAlgorithmBlock.js `convertDifficulityToText()`. Lower % correct is
- * harder, so the scale runs hard→easy left to right.
+ * From `convertDifficulityToText()` in customQuizAlgorithmBlock.js. A lower %
+ * correct is harder, so the scale runs from hard to easy.
  *
  * SPEC §3: use this five-tier map everywhere. `roomFilter.js` still ships a
- * legacy three-tier mapping (hard 0-20, medium 20-60, easy 60-100) — overridden.
+ * three-tier map (hard 0-20, medium 20-60, easy 60-100); do not use it.
  */
 export const DIFFICULTY_TIERS: DifficultyTier[] = [
   { key: 'expert', min: 0, max: 15, colour: '#e5658a' },
@@ -250,8 +248,8 @@ export function difficultyRange(settings: RoomSettings) {
       max = Math.max(max, tier.max)
     }
   }
-  // No tier selected at all is not a state the host modal can produce, but the
-  // payload is the server's — fall back to the full range rather than min > max.
+  // The host modal cannot produce "no tier selected", but the server sends the
+  // payload. Fall back to the full range so that min never exceeds max.
   return min > max ? { min: 0, max: 100 } : { min, max }
 }
 
@@ -266,7 +264,7 @@ export function tiersTouched(range: { min: number; max: number }) {
 export type ChipTone = 'teal' | 'amber' | 'violet' | 'rose' | 'blue' | 'off'
 
 export interface Chip {
-  /** Stable identity for keyed `{#each}`. */
+  /** Key for `{#each}`. */
   id: string
   label: string
   tone: ChipTone
@@ -304,16 +302,15 @@ function genreTagName(id: number, kind: 'genre' | 'tag') {
 }
 
 /**
- * Abbreviation → long form. The short labels are ours, so the copy is too.
+ * Chip label and tooltip for each modifier.
  *
- * Only a modifier that differs from `hostModal.DEFUALT_SETTINGS` earns a chip
- * (SPEC §3), and four of the six default to *on* — so for those the newsworthy
- * state is off, and the label has to say so. Rendering a bare `DUP` for the
- * default-on case would mark every vanilla room.
+ * A modifier gets a chip only when it differs from
+ * `hostModal.DEFUALT_SETTINGS` (SPEC §3). Four of the six default to on, so
+ * for those the chip marks the off state and its label must say so.
  */
 const MODIFIER_CHIPS: {
   key: keyof RoomModifiers
-  /** Label and tooltip for the non-default state, whichever way it points. */
+  /** `[label, tooltip]` for each state. Only the non-default state shows. */
   on: [string, string]
   off: [string, string]
 }[] = [
@@ -367,8 +364,7 @@ const DISTRIBUTION_LABELS: Record<number, [string, string]> = {
   3: ['DIST:EQ', 'Watched distribution — equal per player'],
 }
 
-/** Chip label ↔ full name. The label is an abbreviation, so the tooltip has
-    to spell it out — repeating "INS, CHR, STD" there explains nothing. */
+/** The chip shows `short`; the tooltip spells out `name`. */
 const SONG_CATEGORIES: Record<string, { short: string; name: string }> = {
   standard: { short: 'STD', name: 'Standard' },
   instrumental: { short: 'INS', name: 'Instrumental' },
@@ -390,17 +386,16 @@ const SONG_TYPE_NAMES: Record<string, [string, string]> = {
 const PLAYBACK_SPEEDS = ['0.5', '1', '1.5', '2']
 
 /**
- * Every non-default setting worth a glance, in reading order: where songs come
- * from (teal), what widens the pool (amber), what narrows it (violet/rose),
- * then the play rules (blue). Defaults render nothing — an empty cell means a
- * vanilla room, which is itself information (SPEC §3).
+ * A chip for every non-default setting, in reading order: where songs come
+ * from (teal), modifiers (amber), anime filters (violet, rose for exclusions),
+ * then play rules (blue). Default settings produce no chip (SPEC §3).
  */
 export function chipsFor(settings: RoomSettings): Chip[] {
   const chips: Chip[] = []
   const base = defaults()
   const push = (chip: Chip) => chips.push(chip)
 
-  // --- teal: where the songs come from
+  // Teal: where the songs come from.
   if (settings.songPool != null && settings.songPool !== base.songPool) {
     const entry = SONG_POOL_LABELS[settings.songPool]
     if (entry) {
@@ -447,7 +442,7 @@ export function chipsFor(settings: RoomSettings): Chip[] {
     })
   }
 
-  // --- amber: modifiers, whichever way they deviate
+  // Amber: modifiers that differ from the default, in either direction.
   const modifiers = settings.modifiers
   const baseModifiers = base.modifiers
   if (modifiers && baseModifiers) {
@@ -459,7 +454,7 @@ export function chipsFor(settings: RoomSettings): Chip[] {
     }
   }
 
-  // --- violet / rose: anime filters that narrow it
+  // Violet and rose: anime filters.
   if (settings.vintage && changed(settings.vintage, base.vintage)) {
     push({
       id: 'vintage',
@@ -524,14 +519,14 @@ export function chipsFor(settings: RoomSettings): Chip[] {
             ? `Include — the show must have the ${name} ${kind}`
             : entry.state === 2
               ? `Exclude — shows with the ${name} ${kind} are left out`
-              : `Optional — a show must match at least one optional entry, of which ${name} is one`,
+              : `Optional — a show must match at least one optional entry. ${name} is one of them.`,
       })
     }
   }
 
-  // --- blue: play rules
-  // Team size changes how the player count reads — 6/8 in teams of two is a
-  // different room from 6/8 solo — so it earns a chip whenever it is not solo.
+  // Blue: play rules.
+  // Team size changes how the player count reads (6/8 in teams of two is not
+  // 6/8 solo), so any team size above 1 gets a chip.
   if (settings.teamSize != null && settings.teamSize > 1) {
     push({
       id: 'teamSize',
@@ -628,14 +623,12 @@ export function chipsFor(settings: RoomSettings): Chip[] {
 }
 
 /**
- * Whether a setting still holds its default, by AMQ's own rule
- * (`roomFilter.js` `compareSettings`).
+ * Whether a setting still has its default value, by AMQ's rule
+ * (`compareSettings` in `roomFilter.js`).
  *
- * Only the *active* branch counts: with `randomOn` set, `standardValue` is
- * inert and two rooms differing only there are both still default. Comparing
- * the whole object instead made a default sample point (`randomOn: true`,
- * range 0-100) render a chip, because its unused `standardValue` happened to
- * differ.
+ * Only the active branch counts. With `randomOn` set, `standardValue` is
+ * unused, so compare `randomValue` only. A whole-object comparison would
+ * report a default setting as changed when only the unused branch differs.
  */
 export function isDefaultSetting(value: unknown, base: unknown): boolean {
   if (base === undefined || value === undefined) return false
@@ -664,7 +657,6 @@ function sameJson(a: unknown, b: unknown) {
   }
 }
 
-/** True when `value` differs from its default and so deserves a chip. */
 function changed(value: unknown, base: unknown) {
   return value !== undefined && !isDefaultSetting(value, base)
 }
@@ -696,15 +688,13 @@ function vintageTooltip(vintage: RoomVintage) {
 // --- player profile -------------------------------------------------------
 
 /**
- * Opens AMQ's own profile modal for a player, anchored to the clicked element.
+ * Opens AMQ's profile modal for a player, anchored to the clicked element.
  *
- * Two things this has to get right, both of which silently did nothing before:
- *
- *  - jQuery must come from the page, not `globalThis` — see `pageGlobal`.
- *  - `loadProfileIfClosed` calls the close handler unconditionally when the
- *    modal closes (playerProfileController.js:28), so omitting one throws on
- *    close and leaves the `playerProfileOpen` class stuck on the element,
- *    which then blocks every later click on it.
+ *  - jQuery must come from the page, not `globalThis`. See `pageGlobal`.
+ *  - Always pass a close handler. `loadProfileIfClosed` calls it
+ *    unconditionally when the modal closes (playerProfileController.js:28).
+ *    Without one, the close throws and leaves the `playerProfileOpen` class
+ *    on the element, which blocks every later click on it.
  */
 export function openProfile(target: HTMLElement, name: string) {
   const jquery = pageGlobal<(element: HTMLElement) => any>('$')
@@ -731,19 +721,19 @@ export function openProfile(target: HTMLElement, name: string) {
 export interface AvatarImage {
   src: string
   srcset: string
-  /** Full-body fallback, shown if the head crop 404s. */
+  /** Full-body image, shown if the head crop returns a 404. */
   fallbackSrc: string
   /**
-   * `object-position` for the fallback, so the face fills the circular mask.
-   * `sizeModifier` 0 / 20 / 51 are the three avatar builds AMQ ships.
+   * `object-position` that puts the face of the fallback inside the circular
+   * mask. AMQ ships three avatar builds, with `sizeModifier` 0, 20 and 51.
    */
   fallbackPosition: string
 }
 
 /**
- * SPEC §3: use the host's head crop, not the full render. Not every
- * avatar/outfit ships one, so `fallbackSrc` is the full `Basic.webp` cropped to
- * the head by `object-position`.
+ * SPEC §3: show the host's head crop, not the full render. Some avatars and
+ * outfits have no head crop, so `fallbackSrc` is the full `Basic.webp`,
+ * positioned on the head with `object-position`.
  */
 export function avatarImage(hostAvatar: RoomHostAvatar): AvatarImage | null {
   const avatar = hostAvatar?.avatar

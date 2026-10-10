@@ -1,7 +1,7 @@
 <!--
-  A filter checkbox, drawn as a chip (SPEC §4): filled accent with a tick when
-  on, dashed outline when off. It is a real `<button>` with `aria-pressed`, not
-  a styled div, so it is reachable and announced correctly.
+  A filter toggle drawn as a chip (SPEC §4): filled accent with a tick when
+  on, dashed outline when off. It is a `<button>` with `aria-pressed`, so it
+  is keyboard-reachable and announced correctly.
 -->
 <script lang="ts">
   import Icon from './Icon.svelte'

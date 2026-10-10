@@ -1,25 +1,23 @@
 /**
- * AMQ's custom-quiz save payload, typed from the client source.
+ * AMQ's custom-quiz save payload, typed from the client source:
+ * `~/amq-source/<capture>/animemusicquiz.com/scripts/pages/gamePage/customQuiz/creator/`.
  *
- * Every shape here is transcribed from
- * `~/amq-source/<capture>/animemusicquiz.com/scripts/pages/gamePage/customQuiz/creator/`,
- * not inferred from a screenshot. The serializer's whole job is to reproduce
- * these objects exactly, so the field names — including AMQ's own misspellings —
- * are load-bearing. Do not "tidy" them.
+ * The serializer must reproduce these objects exactly. Keep every field name
+ * as AMQ spells it, misspellings included.
  *
- * Two structural facts drive everything:
+ * Two facts shape the model:
  *
- *   1. A block's *kind* is discriminated by which field is present, not by a
- *      `type` tag (`customQuizBuilder.js:343-405`). Emitting a stray `type`
- *      would make AMQ misread the block.
+ *   1. The field that is present decides a block's kind. There is no `type`
+ *      tag (`customQuizBuilder.js:343-405`), and a stray `type` makes AMQ
+ *      misread the block.
  *   2. Chaining is stored as `connectUp` on the **lower** entry. The runtime
- *      `CustomQuizCreatorBlockGroup` that holds a chain together is never
- *      serialized — it is rebuilt from the flag on load.
+ *      `CustomQuizCreatorBlockGroup` that holds a chain is never serialized.
+ *      AMQ rebuilds it from the flag on load.
  */
 
 /**
- * Several rule values are "a number, or a two-element range the game picks from
- * at random". Array means random (`customQuizBlockRuleBlocks.js:412-423`).
+ * A fixed number, or a `[min, max]` range the game picks from at random
+ * (`customQuizBlockRuleBlocks.js:412-423`).
  */
 export type MaybeRandom = number | [number, number]
 
@@ -29,23 +27,23 @@ export interface GuessTimeSave {
   extraGuessTime: MaybeRandom
 }
 
-/** `customQuizBlockRuleBlocks.js:804` — a percentage, 0-100, never seconds. */
+/** `customQuizBlockRuleBlocks.js:804`. A percentage, 0-100. Not seconds. */
 export interface SamplePointSave {
   samplePoint: MaybeRandom
 }
 
 /**
- * `customQuizBlockRuleBlocks.js:687`. Fixed values come from the tick list
- * [1, 1.5, 2, 4]; random mode stores a subset of it, so this is an array of
- * choices rather than a [min, max] pair.
+ * `customQuizBlockRuleBlocks.js:687`. A fixed value comes from the tick list
+ * [1, 1.5, 2, 4]. Random mode stores a subset of that list, so the array holds
+ * choices, not a `[min, max]` pair.
  */
 export interface PlayBackSpeedSave {
   playBackSpeed: number | number[]
 }
 
 /**
- * `customQuizBlockRuleBlocks.js:173` — three independent booleans, **not** an
- * enum, and at least one must stay true (the client refuses the last toggle).
+ * `customQuizBlockRuleBlocks.js:173`. Three independent booleans, not an enum.
+ * At least one must stay true; the client refuses to turn the last one off.
  */
 export interface GuessModesSave {
   song: boolean
@@ -53,14 +51,14 @@ export interface GuessModesSave {
   blurVideo: boolean
 }
 
-/** `customQuizAnimeBlock.js:39-43` — booleans, not counts. */
+/** `customQuizAnimeBlock.js:39-43`. Booleans, not counts. */
 export interface IncludeSongTypesSave {
   op: boolean
   ed: boolean
   in: boolean
 }
 
-/** `customQuizDragBlock.js:177` — carried by every entry and nested block. */
+/** `customQuizDragBlock.js:177`. Every entry and nested block carries these. */
 export interface EntryBaseSave {
   connectUp: boolean
   locked: boolean
@@ -78,9 +76,8 @@ export interface SongEntrySave extends EntryBaseSave, EntryOverridesSave {
 
 export interface AlgorithmEntrySave extends EntryBaseSave, EntryOverridesSave {
   /**
-   * Opaque. Produced by `hostModal.getQuizBuilderSettings()` and stored
-   * verbatim; the filter set is large and server-backed, so we never inspect or
-   * rebuild it — we round-trip it untouched.
+   * Opaque. `hostModal.getQuizBuilderSettings()` produces it and we store it
+   * unchanged. Never inspect or rebuild it.
    */
   settings: Record<string, unknown>
 }
@@ -98,9 +95,9 @@ export interface TitleEntrySave extends EntryBaseSave {
 }
 
 /**
- * Overrides are written **only when the entry actually overrides its block**
+ * A key is written only when the entry overrides its block
  * (`customQuizPlayEntryBlock.js:72-87`). An absent key means "follow the
- * block", so these must stay optional and must not be emitted as `undefined`.
+ * block", so never emit one as `undefined`.
  */
 export interface EntryOverridesSave {
   guessTime?: GuessTimeSave
@@ -119,11 +116,10 @@ export type EntrySave =
 /**
  * Fields the **server** adds on load that a save never carries.
  *
- * `annSongIds` was the first: the client consumes and deletes it
- * (`customQuizAlgorithmBlock.js:126`). The live suite found two more by saving
- * a quiz and diffing what came back — `matchSongCount` on a rule block and a
- * top-level `version`. None of the three appears in `generateQuizSave`, so
- * echoing them back would send AMQ something its own client never would.
+ * The client consumes and deletes `annSongIds`
+ * (`customQuizAlgorithmBlock.js:126`). The server also returns
+ * `matchSongCount` on a rule block and a top-level `version`. None of the
+ * three appears in `generateQuizSave`, so do not send them back.
  */
 export const SERVER_ONLY_QUIZ_FIELDS = ['version'] as const
 export const SERVER_ONLY_BLOCK_FIELDS = ['matchSongCount'] as const
@@ -141,20 +137,22 @@ export interface RuleBlockSave {
   blocks: EntrySave[]
 }
 
-/** `customQuizCreator.js:136` — what `save quiz` carries and `load custom quiz` returns. */
+/**
+ * `customQuizCreator.js:136`. `save quiz` sends it and `load custom quiz`
+ * returns it.
+ */
 export interface QuizSave {
   name: string
   description: string
-  /** Community tag ids; AMQ caps the selection at 2. */
+  /** Community tag ids. AMQ allows at most 2. */
   tags: number[]
   ruleBlocks: RuleBlockSave[]
   ruleBlockRandomOrder: boolean
 }
 
-// --- kind discrimination ----------------------------------------------------
-// Mirrors the loader's `if` ladder exactly, in the same order. `message` and
-// `title` are checked with `!= undefined` there because an empty string is a
-// legitimate value for both.
+// These guards follow the order of the loader's `if` ladder. The loader checks
+// `message` and `title` with `!= undefined` because an empty string is a valid
+// value for both.
 
 export function isAnimeEntry(save: EntrySave): save is AnimeEntrySave {
   return (save as AnimeEntrySave).annId !== undefined

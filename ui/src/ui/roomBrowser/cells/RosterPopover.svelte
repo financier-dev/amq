@@ -1,11 +1,10 @@
 <!--
-  Who is in the room. Players with levels, then a divided Spectators section
-  when there is one (SPEC §3).
+  The room's roster: players with levels, then a separate Spectators section
+  when there are spectators (SPEC §3).
 
-  Names are real `<button>`s that open AMQ's own profile modal, so the popover
-  has to stay open while the pointer travels into it — `Floating` forwards the
-  enter/leave events back to the cell that owns the open state, and the gap is
-  small enough to cross within the dismiss delay.
+  Names are `<button>`s that open AMQ's profile modal, so the popover must
+  stay open while the pointer moves into it. `Floating` forwards the enter and
+  leave events to the cell that owns the open state.
 -->
 <script lang="ts">
   import type { RoomPlayer } from '../../../amq/rooms.svelte'
@@ -22,12 +21,12 @@
   const friends = $derived(new Set(friendNames))
 
   /**
-   * roomTile.js `buildPlayerList` sorts friends first, then blocked.
+   * `buildPlayerList` in roomTile.js sorts friends first, then blocked
+   * players.
    *
-   * The list is keyed by name, and a keyed `{#each}` throws on a duplicate —
-   * which would blank the whole screen, not just this popover. The reducer
-   * keeps the roster unique, so a repeat means the payload disagreed with that
-   * assumption; drop it rather than take the list down over it.
+   * Duplicates are dropped. The list is keyed by name, and a keyed `{#each}`
+   * throws on a duplicate key, which breaks the whole screen. The store keeps
+   * the roster unique, but the payload is the server's.
    */
   function ordered(list: RoomPlayer[]) {
     const seen = new Set<string>()
@@ -41,7 +40,7 @@
     try {
       if (socialTab.isBlocked(name)) return 1
     } catch {
-      // socialTab is not up yet; treat as an ordinary player.
+      // `socialTab` is not ready yet. Treat the player as not blocked.
     }
     return 2
   }
@@ -134,8 +133,8 @@
     color: var(--text-3);
   }
 
-  /* Repeated here as well as on the count, so the friend signal is never
-     carried by colour alone in only one place (SPEC §7). */
+  /* The name is coloured as well as the count, so the friend signal appears
+     in both places (SPEC §7). */
   .name.friend {
     color: var(--teal-fg);
   }

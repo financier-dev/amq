@@ -1,18 +1,16 @@
 <!--
   One row of the song library (SPEC §4.1).
 
-  An anime row is taller than a song row, and the two are aligned by their
-  *lead cell* rather than by indentation — `--qb-lib-lead` on an anime row and
-  the wider `--qb-lib-song-lead` on a song row, so the type badge clears the
-  chevron above it. That offset, plus the height difference, is what makes an
-  expanded anime read as a group.
+  An anime row is taller than a song row. The two align by their *lead cell*,
+  not by indentation: `--qb-lib-lead` on an anime row and the wider
+  `--qb-lib-song-lead` on a song row, so the type badge clears the chevron
+  above it. The offset and the height difference make an expanded anime read
+  as a group.
 
-  Clicking anywhere on an anime row expands it; the chevron is the affordance
-  and the keyboard control, not the only target. See `onRowClick`.
+  A click anywhere on an anime row expands it. See `onRowClick`.
 
-  Both buttons read `+ Add`: an anime row adds the anime as a rule you then pick
-  types on, a song row adds that one song. That is why the old OP/ED/IN buttons
-  are gone from the library — the choice moved onto the entry.
+  Both buttons read `+ Add`. An anime row adds the anime as an entry, and the
+  player picks the song types on that entry. A song row adds that one song.
 -->
 <script lang="ts">
   import type { LibraryRow } from '../../../amq/library.svelte'
@@ -31,13 +29,11 @@
   let addChevron = $state<HTMLButtonElement | null>(null)
 
   /**
-   * The whole anime row toggles, not just the chevron — a 24px target for the
-   * row's main action is a poor one, and the row already lights up on hover,
-   * which reads as an invitation to click it.
+   * The whole anime row toggles, not only the 24px chevron.
    *
-   * Every `<button>` on the row is excluded, which covers `+ Add`, the
-   * add-to-block caret **and** the chevron itself: the chevron's own handler
-   * fires alone rather than being toggled twice.
+   * Clicks on any `<button>` in the row are ignored here. That covers
+   * `+ Add`, the add-to-block caret and the chevron, whose own handler does
+   * the toggle.
    */
   function onRowClick(event: MouseEvent) {
     if (row.kind !== 'anime') return
@@ -93,7 +89,7 @@
       <Icon name="plus" size={13} />
       Add
     </button>
-    <!-- A one-off target, without re-aiming the whole pane (SPEC §7). -->
+    <!-- Adds to one chosen block without changing the pane's target (SPEC §7). -->
     <button
       bind:this={addChevron}
       type="button"
@@ -120,7 +116,7 @@
 
   .lib-row.song {
     height: var(--qb-lib-song-h);
-    /* A song row has nothing to expand, so it must not offer to. */
+    /* A song row has nothing to expand. */
     cursor: default;
   }
 
@@ -128,7 +124,7 @@
     background: var(--bg-row-hover);
   }
 
-  /* An expanded anime tints so its run of songs reads as belonging to it. */
+  /* The tint groups an expanded anime with its songs. */
   .lib-row.open {
     background: rgba(91, 155, 245, 0.08);
   }
@@ -144,12 +140,8 @@
     flex: 0 0 var(--qb-lib-song-lead);
   }
 
-  /*
-   * Centred in its cell. An earlier version nudged it 5px left so the glyph's
-   * *tip* lined up with the type badges of the songs below — which lined up
-   * one thing at the cost of the chevron visibly sitting off-centre in its own
-   * row, which is what a reader actually notices.
-   */
+  /* Centred in its cell. Do not shift it to align with the type badges
+     below: it then looks off-centre in its own row. */
   .chev {
     display: inline-flex;
     align-items: center;

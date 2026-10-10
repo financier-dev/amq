@@ -1,10 +1,9 @@
 <!--
   Sticky column header.
 
-  Every column is a sort button (SPEC §3) and carries the sort state in its
-  accessible name, since a flex layout has no role for `aria-sort` to attach
-  to. Widths come from the shared tokens in app.css so this list and the row's
-  can never disagree.
+  Each data column is a sort button (SPEC §3). The sort state is in the
+  button's accessible name, because a flex layout has no role that takes
+  `aria-sort`. Widths come from the tokens in app.css that the rows also use.
 -->
 <script lang="ts">
   import type { SortKey } from '../../amq/sort'
@@ -20,7 +19,7 @@
   const COLUMNS: {
     key: SortKey
     label: string
-    /** The token holding this column's width; absent means it flexes. */
+    /** The token with this column's width. Absent for the flexible column. */
     width?: string
     align?: 'right'
   }[] = [
@@ -64,8 +63,8 @@
     </button>
   {/each}
 
-  <!-- Neither of these has a meaningful order to sort by. The action column is
-       self-evident from its buttons, so it carries no heading at all. -->
+  <!-- These two columns have no order to sort by. The action column needs no
+       heading. -->
   <span class="col static grow">Modifiers · genres · tags</span>
   <span class="col static" style:width="var(--col-action)" aria-hidden="true"
   ></span>
@@ -88,8 +87,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    /* Fixed columns must never shrink, or the headings drift out of step with
-       the rows, which do not shrink either. */
+    /* Fixed columns must not shrink. The rows do not shrink either, and the
+       headings must stay aligned with them. */
     flex: 0 0 auto;
     min-width: 0;
     padding: 0;
@@ -105,11 +104,11 @@
   }
 
   /*
-   * The chips column takes the leftover width. Basis 0, not auto: with `auto`
-   * the column is sized from its content, so the header's label and a row's
-   * chips would each claim a different share of the free space and the two
-   * would drift apart. `min-width` overrides the flex default of `auto`, which
-   * would otherwise raise the column to its min-content size.
+   * The chips column takes the leftover width. The basis is 0, not `auto`:
+   * with `auto` the header label and a row's chips would each size the column
+   * from their own content and get different widths. `min-width` replaces the
+   * flex default of `auto`, which would raise the column to its min-content
+   * size.
    */
   .col.grow {
     flex: 1 1 0;

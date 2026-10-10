@@ -2,8 +2,7 @@
   The room browser screen.
 
   Three fixed bands over a scrolling list (SPEC §1). AMQ's menu bar keeps the
-  bottom ~45px of the viewport and is not ours — the list reserves that space
-  rather than covering it.
+  bottom 45px of the viewport, so the screen stops above it.
 -->
 <script lang="ts">
   import { filterStore } from '../../amq/filters.svelte'
@@ -48,15 +47,15 @@
   }
 
   /**
-   * Stops key events from our own text fields reaching AMQ's document-level
+   * Stops key events from our text fields from reaching AMQ's document-level
    * handlers.
    *
-   * `setup.js:56` blocks Backspace unless `event.target` is an input — but an
-   * event crossing a shadow boundary is retargeted to the host element, so it
-   * sees our wrapper `<div>`, decides the key came from outside a field and
-   * calls `preventDefault()`. The result is that Backspace does nothing in the
-   * search box. Keeping the event inside the shadow root also stops AMQ's
-   * other global shortcuts firing while you type.
+   * `setup.js:56` blocks Backspace unless `event.target` is an input. An
+   * event that crosses a shadow boundary is retargeted to the host element,
+   * so AMQ sees our wrapper `<div>` and calls `preventDefault()`. Backspace
+   * then does nothing in the search box. Keeping the event inside the shadow
+   * root also keeps AMQ's global shortcuts from firing while the player
+   * types.
    */
   function keepKeysLocal(event: KeyboardEvent) {
     const target = event.target as HTMLElement | null
@@ -132,7 +131,7 @@
   .screen {
     position: fixed;
     inset: 0;
-    /* AMQ's menu bar owns the bottom strip; leave it alone (SPEC §1). */
+    /* AMQ's menu bar uses the bottom strip (SPEC §1). */
     bottom: 45px;
     display: flex;
     flex-direction: column;
@@ -168,7 +167,7 @@
   .panel-anchor {
     position: absolute;
     top: 56px;
-    /* Lines up under the Filters button, which sits left of Host Room. */
+    /* Aligns under the Filters button, which is left of Host Room. */
     right: calc(var(--gutter) + 132px);
     z-index: 60;
   }

@@ -1,9 +1,8 @@
 <!--
   The band under the top bar: one removable chip per filter group that differs
-  from default, plus the result count.
+  from its default, and the result count.
 
-  It lists exactly the set the Filters badge counts, so the two can never
-  disagree about what "active" means (SPEC §4).
+  It lists the same set the Filters badge counts (SPEC §4).
 -->
 <script lang="ts">
   import type { ActiveChip } from '../../amq/filters.svelte'

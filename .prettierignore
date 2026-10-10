@@ -1,7 +1,7 @@
 node_modules/
-# Build output, committed so a script can be grabbed straight from GitHub.
+# Build output, committed so a script can be installed from GitHub.
 dist/
 ui/tests/screenshots/
-# Vendored font subsets + the generated @font-face block.
+# Vendored font subsets and the generated @font-face block.
 ui/tests/fonts/
 ui/tests/fonts.css

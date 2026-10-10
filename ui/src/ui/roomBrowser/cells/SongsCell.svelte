@@ -1,9 +1,9 @@
 <!--
-  Songs. In lobby: the total plus a dim caption. Playing: a progress bar and
+  Songs. In lobby: the total and a dim caption. Playing: a progress bar and
   `27 / 45`.
 
-  The progress fill is deliberately neutral rather than amber — amber would read
-  as a warning, and a game being underway is not one (SPEC §3).
+  The progress fill is neutral, not amber. Amber reads as a warning, and a
+  game in progress is not one (SPEC §3).
 -->
 <script lang="ts">
   import type { Room } from '../../../amq/rooms.svelte'
@@ -16,7 +16,7 @@
 
   let { room }: Props = $props()
 
-  // `songsLeft` counts down; the cell shows how far the game has come.
+  // `songsLeft` counts down. The cell shows the songs already played.
   const played = $derived(Math.max(0, room.songCount - room.songsLeft))
   const pct = $derived(
     room.songCount > 0 ? Math.round((played / room.songCount) * 100) : 0

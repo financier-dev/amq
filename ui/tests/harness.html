@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <title>amq-ui harness</title>
     <!-- Loads the BUILT script, for `npm test`. `harness.dev.html` is the same
-         page against the dev server for a live edit loop — add a stub here and
-         it needs adding there too. -->
-    <!-- The real IBM Plex faces, vendored under tests/fonts so the suite
-         measures the metrics the game actually renders with, without needing
-         the network. Several layout bugs here were metric-dependent. -->
+         page against the dev server. A stub added here must be added there
+         too. -->
+    <!-- The real IBM Plex faces, vendored under tests/fonts. The suite then
+         measures with the metrics the game renders with, and needs no
+         network. -->
     <link rel="stylesheet" href="./fonts.css" />
     <style>
-      /* Stands in for the user's wallpaper: the screen must stay legible over
-         arbitrary bright art (SPEC §7). */
+      /* Stands in for the player's wallpaper. The screen must stay legible
+         over bright art (SPEC §7). */
       html,
       body {
         margin: 0;
@@ -29,8 +29,8 @@
           ),
           #0b0e14;
       }
-      /* AMQ's quest drawer, verbatim from main.css: absolute, z-index 10.
-         Our screen must not cover it. */
+      /* AMQ's quest drawer, copied from main.css: absolute, z-index 10. Our
+         screen must not cover it. */
       #questContainer {
         position: absolute;
         left: 0;
@@ -40,7 +40,7 @@
         background-color: #424242;
         z-index: 10;
       }
-      /* AMQ's menu bar owns the bottom 45px and is not ours to draw. */
+      /* AMQ's menu bar uses the bottom 45px. */
       #mainMenuBar {
         position: fixed;
         left: 0;

@@ -1,16 +1,14 @@
 <!--
-  The 14px gutter at the head of an entry row (SPEC §5.5).
+  The 14px gutter at the start of an entry row (SPEC §5.5).
 
-  Two consecutive entries can be chained so they always play back to back, even
-  when the block is shuffled. The button sits on the *boundary* between the two
-  rows, and is always present at 30% opacity so the affordance is discoverable —
-  the live builder does the same, and a button that only appears on hover is one
-  nobody finds.
+  Two consecutive entries can be chained so they always play back to back,
+  even when the block is shuffled. The button sits on the boundary between the
+  two rows. It is always visible at 30% opacity so that players can find it,
+  as in AMQ's builder.
 
-  The rail runs from the middle of the upper row to the middle of the lower one,
-  which no single row can draw: each renders its own half, hence `chainedUp` and
-  `chainedDown`. The flag itself lives on the *lower* entry (`connectUp`), which
-  is how AMQ stores it.
+  The rail runs from the middle of the upper row to the middle of the lower
+  one. Each row draws its own half, hence `chainedUp` and `chainedDown`. The
+  flag is on the *lower* entry (`connectUp`), as AMQ stores it.
 -->
 <script lang="ts">
   interface Props {
@@ -41,7 +39,7 @@
       title={label}
       onclick={onToggle}
     >
-      <!-- Two interlocking arcs; a chain link reads at 9px where a glyph does not. -->
+      <!-- Two interlocking arcs. A chain link stays readable at 9px. -->
       <svg
         width="9"
         height="9"
@@ -67,7 +65,7 @@
     align-self: stretch;
   }
 
-  /* Half-height each, meeting at the row boundary. */
+  /* Each half is 50% high. The halves meet at the row boundary. */
   .rail {
     position: absolute;
     left: 50%;
@@ -88,8 +86,8 @@
   }
 
   /*
-   * Centred on the boundary, not inside the row: half of it overhangs the row
-   * above. `z-index` keeps it over the rail it interrupts.
+   * Centred on the row boundary: half of it overhangs the row above.
+   * `z-index` keeps it above the rail.
    */
   .link {
     position: absolute;

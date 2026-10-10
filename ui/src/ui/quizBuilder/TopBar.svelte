@@ -3,10 +3,9 @@
 
   Back · "Quiz Builder" · the quiz's name · the totals · Undo · Save.
 
-  The summary here is the number that matters, so it is in `--text` rather than
-  grey: how many songs the quiz will actually play, against the 250-song cap it
-  shares. There is deliberately **no estimated length** — song durations do not
-  exist anywhere client-side, so the figure could only be invented.
+  The summary shows how many songs the quiz plays against the 250-song limit.
+  It uses `--text`, not grey, because it is the main number. There is **no
+  estimated length**: the client has no song durations.
 -->
 <script lang="ts">
   import { t } from '../../amq/derive'
@@ -56,10 +55,8 @@
   </div>
 
   <!--
-    Not in the mock, but AMQ carries it on every quiz: with this on, the rule
-    blocks themselves play in a random order rather than the order they are in
-    here — which makes the list's own ordering advisory, so it is worth saying
-    on the screen that shows that order.
+    Not in the mock, but every AMQ quiz has this setting. When it is on, the
+    rule blocks play in a random order, not the order shown here.
   -->
   <Tooltip
     text={t(
@@ -80,7 +77,7 @@
     </button>
   </Tooltip>
 
-  <!-- One step back. Cheap and reversible, so no confirmation. -->
+  <!-- Undoes one step, so it needs no confirmation. -->
   <button
     type="button"
     class="quiet icon"
@@ -95,11 +92,8 @@
     Undo
   </button>
 
-  <!--
-    Throws away *every* change since the last save, so it asks first — it is
-    not itself undoable, and the confirmation is where the wording has to be
-    unambiguous about that.
-  -->
+  <!-- Discards every change since the last save and cannot be undone, so it
+       asks first. -->
   <button
     type="button"
     class="quiet"
@@ -196,7 +190,7 @@
     white-space: nowrap;
   }
 
-  /* The cap is AMQ's and it refuses the save, so it is worth shouting about. */
+  /* Over the limit. AMQ refuses the save. */
   .headline.over {
     color: var(--rose-fg);
   }

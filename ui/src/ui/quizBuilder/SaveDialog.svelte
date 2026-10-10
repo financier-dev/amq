@@ -1,19 +1,18 @@
 <!--
-  Saving a quiz: description and tags, then hand it to AMQ.
-  
-  **This dialog is ours, and it should not have been.** The plan was to reuse
-  AMQ's own `#cqcSaveModal`, which already validates and owns the error toasts.
-  That turns out to be impossible: its save button calls `generateQuizSave()`
-  (`customQuizCreator.js:136`), which reads `this.builder.generateBlockSaves()`
-  — AMQ's *own* DOM builder, which we never populate because we replaced the
-  screen. Reusing the dialog would save an empty quiz over the player's work.
-  
-  So the dialog is rebuilt and the *command* is still AMQ's: the payload goes
-  out through `save quiz` exactly as the client sends it, so the server-side
-  validation, the 250-song cap and the error reply all stay where they were.
-  
-  The tag list is read from AMQ's own `tagContainer` rather than re-fetched —
-  the names are already there, localised, and the cap of two is theirs.
+  The save dialog: description and tags, then the save through AMQ.
+
+  **This dialog is ours.** AMQ's `#cqcSaveModal` cannot be reused. Its save
+  button calls `generateQuizSave()` (`customQuizCreator.js:136`), which reads
+  `this.builder.generateBlockSaves()`. That is AMQ's own DOM builder, and we
+  never populate it because we replaced the screen. Reusing the dialog would
+  save an empty quiz over the player's work.
+
+  The command is still AMQ's. The payload goes out through `save quiz` in the
+  shape the client sends, so server-side validation, the 250-song limit and
+  the error reply stay unchanged.
+
+  The tag list comes from AMQ's `tagContainer`, which already has the
+  localised names. The limit of two tags is AMQ's.
 -->
 <script lang="ts">
   import { t } from '../../amq/derive'
@@ -27,7 +26,7 @@
 
   let { onClose }: Props = $props()
 
-  /** `{ tagId, name }` from AMQ's tag component; empty if it is not built yet. */
+  /** Tags from AMQ's tag component. Empty if the component is not built yet. */
   const tags = $derived.by((): { id: number; name: string }[] => {
     try {
       const map = (customQuizCreator as any)?.tagContainer?.tagMap
@@ -59,8 +58,6 @@
     quizStore.save()
   }
 
-  // Closing on a successful save keeps the dialog from lingering over a quiz
-  // that is already stored.
   $effect(() => {
     if (quizStore.saveState === 'saved') onClose()
   })
@@ -127,12 +124,12 @@
       </div>
     {:else if selected.length > 0}
       <!--
-        The tag component is not built, so the names are unknown — but the ids
-        are still round-tripped, so saving here does not drop them.
+        The tag component is not built, so the names are unknown. The ids
+        still round-trip, so a save keeps the tags.
       -->
       <p class="note">
         This quiz has {selected.length}
-        {selected.length === 1 ? 'tag' : 'tags'}, kept as they are.
+        {selected.length === 1 ? 'tag' : 'tags'}. The save keeps them.
       </p>
     {/if}
 

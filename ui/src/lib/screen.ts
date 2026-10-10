@@ -1,17 +1,15 @@
 /**
- * Installing one of our screens over one of AMQ's.
+ * Installs one of our screens over one of AMQ's.
  *
- * Extracted from `main.ts` when the quiz builder became the second screen. The
- * three awkward parts of the handover are all here rather than duplicated per
- * screen, because each of them was a bug once:
+ * Three rules of the handover:
  *
- *   - `changeView` early-returns when the target is already the current view
- *     (`viewChanger.js:45`), so swapping the controller under our feet cannot
- *     be done through it. Drive the restored controller directly instead.
- *   - Taking over while AMQ's screen is open leaves its DOM and its listeners
- *     behind ours, so close it first.
- *   - A screen is hidden rather than unmounted, so reopening it is instant and
- *     its scroll position survives.
+ *   - `changeView` returns early when the target is already the current view
+ *     (`viewChanger.js:45`), so it cannot re-open a view after its controller
+ *     is swapped. Call the controller's `openView` directly.
+ *   - Close AMQ's screen before taking over. Otherwise its DOM and listeners
+ *     stay active behind ours.
+ *   - Hide a screen on close; do not unmount it. Reopening is then instant
+ *     and the scroll position survives.
  */
 
 import type { Component } from 'svelte'
@@ -24,16 +22,16 @@ export interface ScreenOptions<Props extends Record<string, any>> {
   view: string
   component: Component<Props>
   props: Props
-  /** Runs when the screen opens; receives whatever `changeView` was passed. */
+  /** Receives the argument `changeView` was called with. */
   onOpen?: (arg?: any) => void
   onClose?: () => void
   zIndex?: number
   /**
-   * Extra controller methods to define on our replacement.
+   * Extra methods for our replacement controller.
    *
-   * The controllers are not only view hooks — other parts of AMQ call into
-   * them. Anything listed here shadows the original, so a handler that needs
-   * to observe such a call should do its work and then delegate.
+   * Other parts of AMQ call controller methods beyond the two view hooks. A
+   * method listed here shadows the original, so it must delegate to
+   * `original` after doing its own work.
    */
   extra?: (original: ViewController) => Record<string, unknown>
 }
@@ -42,7 +40,7 @@ export interface Screen {
   readonly view: string
   readonly installed: boolean
   install: () => void
-  /** Hands the screen back to AMQ, live. The escape hatch. */
+  /** Hands the screen back to AMQ without a reload. */
   useLegacy: () => void
   useNew: () => void
   app: () => ShadowApp | null
@@ -67,8 +65,8 @@ export function createScreen<Props extends Record<string, any>>(
   function mount() {
     if (app) return app
     app = mountShadowApp(document.body, component, props)
-    // Above AMQ's page, below its menu bar's own stacking — the screen reserves
-    // the bottom strip rather than covering it.
+    // Above AMQ's page but below its menu bar. The screen leaves the bottom
+    // strip free for the bar.
     app.host.style.position = 'relative'
     app.host.style.zIndex = String(zIndex)
     return app

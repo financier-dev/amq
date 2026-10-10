@@ -4,8 +4,8 @@
  *   npm run build              # all targets
  *   npm run build -- amq-ui    # just one
  *
- * vite-plugin-monkey writes one userscript per build, so targets are built in
- * sequence rather than as one multi-entry bundle.
+ * vite-plugin-monkey writes one userscript per build, so targets build in
+ * sequence.
  */
 
 import fs from 'node:fs'
@@ -26,9 +26,9 @@ const selected = requested.length
   : targets
 
 /*
- * Cleared once here rather than per build (`emptyOutDir: false`), so one
- * target's build cannot delete another's output, while a renamed or deleted
- * target still stops shipping a stale file from dist.
+ * Clear `dist/` once, not per build (`emptyOutDir: false`). A per-build clear
+ * would delete the other targets' output. Clearing at all removes the file of
+ * a renamed or deleted target.
  */
 if (!requested.length && fs.existsSync(dist)) {
   for (const entry of fs.readdirSync(dist)) {
@@ -38,7 +38,7 @@ if (!requested.length && fs.existsSync(dist)) {
 
 for (const target of selected) {
   console.log(`\nbuilding ${target.name} → dist/${target.fileName}`)
-  // `configFile: false` — the config is right here; don't re-read
-  // vite.config.ts, which would build the dev server's single target.
+  // `configFile: false` stops vite from re-reading vite.config.ts, which only
+  // knows the dev server's single target.
   await build({ ...configFor(target), configFile: false })
 }

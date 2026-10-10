@@ -7288,7 +7288,7 @@
 	        label: `${prefix}${name}`,
 	        tone: entry.state === 2 ? "rose" : "violet",
 	        dashed: entry.state === 3,
-	        tooltip: entry.state === 1 ? `Include — the show must have the ${name} ${kind}` : entry.state === 2 ? `Exclude — shows with the ${name} ${kind} are left out` : `Optional — a show must match at least one optional entry, of which ${name} is one`
+	        tooltip: entry.state === 1 ? `Include — the show must have the ${name} ${kind}` : entry.state === 2 ? `Exclude — shows with the ${name} ${kind} are left out` : `Optional — a show must match at least one optional entry. ${name} is one of them.`
 	      });
 	    }
 	  }
@@ -8019,11 +8019,10 @@
 		#rooms = new SvelteMap();
 		#unbind = null;
 
-		/** Room whose settings the host modal is previewing, if any. */
+		/** The room whose settings the host modal is previewing. */
 		#previewRoomId = null;
 
-		#bound = /** True between `bind()` and `unbind()`. */
-		state(false);
+		#bound = state(false);
 
 		get bound() {
 			return get(this.#bound);
@@ -8097,7 +8096,7 @@
 			this.#rooms.clear();
 		}
 
-		/** Asks the server for a fresh snapshot; the reply arrives as `New Rooms`. */
+		/** The reply arrives as `New Rooms`. */
 		refresh() {
 			sendCommand("roombrowser", "get rooms");
 		}
@@ -8191,7 +8190,7 @@
 					}
 
 				default:
-					// roomTile.js:325 — any unrecognised changeType means the room closed.
+					// roomTile.js:325. Any other changeType means the room closed.
 					{
 						if (this.#previewRoomId === room.id) {
 							this.#previewRoomId = null;
@@ -8206,9 +8205,9 @@
 		}
 
 		// --- actions ------------------------------------------------------------
-		// Delegated to AMQ's roomBrowser so `lobby.setupLobby` +
-		// `viewChanger.changeView('lobby')` keep running unchanged.
-		/** roomTile.js `joinGame` — a private room prompts before it joins. */
+		// These call AMQ's roomBrowser, which runs `lobby.setupLobby` and
+		// `viewChanger.changeView('lobby')`.
+		/** roomTile.js `joinGame`. A private room asks for the password first. */
 		join(room) {
 			if (!room.isPrivate) {
 				roomBrowser.fireJoinLobby(room.id);
@@ -8228,7 +8227,7 @@
 			});
 		}
 
-		/** roomTile.js `spectateGame` — AMQ owns the private-room prompt here. */
+		/** roomTile.js `spectateGame`. AMQ shows the private-room prompt itself. */
 		spectate(room) {
 			if (room.isPrivate) {
 				roomBrowser.spectateGameWithPassword(room.id);
@@ -8242,11 +8241,11 @@
 		}
 
 		/**
-		 * Opens AMQ's host modal read-only on a room's settings — the same view its
-		 * own `.rbrAllOptionsIcon` opens (roomTile.js `previewSettings`).
+		 * Opens AMQ's host modal read-only on a room's settings, as
+		 * `.rbrAllOptionsIcon` does (roomTile.js `previewSettings`).
 		 *
-		 * Call order matters and is copied verbatim: `changeSettings` is what sets
-		 * `hostModal.gameMode`, which `setModePreviewGame` then reads for its title.
+		 * Keep this call order. `changeSettings` sets `hostModal.gameMode`, and
+		 * `setModePreviewGame` reads it for the title.
 		 */
 		previewSettings(room) {
 			this.#previewRoomId = room.id;
@@ -8374,8 +8373,8 @@
 	      kind: "algorithm",
 	      settings: save.settings,
 	      overrides: readOverrides(raw),
-	      // The server pre-supplies matches on load and the client deletes them off
-	      // the payload; keep them out of the unknown bag or they'd be saved back.
+	      // The server sends matches on load and the client deletes them from the
+	      // payload. Listing `annSongIds` as known keeps it out of the save.
 	      matchedAnnSongIds: raw.annSongIds,
 	      unknown: rest(raw, [...PLAY_ENTRY_KEYS, "settings", "annSongIds"])
 	    };
@@ -8422,8 +8421,8 @@
 	  "duplicates",
 	  "guessModes",
 	  "blocks",
-	  // Server-added on load; listed so it lands neither in the model nor the
-	  // unknown bag, and so is not echoed back on save.
+	  // Listed so they reach neither the model nor the unknown bag, and are not
+	  // sent back on save.
 	  ...SERVER_ONLY_BLOCK_FIELDS
 	];
 	function ruleBlockFromSave(save) {
@@ -8492,9 +8491,9 @@
 	        },
 	        entry.unknown
 	      );
-	    // Message and title spread the base *last* in the client
+	    // The client spreads the base last for message and title
 	    // (`customQuizMessageBlock.js:129`). Key order does not affect equality,
-	    // but matching it keeps a diff of the two payloads readable.
+	    // but the same order keeps a diff of the two payloads readable.
 	    case "message":
 	      return withUnknown(
 	        {
@@ -8728,9 +8727,8 @@
 	}
 
 	const TOGGLE_GROUPS$1 = [
-		// Watched only. The builder is for picking songs you know, and the full
-		// library is ~9,500 anime against a watch list an order of magnitude smaller
-		// — starting unfiltered buries the shows you actually recognise.
+		// Defaults to watched only. The full library has about ten times as many
+		// anime as a typical watch list, which hides the ones the player knows.
 		group$1(
 			"watchStatus",
 			() => t("song_library.filters.watch_status", "Watch status"),
@@ -8761,11 +8759,10 @@
 		]),
 
 		/*
-		 * The real set, not the five the spec listed. `anime_types_base` ships ten,
-		 * and a type with no chip can never be filtered out — so listing only five
-		 * would quietly make Music Videos and Doujin unfilterable. Keys match what
-		 * `convertCategoryToKey` derives from `category.name`, and the labels come
-		 * from `anime_types_base` because they carry no `_NUMBER_` slot.
+		 * All ten types from `anime_types_base`, not the five SPEC lists. A type
+		 * with no option could never be filtered out. Keys match what
+		 * `convertCategoryToKey` derives from `category.name`. Labels come from
+		 * `anime_types_base` because those strings have no `_NUMBER_` placeholder.
 		 */
 		group$1("animeType", () => t("room_browser.filters.anime_type.title", "Anime type"), [
 			option$1("tv", "anime_types_base.tv", "TV"),
@@ -8990,14 +8987,12 @@
 
 		// --- predicates ----------------------------------------------------------
 		/**
-		 * Predicates closed over a **plain** snapshot of the filter state.
+		 * Predicates over a **plain** snapshot of the filter state.
 		 *
-		 * Reading `this.state` inside a loop is what made searching a real library
-		 * slow: it is a deep `$state` proxy, so every property access in the hot path
-		 * goes through a proxy trap, and the pane makes ~80k of them per keystroke
-		 * over 20k anime. Taking one snapshot up front and testing against plain
-		 * objects removes all of it, while still registering the dependency so the
-		 * derivation re-runs when a filter changes.
+		 * `this.state` is a deep `$state` proxy, and reading it inside the filter
+		 * loop costs a proxy trap per property access, tens of thousands of times
+		 * per pass. One snapshot up front avoids that and still registers the
+		 * dependency, so the derivation re-runs when a filter changes.
 		 */
 		get predicates() {
 			const toggles = snapshot(this.state.toggles);
@@ -9009,12 +9004,11 @@
 			};
 		}
 
-		/** Anime-level tests: everything that does not depend on a specific song. */
+		/** Tests that do not depend on a specific song. */
 		matchesAnime(anime) {
 			return animeMatches(anime, snapshot(this.state.toggles), snapshot(this.state.vintage));
 		}
 
-		/** Song-level tests. */
 		matchesSong(song) {
 			return songMatches(song, snapshot(this.state.toggles));
 		}
@@ -9211,8 +9205,7 @@
 
 		return {
 			annId,
-			// `mainName` honours the player's romaji preference, so the builder agrees
-			// with every other screen about what a show is called.
+			// `mainName` follows the player's romaji setting, as on AMQ's screens.
 			name: anime.mainName ?? unknownAnime(annId).name,
 			category: animeTypeLabel(anime.category),
 			year: anime.year ?? 0,
@@ -9253,8 +9246,8 @@
 			annSongId,
 			animeName: describeAnime(entry.annId).name,
 			title: song?.name ?? "",
-			// `artist` is resolved onto the song entry from whichever of the artist or
-			// group map applies (`libraryCacheHandler.js:541`).
+			// The cache sets `artist` from the artist map or the group map
+			// (`libraryCacheHandler.js:541`).
 			artist: song?.artist?.name ?? "",
 			badge: songTypeBadge(entry.type, entry.number),
 			known: true
@@ -9333,7 +9326,7 @@
 	}
 
 	class LibraryStore {
-		/** Anime whose songs are showing. Expanding lists exactly its songs. */
+		/** Anime whose songs are listed below their row. */
 		expanded = new SvelteSet();
 
 		#loaded = /** True once AMQ's cache is populated. */
@@ -9389,11 +9382,10 @@
 		/**
 		 * The whole library in display order, sorted once per cache load.
 		 *
-		 * The sort is the expensive part of this pane: `localeCompare` over ~20k
-		 * anime costs a few hundred milliseconds, and doing it inside the filter
-		 * derivation meant paying it again on every keystroke. Keeping it in its own
-		 * `$derived` — which depends only on `trackCache()` — means a search re-runs
-		 * the cheap predicate over an already-ordered list.
+		 * The sort is the expensive step: `localeCompare` over the whole library
+		 * takes a few hundred milliseconds. This `$derived` depends only on
+		 * `trackCache()`, so a search re-runs only the cheap predicate over the
+		 * sorted list.
 		 */
 		#sortedAnime = user_derived(() => {
 			const prepared = [];
@@ -9404,12 +9396,9 @@
 					prepared.push({
 						anime,
 						name: anime.mainName ?? "",
-						// AMQ precomputes these at cache load; resolved once here so a
-						// keystroke is `includes` over strings already in the right shape.
+						// Resolved once here, not per keystroke.
 						search: animeSearchNames(anime),
 
-						// Flattened once rather than per keystroke — the spread allocated
-						// three arrays per anime and threw them away.
 						songs: [
 							...anime.songs?.OP ?? [],
 							...anime.songs?.ED ?? [],
@@ -9428,9 +9417,8 @@
 		});
 
 		/**
-		 * Anime matching the filters, each with the songs that survive them.
-		 * An anime whose every song is filtered out is dropped — showing a row that
-		 * expands to nothing is worse than not showing it.
+		 * Anime that match the filters, each with the songs that match. An anime
+		 * with no matching song is dropped.
 		 */
 		#matchingAnime = user_derived(() => guardPass("anime", () => this.#computeMatchingAnime(), { page: [], animeTotal: 0, songTotal: 0 }));
 
@@ -9465,7 +9453,7 @@
 			return { page, animeTotal, songTotal };
 		}
 
-		/** Songs matching the filters, for the two song-shaped tabs. */
+		/** Songs that match the filters, for the New and Wrong tabs. */
 		#matchingSongs = user_derived(() => guardPass("songs", () => this.#computeMatchingSongs(), []));
 
 		#computeMatchingSongs() {
@@ -9610,11 +9598,11 @@
 		}
 
 		/**
-		 * True when a whole pass failed — the payload has moved under us.
+		 * True when a whole pass failed, which means the payload changed shape.
 		 *
-		 * A getter rather than a `$derived`: it reads a non-reactive flag, so a
-		 * derived would cache `false` forever. Templates re-read it each render, and
-		 * the render that sets it is the one that empties `rows`.
+		 * A getter, not a `$derived`: it reads a non-reactive flag, and a derived
+		 * would cache `false`. The render that sets the flag also empties `rows`,
+		 * so templates re-read it.
 		 */
 		get broken() {
 			return libraryPassFailed();
@@ -9689,17 +9677,16 @@
 		#unbind = null;
 
 		/**
-		 * The quiz as the server last had it — the target of `revert()`.
-		 *
-		 * Captured on load, on a new quiz, and after a successful save.
+		 * The quiz as the server last had it, which `revert()` restores. Set on
+		 * load, on a new quiz, and after a successful save.
 		 */
 		#saved = null;
 
-		/** Snapshots for step-by-step undo, oldest first. */
+		/** Snapshots for undo, oldest first. */
 		#history = [];
 
-		// Declared with a default so the `$derived` fields below, which run at
-		// field-initialisation time, never read it before the constructor assigns it.
+		// The default matters: the `$derived` fields below run at field
+		// initialisation, before the constructor assigns this.
 		#library = amqLibrary;
 
 		#quiz = state(proxy(emptyQuiz(nextId("block"))));
@@ -9840,7 +9827,7 @@
 			return songCountCeiling(this.quiz, block);
 		}
 
-		/** Songs an anime entry can draw from, for the pick slider's range. */
+		/** How many songs an entry can draw from. Sets the pick slider's range. */
 		pool(entry) {
 			if (entry.kind === "anime") {
 				return this.#library.animeSongIds(entry.annId, entry.includeSongTypes).length;
@@ -9854,9 +9841,9 @@
 		}
 
 		/**
-		 * Why a given kind of block cannot be added right now, or null when it can.
-		 * The UI disables at the cap rather than letting AMQ reject the action, so
-		 * these mirror `customQuizBuilder.js:26-82` exactly.
+		 * The reason a block of this kind cannot be added now, or null when it can.
+		 * The limits follow `customQuizBuilder.js:26-82`, so the UI can disable the
+		 * action before AMQ rejects it.
 		 */
 		capReached(kind) {
 			if (totalEntryCount(this.quiz) >= MAX_BLOCK_COUNT && kind !== "rule") {
@@ -9909,7 +9896,7 @@
 			this.#unbind = null;
 		}
 
-		/** Blank quiz, one empty rule block — what AMQ's `setupNewQuiz` produces. */
+		/** A blank quiz with one empty rule block, as `setupNewQuiz` produces. */
 		startNew() {
 			this.quiz = emptyQuiz(nextId("block"));
 			this.quizId = null;
@@ -9921,7 +9908,7 @@
 			this.#markSaved();
 		}
 
-		/** Marks the load as impossible — used when the library never arrived. */
+		/** Marks the load as failed. Used when the library did not load. */
 		failLoad() {
 			this.loadFailed = true;
 			this.loaded = true;
@@ -9960,8 +9947,8 @@
 		}
 
 		/**
-		 * Hands the quiz to AMQ. The name check is AMQ's too, but doing it here keeps
-		 * the button honest rather than firing a command we know will be refused.
+		 * Sends the quiz through AMQ's `save quiz` command. `QuizBuilder.svelte`
+		 * checks the name before it opens the save dialog.
 		 */
 		save() {
 			this.saveState = "saving";
@@ -9981,7 +9968,7 @@
 			this.#markSaved();
 		}
 
-		/** Match counts arrive per algorithm block, keyed by the id we sent. */
+		/** Stores the matches on the algorithm entry whose id we sent. */
 		#onAlgorithmSongs(data) {
 			for (const block of this.quiz.blocks) {
 				for (const entry of block.entries) {
@@ -9994,9 +9981,8 @@
 
 		// --- undo ----------------------------------------------------------------
 		/**
-		 * Marks the quiz as changed. Every mutation below calls this first, so being
-		 * dirty is a property of the store rather than something each caller
-		 * remembers to set.
+		 * Records an undo step and marks the quiz as changed. Every mutation calls
+		 * it first.
 		 */
 		#checkpoint() {
 			this.#history.push(snapshot(this.quiz));
@@ -10008,11 +9994,10 @@
 		}
 
 		/**
-		 * Steps back one mutation.
+		 * Undoes one mutation.
 		 *
-		 * Like `revert()`, this swaps the whole document, so a reference held across
-		 * it points into the discarded tree. Components re-read from `quiz` each
-		 * render; anything caching an entry must look it up again by id.
+		 * Replaces the whole document, as `revert()` does. See the warning there
+		 * about stale references.
 		 */
 		undo() {
 			const previous = this.#history.pop();
@@ -10031,7 +10016,7 @@
 			return true;
 		}
 
-		/** Records the current quiz as the saved state; clears the dirty flag. */
+		/** Sets the current quiz as the saved state and clears the undo history. */
 		#markSaved() {
 			this.#saved = snapshot(this.quiz);
 			this.#history = [];
@@ -10040,14 +10025,14 @@
 		}
 
 		/**
-		 * Throws away every change since the last save.
+		 * Discards every change since the last save.
 		 *
-		 * This replaces the whole document, so **any entry or block reference held
-		 * across it is stale** — it points into the discarded tree and its edits go
-		 * nowhere. Components re-read from `quiz` every render and are fine; code
-		 * that caches an entry between calls must look it up again by id.
+		 * Replaces the whole document, so **any entry or block reference held
+		 * across the call is stale** and edits to it are lost. Components re-read
+		 * from `quiz` on every render. Code that caches an entry must look it up
+		 * again by id.
 		 *
-		 * Destructive and not itself undoable, so the caller confirms first.
+		 * Cannot be undone. The caller must confirm first.
 		 */
 		revert() {
 			if (!this.#saved) return false;
@@ -10076,7 +10061,7 @@
 			return this.quiz.blocks[this.quiz.blocks.length - 1];
 		}
 
-		/** AMQ refuses to delete the last rule block; so do we. */
+		/** AMQ refuses to delete the last rule block. So do we. */
 		removeRuleBlock(blockId) {
 			if (this.quiz.blocks.length <= 1) return false;
 
@@ -10096,8 +10081,8 @@
 		}
 
 		/**
-		 * SPEC §7: a duplicated rule block carries its entries, its nested blocks,
-		 * every setting and every override, and lands directly after the original.
+		 * SPEC §7: the copy carries the entries, nested blocks, settings and
+		 * overrides, and goes directly after the original.
 		 */
 		duplicateRuleBlock(blockId) {
 			if (this.capReached("rule")) return null;
@@ -10123,12 +10108,10 @@
 		}
 
 		/**
-		 * A detached copy of an entry.
+		 * A detached copy of an entry with a new id.
 		 *
-		 * `$state.snapshot`, not `structuredClone`: entries are deep reactive
-		 * proxies, and cloning one directly can throw — which is what made the
-		 * algorithm block's duplicate button look dead, since the error surfaced
-		 * nowhere the player could see it.
+		 * Uses `$state.snapshot`, not `structuredClone`: entries are deep reactive
+		 * proxies, and `structuredClone` can throw on one.
 		 */
 		#copyEntry(entry) {
 			const plain = snapshot(entry);
@@ -10146,7 +10129,7 @@
 			Object.assign(block, patch);
 		}
 
-		/** Clamped to what the 250-song budget leaves this block. */
+		/** Clamped to what the 250-song limit leaves for this block. */
 		setSongCount(blockId, value) {
 			const block = this.quiz.blocks.find((entry) => entry.id === blockId);
 
@@ -10157,7 +10140,7 @@
 		}
 
 		// --- entries -------------------------------------------------------------
-		/** Adds into the "Adds to" block unless a one-off target is given (SPEC §7). */
+		/** Adds to the "Adds to" block unless `blockId` is given (SPEC §7). */
 		addEntry(entry, blockId) {
 			const block = this.quiz.blocks.find((item) => item.id === (blockId ?? this.targetBlockId)) ?? this.quiz.blocks[0];
 
@@ -10190,12 +10173,11 @@
 		}
 
 		/**
-		 * SPEC §6: moving preserves each entry's overrides, and their order.
+		 * SPEC §6: a move keeps each entry's overrides and the entries' order.
 		 *
-		 * `at` inserts before that index in the target block; omitted or -1 appends.
-		 * The index is resolved **after** the entries are taken out, because removing
-		 * rows above the drop point shifts it — dropping onto row 5 of the block you
-		 * are dragging out of would otherwise land in the wrong place.
+		 * `at` inserts before that index in the target block. Omitted or -1
+		 * appends. The index is adjusted for moved entries that sat above it in the
+		 * target block, because removing them shifts the drop point.
 		 */
 		moveEntries(ids, toBlockId, at = -1) {
 			const moving = new Set(ids);
@@ -10294,9 +10276,9 @@
 		}
 
 		/**
-		 * SPEC §5.5's chain button sits between two rows and toggles the *lower*
-		 * entry's `connectUp`. The first entry of a block has nothing above it, so
-		 * it can never be chained.
+		 * SPEC §5.5: the chain button sits between two rows and toggles
+		 * `connectUp` on the *lower* entry. The first entry of a block has nothing
+		 * above it and cannot be chained.
 		 */
 		toggleChain(entryId) {
 			const block = this.blockOf(entryId);
@@ -10313,8 +10295,8 @@
 
 		// --- anime entry controls ------------------------------------------------
 		/**
-		 * SPEC §5.6: toggling a type re-clamps the pick count immediately, so the
-		 * slider's fill can never point past the pool it draws from.
+		 * SPEC §5.6: toggling a type clamps the pick count at once, so it never
+		 * exceeds the pool.
 		 */
 		toggleSongType(entryId, type) {
 			const entry = this.#entry(entryId);
@@ -10336,11 +10318,11 @@
 		}
 
 		/**
-		 * Writes back the settings AMQ's host modal produced for an algorithm block,
-		 * and asks the server for a fresh match count.
+		 * Stores the settings AMQ's host modal produced for an algorithm block and
+		 * requests a new match count.
 		 *
-		 * The blob is stored verbatim — we never inspect or normalise it, because the
-		 * filter set is AMQ's and a field we did not know about would be lost.
+		 * The settings are stored unchanged. Never inspect or normalise them: a
+		 * field we do not know would be lost.
 		 */
 		updateAlgorithmSettings(entryId, settings) {
 			const entry = this.#entry(entryId);
@@ -10353,7 +10335,7 @@
 			this.requestAlgorithmSongs(entry.id);
 		}
 
-		/** Asks the server how many songs an algorithm block matches. */
+		/** Requests the songs an algorithm block matches. */
 		requestAlgorithmSongs(entryId) {
 			const entry = this.#entry(entryId);
 
@@ -10371,7 +10353,7 @@
 		}
 
 		// --- per-entry overrides -------------------------------------------------
-		/** Applies an override to every selected play entry (SPEC §8's footer). */
+		/** Applies an override to every given play entry (SPEC §8's footer). */
 		setOverride(ids, key, value) {
 			this.#checkpoint();
 
@@ -10384,7 +10366,7 @@
 			}
 		}
 
-		/** "Reset to block" — absence is what makes an entry follow its block. */
+		/** "Reset to block". An entry with no override key follows its block. */
 		clearOverride(ids, key) {
 			this.#checkpoint();
 
@@ -10400,8 +10382,8 @@
 		}
 
 		/**
-		 * At least one guess mode must stay on — AMQ refuses the last toggle rather
-		 * than allowing a mode-less block, and so do we.
+		 * At least one guess mode must stay on. AMQ refuses to turn the last one
+		 * off, and so do we.
 		 */
 		static toggleGuessMode(modes, key) {
 			const next = { ...modes, [key]: !modes[key] };
@@ -10412,7 +10394,7 @@
 		}
 
 		// --- selection -----------------------------------------------------------
-		/** The flat list the list renders, used for shift-range selection. */
+		/** Entry ids in render order, for shift-range selection. */
 		get flatIds() {
 			return this.quiz.blocks.flatMap((block) => block.entries.map((entry) => entry.id));
 		}
@@ -10421,7 +10403,7 @@
 			if (this.selection.has(id)) this.selection.delete(id); else this.selection.add(id);
 		}
 
-		/** Shift-click extends across blocks (SPEC §6). */
+		/** A shift-click range can span blocks (SPEC §6). */
 		selectRange(fromId, toId) {
 			const ids = this.flatIds;
 			const start = ids.indexOf(fromId);
@@ -10456,7 +10438,7 @@
 	/* dnd.svelte.ts generated by Svelte v5.57.0 */
 
 	class DragState {
-		#ids = /** Entry ids being dragged, or null when nothing is. */
+		#ids = /** Ids of the dragged entries. Null when no drag is active. */
 		state(null);
 
 		get ids() {
@@ -10517,7 +10499,7 @@
 			if (this.over?.blockId === blockId) this.over = null;
 		}
 
-		/** Applies the move. A drop with no target is a no-op, not an error. */
+		/** Applies the move. Does nothing without a target. */
 		drop() {
 			const ids = this.ids;
 			const target = this.over;
@@ -10591,13 +10573,12 @@
 	const quizBuilderApi = {
 		fromSave,
 		toSave,
-		/** `toSave(fromSave(p))` — what saving this payload back would produce. */
+		/** What saving this payload back would produce. */
 		roundTrip: (save) => toSave(fromSave(save)),
 
 		/**
-		 * Fields the server adds on load that a save never carries. Exposed so the
-		 * live suite strips exactly the same set we do, from one definition — the
-		 * two drifting apart is how a "round-trips" assertion starts lying.
+		 * Fields the server adds on load that a save never carries. The live suite
+		 * reads them from here so it strips the same set as the serializer.
 		 */
 		serverOnlyFields: {
 			quiz: [...SERVER_ONLY_QUIZ_FIELDS],
@@ -10606,14 +10587,11 @@
 		},
 		dragState,
 		libraryStore,
-		/** Library entries we could not read; non-zero means the payload moved. */
+		/** Library entries we could not read. Non-zero means the payload changed. */
 		unreadable: unreadableAnimeCount,
 		libraryFilters,
 		bumpCache,
-		/**
-		 * A store wired to a supplied library, for exercising the mutations without
-		 * a cached library or a live socket.
-		 */
+		/** A store on a supplied library. Needs no cached library and no socket. */
 		makeStore: (library) => {
 			const store = new QuizStore(library);
 
@@ -10635,10 +10613,10 @@
 			},
 			table: () => console.table(roomStore.rooms.map(summarise)),
 			refresh: () => roomStore.refresh(),
-			/** Starts the throttled change log; returns its disposer. */
+			/** Returns the disposer. */
 			startLogging: startRoomLogging,
 
-			/** Opens a player profile the way a row does, for diagnosing failures. */
+			/** Opens a player profile the same way a room row does. */
 			profile: (name) => openProfile(document.body, name),
 			quizBuilder: { ...quizBuilderApi, ...quizBuilderScreen, store: quizStore }
 		};
@@ -10798,21 +10776,18 @@
 
 	const $$css$x = {
 		hash: 'svelte-1rmt7tb',
-		code: '.floating.svelte-1rmt7tb {position:fixed;z-index:200;box-sizing:border-box;padding:8px 10px;border-radius:var(--radius);background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 8px 22px rgba(0, 0, 0, 0.55);color:var(--text);text-align:left;\n    /* Hidden until measured, so it never flashes at the wrong spot. */visibility:hidden;}.floating.placed.svelte-1rmt7tb {visibility:visible;}'
+		code: '.floating.svelte-1rmt7tb {position:fixed;z-index:200;box-sizing:border-box;padding:8px 10px;border-radius:var(--radius);background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 8px 22px rgba(0, 0, 0, 0.55);color:var(--text);text-align:left;\n    /* Hidden until measured, so it never appears in the wrong place. */visibility:hidden;}.floating.placed.svelte-1rmt7tb {visibility:visible;}'
 	};
 
 	function Floating($$anchor, $$props) {
 		push($$props, true);
 		append_styles$1($$anchor, $$css$x);
 
-		/** Preferred side; flipped automatically when it doesn't fit. */
-		/** Which edge of the anchor the panel lines up with. */
+		/** Preferred side. Flips when the panel does not fit. */
+		/** The edge of the anchor that the panel aligns with. */
 		/**
-		 * Close when a pointer goes down anywhere outside the panel.
-		 *
-		 * On by default. A panel that cannot be dismissed by clicking away does
-		 * not merely linger — it sits over the page swallowing every later click,
-		 * so the whole screen reads as broken rather than the menu as stuck.
+		 * Close when a pointer goes down outside the panel. On by default: a
+		 * panel that stays open covers the page and takes every later click.
 		 */
 		let placement = prop($$props, 'placement', 3, 'below'),
 			align = prop($$props, 'align', 3, 'start'),
@@ -10841,8 +10816,8 @@
 				const below = from.bottom + GAP;
 				const above = from.top - box.height - GAP;
 
-				// Honour the caller's preference unless the panel would leave the
-				// viewport, then take whichever side has room.
+				// Use the preferred side unless the panel would leave the viewport.
+				// Then use the side that has room.
 				const fitsBelow = below + box.height <= window.innerHeight - MARGIN;
 
 				const fitsAbove = above >= MARGIN;
@@ -10857,22 +10832,23 @@
 
 			position();
 
-			// Re-measure once the panel has its final size (fonts, images).
+			// Measure again once fonts and images have set the panel's final size.
 			const frame = requestAnimationFrame(position);
 
-			// Scrolling invalidates the anchor; dismissing beats drifting.
+			// A scroll moves the anchor, so close the panel.
 			const dismiss = () => $$props.onDismiss?.();
 
 			window.addEventListener('scroll', dismiss, true);
 			window.addEventListener('resize', dismiss);
 
 			/*
-			 * `composedPath()` rather than `event.target`: the panel lives in a shadow
-			 * root, so a listener on the document sees the host element for anything
-			 * inside it and would treat every click on the panel as an outside click.
+			 * Use `composedPath()`, not `event.target`. The panel is in a shadow
+			 * root, so a document listener sees the host element as the target of
+			 * any click inside it, and every click on the panel would count as
+			 * outside.
 			 *
-			 * The anchor is excluded deliberately. Its own handler toggles the panel
-			 * shut, and dismissing here as well would close and immediately reopen it.
+			 * The anchor is excluded. Its own handler closes the panel, and a second
+			 * dismiss here would close and reopen it.
 			 */
 			const onPointerDown = (event) => {
 				if (!dismissOnOutside()) return;
@@ -10996,7 +10972,7 @@
 		push($$props, true);
 		append_styles$1($$anchor, $$css$w);
 
-		/** Highlighted as the current answer, when there is one. */
+		/** The block to highlight as the current choice. */
 		let currentId = prop($$props, 'currentId', 3, null);
 
 		const blocked = user_derived(() => quizStore.capReached('rule'));
@@ -11106,11 +11082,10 @@
 			eye: 'M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6z',
 			play: '',
 			caret: 'M6 9l6 6 6-6',
-			// Settings sliders — the row's "all settings" affordance.
+			// The row's "All settings" button.
 			sliders: 'M4 8h10M18 8h2M4 16h4M12 16h8',
 
-			// Two offset sheets. A "+" here reads as "add", which is what made the
-			// duplicate buttons unguessable — they were asked about by name.
+			// Two offset sheets. Do not use a "+" for duplicate: it reads as "add".
 			copy: 'M9 9h10v10H9zM5 15H4V4h11v1',
 			undo: 'M4 9h11a4.5 4.5 0 010 9h-6M4 9l4-4M4 9l4 4'
 		};
@@ -11223,8 +11198,8 @@
 	    const { samplePoint } = overrides.samplePoint;
 	    chips.push({
 	      key: "samplePoint",
-	      // A percentage of the song, not seconds — AMQ has no song length to
-	      // convert against, so the number is shown as what it actually is.
+	      // A percentage of the song, not seconds. AMQ has no song length to
+	      // convert with.
 	      label: `${formatMaybeRandom(samplePoint)}%`,
 	      tooltip: `${t("quiz_builder.rule_labels.sample_point", "Sample Point")} — ${t(
         "quiz_builder.rule_labels.override_sample_point",
@@ -11262,11 +11237,11 @@
 	  return chips;
 	}
 
-	var root$v = from_html(`<p class="readonly svelte-19gxrb0"> <span class="why svelte-19gxrb0">Editing a random range is not supported here yet — use <code class="svelte-19gxrb0">__amqUI.quizBuilder.useLegacy()</code>. It is saved
+	var root$v = from_html(`<p class="readonly svelte-19gxrb0"> <span class="why svelte-19gxrb0">You cannot edit a random range here. To edit it, run <code class="svelte-19gxrb0">__amqUI.quizBuilder.useLegacy()</code>. A save keeps it
               unchanged.</span></p>`);
 
 	var root_1$r = from_html(`<div class="row svelte-19gxrb0"><label class="field svelte-19gxrb0"><span>Seconds</span> <input class="num svelte-19gxrb0" type="number" min="1" max="60"/></label> <label class="field svelte-19gxrb0"><span> </span> <input class="num svelte-19gxrb0" type="number" min="0" max="15"/></label></div>`);
-	var root_2$l = from_html(`<p class="readonly svelte-19gxrb0"> <span class="why svelte-19gxrb0">Saved unchanged; edit it in AMQ's own builder.</span></p>`);
+	var root_2$l = from_html(`<p class="readonly svelte-19gxrb0"> <span class="why svelte-19gxrb0">A save keeps it unchanged. Edit it in AMQ's own builder.</span></p>`);
 	var root_3$f = from_html(`<div class="row svelte-19gxrb0"><input class="rng svelte-19gxrb0" type="range" min="0" max="100" step="1"/> <span class="pct mono svelte-19gxrb0"> </span></div> <p class="note svelte-19gxrb0">Where in the song playback starts, as a percentage.</p>`, 1);
 	var root_4$a = from_html(`<button type="button"> </button>`);
 	var root_5$9 = from_html(`<div class="segmented svelte-19gxrb0"></div>`);
@@ -11536,8 +11511,8 @@
 						set_attribute(input_1, 'max', get(ceiling));
 						set_value(input_1, get(block).songCount);
 
-						set_text(text_1, `The quiz is at ${get(otherBlocks) + get(block).songCount} of its ${MAX_SONG_COUNT}-song
-          cap, so this block can take up to ${get(ceiling) ?? ''}.`);
+						set_text(text_1, `The quiz uses ${get(otherBlocks) + get(block).songCount} of ${MAX_SONG_COUNT} songs.
+          This block can have up to ${get(ceiling) ?? ''}.`);
 
 						set_text(text_2, $2);
 						classes = set_class(button_1, 1, 'svelte-19gxrb0', null, classes, { on: get(block).randomOrder });
@@ -11591,10 +11566,10 @@
 	delegate(['click', 'input', 'change']);
 
 	var root$u = from_html(`<button type="button"> </button>`);
-	var root_1$q = from_html(`<p class="readonly svelte-1nbwf8p"> <span class="why svelte-1nbwf8p">Saved unchanged. Editing a random range needs AMQ's own builder — <code class="svelte-1nbwf8p">__amqUI.quizBuilder.useLegacy()</code>.</span></p>`);
+	var root_1$q = from_html(`<p class="readonly svelte-1nbwf8p"> <span class="why svelte-1nbwf8p">A save keeps it unchanged. To edit a random range, run <code class="svelte-1nbwf8p">__amqUI.quizBuilder.useLegacy()</code>.</span></p>`);
 	var root_2$k = from_html(`<button type="button" class="unset svelte-1nbwf8p">Use block default</button>`);
 	var root_3$e = from_html(`<div class="row svelte-1nbwf8p"><label class="field svelte-1nbwf8p"><span>Seconds</span> <input class="num svelte-1nbwf8p" type="number" min="1" max="60"/></label> <label class="field svelte-1nbwf8p"><span> </span> <input class="num svelte-1nbwf8p" type="number" min="0" max="15"/></label> <!></div>`);
-	var root_4$9 = from_html(`<p class="readonly svelte-1nbwf8p"> <span class="why svelte-1nbwf8p">Saved unchanged; edit it in AMQ's own builder.</span></p>`);
+	var root_4$9 = from_html(`<p class="readonly svelte-1nbwf8p"> <span class="why svelte-1nbwf8p">A save keeps it unchanged. Edit it in AMQ's own builder.</span></p>`);
 	var root_5$8 = from_html(`<button type="button" class="unset svelte-1nbwf8p">Reset</button>`);
 	var root_6$3 = from_html(`<div class="row svelte-1nbwf8p"><input class="rng svelte-1nbwf8p" type="range" min="0" max="100" step="1"/> <span class="pct mono svelte-1nbwf8p"> </span> <!></div>`);
 	var root_7$1 = from_html(`<div class="segmented svelte-1nbwf8p"><!> <button type="button">Use block default</button></div>`);
@@ -11602,14 +11577,14 @@
 
 	const $$css$u = {
 		hash: 'svelte-1nbwf8p',
-		code: '.scrim.svelte-1nbwf8p {position:fixed;inset:0;z-index:20;background:rgba(0, 0, 0, 0.45);}.panel.svelte-1nbwf8p {position:fixed;top:50%;left:50%;z-index:21;transform:translate(-50%, -50%);width:430px;max-height:80vh;display:flex;flex-direction:column;border-radius:10px;background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 18px 50px rgba(0, 0, 0, 0.5);}.head.svelte-1nbwf8p {flex:none;display:flex;align-items:center;height:46px;padding:0 14px;border-bottom:1px solid var(--line);}.head.svelte-1nbwf8p h2:where(.svelte-1nbwf8p) {flex:1 1 0;margin:0;font-family:var(--font-display);font-size:14px;font-weight:700;}.close.svelte-1nbwf8p {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);cursor:pointer;}.body.svelte-1nbwf8p {flex:1 1 auto;min-height:0;overflow-y:auto;padding:4px 14px 10px;}section.svelte-1nbwf8p {padding:12px 0;border-bottom:1px solid var(--line);}section.svelte-1nbwf8p:last-child {border-bottom:0;}h3.svelte-1nbwf8p {margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-4);}.row.svelte-1nbwf8p {display:flex;align-items:center;gap:10px;}.rng.svelte-1nbwf8p {flex:1 1 0;accent-color:var(--amber);}.num.svelte-1nbwf8p {width:62px;height:27px;padding:0 8px;border-radius:7px;background:var(--bg-sunken);\n    /* Amber: every per-entry override is "this differs from its block". */border:1px solid var(--chip-amber-line);color:var(--amber-fg);font-family:var(--font-mono);font-size:11.5px;}.field.svelte-1nbwf8p {display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-3);}.pct.svelte-1nbwf8p {width:42px;text-align:right;font-size:12px;color:var(--amber-fg);}.segmented.svelte-1nbwf8p {display:flex;gap:4px;flex-wrap:wrap;}.segmented.svelte-1nbwf8p button:where(.svelte-1nbwf8p) {height:28px;padding:0 11px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}.segmented.svelte-1nbwf8p button.on:where(.svelte-1nbwf8p) {background:var(--chip-amber-bg);border:1px solid var(--chip-amber-line);color:var(--amber-fg);}\n\n  /* "Follows the block" is the neutral state, so it is not amber. */.segmented.svelte-1nbwf8p .default.on:where(.svelte-1nbwf8p) {background:var(--bg-raised);border:1px solid var(--line-strong);color:var(--text-2);}.unset.svelte-1nbwf8p {height:27px;padding:0 9px;border-radius:7px;background:transparent;border:1px solid var(--line-soft);color:var(--text-4);font-family:inherit;font-size:11px;cursor:pointer;}.unset.svelte-1nbwf8p:hover {color:var(--text-2);}.readonly.svelte-1nbwf8p {margin:0;font-size:12px;color:var(--amber-fg);}.why.svelte-1nbwf8p {display:block;margin-top:5px;font-size:10.5px;color:var(--text-5);}code.svelte-1nbwf8p {font-family:var(--font-mono);font-size:10.5px;}.foot.svelte-1nbwf8p {flex:none;display:flex;align-items:center;gap:8px;height:52px;padding:0 14px;border-top:1px solid var(--line);}.spacer.svelte-1nbwf8p {flex:1 1 0;}.quiet.svelte-1nbwf8p {height:29px;padding:0 10px;border-radius:7px;background:transparent;border:1px solid var(--line-soft);color:var(--text-3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}.done.svelte-1nbwf8p {height:29px;padding:0 12px;border-radius:7px;background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--accent-soft);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;}'
+		code: '.scrim.svelte-1nbwf8p {position:fixed;inset:0;z-index:20;background:rgba(0, 0, 0, 0.45);}.panel.svelte-1nbwf8p {position:fixed;top:50%;left:50%;z-index:21;transform:translate(-50%, -50%);width:430px;max-height:80vh;display:flex;flex-direction:column;border-radius:10px;background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 18px 50px rgba(0, 0, 0, 0.5);}.head.svelte-1nbwf8p {flex:none;display:flex;align-items:center;height:46px;padding:0 14px;border-bottom:1px solid var(--line);}.head.svelte-1nbwf8p h2:where(.svelte-1nbwf8p) {flex:1 1 0;margin:0;font-family:var(--font-display);font-size:14px;font-weight:700;}.close.svelte-1nbwf8p {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);cursor:pointer;}.body.svelte-1nbwf8p {flex:1 1 auto;min-height:0;overflow-y:auto;padding:4px 14px 10px;}section.svelte-1nbwf8p {padding:12px 0;border-bottom:1px solid var(--line);}section.svelte-1nbwf8p:last-child {border-bottom:0;}h3.svelte-1nbwf8p {margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-4);}.row.svelte-1nbwf8p {display:flex;align-items:center;gap:10px;}.rng.svelte-1nbwf8p {flex:1 1 0;accent-color:var(--amber);}.num.svelte-1nbwf8p {width:62px;height:27px;padding:0 8px;border-radius:7px;background:var(--bg-sunken);\n    /* Amber marks an override: the entry differs from its block. */border:1px solid var(--chip-amber-line);color:var(--amber-fg);font-family:var(--font-mono);font-size:11.5px;}.field.svelte-1nbwf8p {display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-3);}.pct.svelte-1nbwf8p {width:42px;text-align:right;font-size:12px;color:var(--amber-fg);}.segmented.svelte-1nbwf8p {display:flex;gap:4px;flex-wrap:wrap;}.segmented.svelte-1nbwf8p button:where(.svelte-1nbwf8p) {height:28px;padding:0 11px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}.segmented.svelte-1nbwf8p button.on:where(.svelte-1nbwf8p) {background:var(--chip-amber-bg);border:1px solid var(--chip-amber-line);color:var(--amber-fg);}\n\n  /* "Follows the block" is the neutral state, so it is not amber. */.segmented.svelte-1nbwf8p .default.on:where(.svelte-1nbwf8p) {background:var(--bg-raised);border:1px solid var(--line-strong);color:var(--text-2);}.unset.svelte-1nbwf8p {height:27px;padding:0 9px;border-radius:7px;background:transparent;border:1px solid var(--line-soft);color:var(--text-4);font-family:inherit;font-size:11px;cursor:pointer;}.unset.svelte-1nbwf8p:hover {color:var(--text-2);}.readonly.svelte-1nbwf8p {margin:0;font-size:12px;color:var(--amber-fg);}.why.svelte-1nbwf8p {display:block;margin-top:5px;font-size:10.5px;color:var(--text-5);}code.svelte-1nbwf8p {font-family:var(--font-mono);font-size:10.5px;}.foot.svelte-1nbwf8p {flex:none;display:flex;align-items:center;gap:8px;height:52px;padding:0 14px;border-top:1px solid var(--line);}.spacer.svelte-1nbwf8p {flex:1 1 0;}.quiet.svelte-1nbwf8p {height:29px;padding:0 10px;border-radius:7px;background:transparent;border:1px solid var(--line-soft);color:var(--text-3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}.done.svelte-1nbwf8p {height:29px;padding:0 12px;border-radius:7px;background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--accent-soft);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;}'
 	};
 
 	function EntrySettings($$anchor, $$props) {
 		push($$props, true);
 		append_styles$1($$anchor, $$css$u);
 
-		/** Only entries that play a song can carry overrides. */
+		/** Only entries that play a song have overrides. */
 		const targets = user_derived(() => {
 			const out = [];
 
@@ -11622,7 +11597,7 @@
 			return out;
 		});
 
-		/** The panel edits from the first target and applies to all of them. */
+		/** The panel shows the first target's values and applies edits to all. */
 		const lead = user_derived(() => get(targets)[0]);
 
 		const multiple = user_derived(() => get(targets).length > 1);
@@ -11986,12 +11961,12 @@
 	var root_3$d = from_html(`<div class="group svelte-1hnt4ru"><div class="group-head svelte-1hnt4ru"><span class="group-title svelte-1hnt4ru"> </span> <span class="rule svelte-1hnt4ru"></span> <!></div> <div class="track-host svelte-1hnt4ru"><span class="track svelte-1hnt4ru"></span> <span class="fill svelte-1hnt4ru"></span> <input class="rng svelte-1hnt4ru" type="range" aria-label="Earliest year"/> <input class="rng svelte-1hnt4ru" type="range" aria-label="Latest year"/></div> <div class="bounds svelte-1hnt4ru"><input class="num svelte-1hnt4ru" type="number" aria-label="Earliest year, typed"/> <span class="dash svelte-1hnt4ru">–</span> <input class="num svelte-1hnt4ru" type="number" aria-label="Latest year, typed"/></div></div>`);
 	var root_4$8 = from_html(`<div class="col svelte-1hnt4ru"><!> <!></div>`);
 
-	var root_5$7 = from_html(`<div class="panel svelte-1hnt4ru"><header class="head svelte-1hnt4ru"><h2 class="svelte-1hnt4ru">Filters</h2> <!> <button type="button" class="close svelte-1hnt4ru" aria-label="Close"><!></button></header> <div class="cols svelte-1hnt4ru"></div> <p class="absent svelte-1hnt4ru">Difficulty, genres and tags are not filterable here — the library payload
-      does not carry them. They are available inside an algorithm block.</p></div>`);
+	var root_5$7 = from_html(`<div class="panel svelte-1hnt4ru"><header class="head svelte-1hnt4ru"><h2 class="svelte-1hnt4ru">Filters</h2> <!> <button type="button" class="close svelte-1hnt4ru" aria-label="Close"><!></button></header> <div class="cols svelte-1hnt4ru"></div> <p class="absent svelte-1hnt4ru">You cannot filter by difficulty, genres or tags here. Use an algorithm
+      block for those filters.</p></div>`);
 
 	const $$css$s = {
 		hash: 'svelte-1hnt4ru',
-		code: '.panel.svelte-1hnt4ru {padding:12px 14px 10px;}.head.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);}.head.svelte-1hnt4ru h2:where(.svelte-1hnt4ru) {margin:0;font-family:var(--font-display);font-size:13px;font-weight:700;}.badge.svelte-1hnt4ru {min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-size:9.5px;font-weight:700;line-height:16px;text-align:center;}.reset-all.svelte-1hnt4ru {margin-left:auto;height:24px;padding:0 9px;border-radius:6px;background:transparent;border:1px solid var(--line-soft);color:var(--text-3);font-family:inherit;font-size:11px;cursor:pointer;}.close.svelte-1hnt4ru {display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);cursor:pointer;}.close.svelte-1hnt4ru:hover {background:var(--bg-raised);color:var(--text);}.cols.svelte-1hnt4ru {display:flex;gap:22px;padding-top:10px;}.col.svelte-1hnt4ru {flex:1 1 0;min-width:0;}.group.svelte-1hnt4ru {padding:8px 0;}.group-head.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;margin-bottom:7px;}.group-title.svelte-1hnt4ru {font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-4);white-space:nowrap;}.rule.svelte-1hnt4ru {flex:1 1 0;height:1px;background:var(--line);}.reset.svelte-1hnt4ru {display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border:0;border-radius:5px;background:transparent;color:var(--text-3);font-family:inherit;font-size:10.5px;cursor:pointer;}.dot.svelte-1hnt4ru {width:5px;height:5px;border-radius:50%;background:var(--accent);}.chips.svelte-1hnt4ru {display:flex;flex-wrap:wrap;gap:5px;}.track-host.svelte-1hnt4ru {position:relative;height:16px;margin:6px 0 4px;}.track.svelte-1hnt4ru,\n  .fill.svelte-1hnt4ru {position:absolute;top:6px;height:4px;border-radius:2px;}.track.svelte-1hnt4ru {left:0;width:100%;background:var(--bg-sunken);}.fill.svelte-1hnt4ru {background:var(--accent);}\n\n  /*\n   * Both inputs overlay one track; they are `pointer-events: none` so a click\n   * on the track never jumps the wrong handle, and only the thumbs take it back.\n   */.rng.svelte-1hnt4ru {position:absolute;top:0;left:0;width:100%;height:16px;margin:0;background:transparent;appearance:none;pointer-events:none;}.rng.svelte-1hnt4ru::-webkit-slider-thumb {appearance:none;width:12px;height:12px;border:2px solid var(--bg-pop);border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-1hnt4ru::-moz-range-thumb {width:12px;height:12px;border:2px solid var(--bg-pop);border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.bounds.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;}.num.svelte-1hnt4ru {width:72px;height:26px;padding:0 8px;border-radius:6px;background:var(--bg-sunken);border:1px solid var(--line-strong);color:var(--text);font-family:var(--font-mono);font-size:11.5px;}.dash.svelte-1hnt4ru {color:var(--text-5);}.absent.svelte-1hnt4ru {margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line);font-size:10.5px;color:var(--text-5);}'
+		code: '.panel.svelte-1hnt4ru {padding:12px 14px 10px;}.head.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);}.head.svelte-1hnt4ru h2:where(.svelte-1hnt4ru) {margin:0;font-family:var(--font-display);font-size:13px;font-weight:700;}.badge.svelte-1hnt4ru {min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-size:9.5px;font-weight:700;line-height:16px;text-align:center;}.reset-all.svelte-1hnt4ru {margin-left:auto;height:24px;padding:0 9px;border-radius:6px;background:transparent;border:1px solid var(--line-soft);color:var(--text-3);font-family:inherit;font-size:11px;cursor:pointer;}.close.svelte-1hnt4ru {display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);cursor:pointer;}.close.svelte-1hnt4ru:hover {background:var(--bg-raised);color:var(--text);}.cols.svelte-1hnt4ru {display:flex;gap:22px;padding-top:10px;}.col.svelte-1hnt4ru {flex:1 1 0;min-width:0;}.group.svelte-1hnt4ru {padding:8px 0;}.group-head.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;margin-bottom:7px;}.group-title.svelte-1hnt4ru {font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-4);white-space:nowrap;}.rule.svelte-1hnt4ru {flex:1 1 0;height:1px;background:var(--line);}.reset.svelte-1hnt4ru {display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border:0;border-radius:5px;background:transparent;color:var(--text-3);font-family:inherit;font-size:10.5px;cursor:pointer;}.dot.svelte-1hnt4ru {width:5px;height:5px;border-radius:50%;background:var(--accent);}.chips.svelte-1hnt4ru {display:flex;flex-wrap:wrap;gap:5px;}.track-host.svelte-1hnt4ru {position:relative;height:16px;margin:6px 0 4px;}.track.svelte-1hnt4ru,\n  .fill.svelte-1hnt4ru {position:absolute;top:6px;height:4px;border-radius:2px;}.track.svelte-1hnt4ru {left:0;width:100%;background:var(--bg-sunken);}.fill.svelte-1hnt4ru {background:var(--accent);}\n\n  /*\n   * Both inputs overlay one track. They have `pointer-events: none` and only\n   * the thumbs accept the pointer, so a click on the track cannot move the\n   * wrong handle.\n   */.rng.svelte-1hnt4ru {position:absolute;top:0;left:0;width:100%;height:16px;margin:0;background:transparent;appearance:none;pointer-events:none;}.rng.svelte-1hnt4ru::-webkit-slider-thumb {appearance:none;width:12px;height:12px;border:2px solid var(--bg-pop);border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-1hnt4ru::-moz-range-thumb {width:12px;height:12px;border:2px solid var(--bg-pop);border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.bounds.svelte-1hnt4ru {display:flex;align-items:center;gap:8px;}.num.svelte-1hnt4ru {width:72px;height:26px;padding:0 8px;border-radius:6px;background:var(--bg-sunken);border:1px solid var(--line-strong);color:var(--text);font-family:var(--font-mono);font-size:11.5px;}.dash.svelte-1hnt4ru {color:var(--text-5);}.absent.svelte-1hnt4ru {margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line);font-size:10.5px;color:var(--text-5);}'
 	};
 
 	function FilterPanel$1($$anchor, $$props) {
@@ -12189,7 +12164,7 @@
 
 	const $$css$r = {
 		hash: 'svelte-q4tu2z',
-		code: '.lib-row.svelte-q4tu2z {display:flex;align-items:center;gap:10px;height:var(--qb-lib-anime-h);padding:0 14px;border-bottom:1px solid var(--line);cursor:pointer;}.lib-row.song.svelte-q4tu2z {height:var(--qb-lib-song-h);\n    /* A song row has nothing to expand, so it must not offer to. */cursor:default;}.lib-row.svelte-q4tu2z:hover {background:var(--bg-row-hover);}\n\n  /* An expanded anime tints so its run of songs reads as belonging to it. */.lib-row.open.svelte-q4tu2z {background:rgba(91, 155, 245, 0.08);}.lead.svelte-q4tu2z {flex:0 0 var(--qb-lib-lead);display:flex;align-items:center;justify-content:center;}.song-lead.svelte-q4tu2z {flex:0 0 var(--qb-lib-song-lead);}\n\n  /*\n   * Centred in its cell. An earlier version nudged it 5px left so the glyph\'s\n   * *tip* lined up with the type badges of the songs below — which lined up\n   * one thing at the cost of the chevron visibly sitting off-centre in its own\n   * row, which is what a reader actually notices.\n   */.chev.svelte-q4tu2z {display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-3);cursor:pointer;transform:rotate(-90deg);}.chev.open.svelte-q4tu2z {transform:rotate(0deg);color:var(--blue-fg);}.badge.svelte-q4tu2z {display:inline-flex;align-items:center;height:23px;padding:0 9px;border-radius:5px;background:var(--chip-teal-bg);border:1px solid var(--chip-teal-line);color:var(--teal-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;}.text.svelte-q4tu2z {flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.2;}.name.svelte-q4tu2z,\n  .sub.svelte-q4tu2z {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.name.svelte-q4tu2z {font-size:15px;font-weight:600;color:var(--text);}.lib-row.song.svelte-q4tu2z .name:where(.svelte-q4tu2z) {font-size:var(--qb-text);font-weight:500;color:var(--text-2);}.sub.svelte-q4tu2z {font-size:var(--qb-text-xs);color:var(--text-4);}.count.svelte-q4tu2z {flex:0 0 var(--qb-lib-count);text-align:right;font-size:var(--qb-text-sm);color:var(--text-3);}.add-cell.svelte-q4tu2z {flex:0 0 var(--qb-lib-action);display:flex;align-items:center;justify-content:flex-end;gap:3px;}.add.svelte-q4tu2z {display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.add.svelte-q4tu2z:hover {border-color:var(--line-strong);color:var(--text);}.add.loud.svelte-q4tu2z {background:var(--accent);border-color:transparent;color:var(--accent-fg);font-weight:700;}.add-chev.svelte-q4tu2z {display:inline-flex;align-items:center;justify-content:center;width:24px;height:30px;padding:0;border:1px solid var(--line-soft);border-radius:7px;background:var(--bg-raised);color:var(--text-4);cursor:pointer;}.add-chev.svelte-q4tu2z:hover {color:var(--text);border-color:var(--line-strong);}'
+		code: '.lib-row.svelte-q4tu2z {display:flex;align-items:center;gap:10px;height:var(--qb-lib-anime-h);padding:0 14px;border-bottom:1px solid var(--line);cursor:pointer;}.lib-row.song.svelte-q4tu2z {height:var(--qb-lib-song-h);\n    /* A song row has nothing to expand. */cursor:default;}.lib-row.svelte-q4tu2z:hover {background:var(--bg-row-hover);}\n\n  /* The tint groups an expanded anime with its songs. */.lib-row.open.svelte-q4tu2z {background:rgba(91, 155, 245, 0.08);}.lead.svelte-q4tu2z {flex:0 0 var(--qb-lib-lead);display:flex;align-items:center;justify-content:center;}.song-lead.svelte-q4tu2z {flex:0 0 var(--qb-lib-song-lead);}\n\n  /* Centred in its cell. Do not shift it to align with the type badges\n     below: it then looks off-centre in its own row. */.chev.svelte-q4tu2z {display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-3);cursor:pointer;transform:rotate(-90deg);}.chev.open.svelte-q4tu2z {transform:rotate(0deg);color:var(--blue-fg);}.badge.svelte-q4tu2z {display:inline-flex;align-items:center;height:23px;padding:0 9px;border-radius:5px;background:var(--chip-teal-bg);border:1px solid var(--chip-teal-line);color:var(--teal-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;}.text.svelte-q4tu2z {flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.2;}.name.svelte-q4tu2z,\n  .sub.svelte-q4tu2z {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.name.svelte-q4tu2z {font-size:15px;font-weight:600;color:var(--text);}.lib-row.song.svelte-q4tu2z .name:where(.svelte-q4tu2z) {font-size:var(--qb-text);font-weight:500;color:var(--text-2);}.sub.svelte-q4tu2z {font-size:var(--qb-text-xs);color:var(--text-4);}.count.svelte-q4tu2z {flex:0 0 var(--qb-lib-count);text-align:right;font-size:var(--qb-text-sm);color:var(--text-3);}.add-cell.svelte-q4tu2z {flex:0 0 var(--qb-lib-action);display:flex;align-items:center;justify-content:flex-end;gap:3px;}.add.svelte-q4tu2z {display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.add.svelte-q4tu2z:hover {border-color:var(--line-strong);color:var(--text);}.add.loud.svelte-q4tu2z {background:var(--accent);border-color:transparent;color:var(--accent-fg);font-weight:700;}.add-chev.svelte-q4tu2z {display:inline-flex;align-items:center;justify-content:center;width:24px;height:30px;padding:0;border:1px solid var(--line-soft);border-radius:7px;background:var(--bg-raised);color:var(--text-4);cursor:pointer;}.add-chev.svelte-q4tu2z:hover {color:var(--text);border-color:var(--line-strong);}'
 	};
 
 	function LibraryRow($$anchor, $$props) {
@@ -12199,13 +12174,11 @@
 		let addChevron = state(null);
 
 		/**
-		 * The whole anime row toggles, not just the chevron — a 24px target for the
-		 * row's main action is a poor one, and the row already lights up on hover,
-		 * which reads as an invitation to click it.
+		 * The whole anime row toggles, not only the 24px chevron.
 		 *
-		 * Every `<button>` on the row is excluded, which covers `+ Add`, the
-		 * add-to-block caret **and** the chevron itself: the chevron's own handler
-		 * fires alone rather than being toggled twice.
+		 * Clicks on any `<button>` in the row are ignored here. That covers
+		 * `+ Add`, the add-to-block caret and the chevron, whose own handler does
+		 * the toggle.
 		 */
 		function onRowClick(event) {
 			if ($$props.row.kind !== 'anime') return;
@@ -12324,24 +12297,19 @@
 	var root_2$h = from_html(`<span class="badge svelte-iywwdf"> </span>`);
 
 	var root_3$c = from_html(
-		`The song library could not be read — the game's data format may have changed. <span class="hint svelte-iywwdf">Run <code class="svelte-iywwdf">__amqUI.quizBuilder.useLegacy()</code> to use AMQ's own builder,
-            and please report this.</span>`,
+		`The song library could not be read. <span class="hint svelte-iywwdf">Run <code class="svelte-iywwdf">__amqUI.quizBuilder.useLegacy()</code> to use AMQ's own builder,
+            and report this problem.</span>`,
 		1
 	);
 
-	var root_4$7 = from_html(
-		`The song library could not be loaded, so anime and songs cannot be named
-          here. <span class="hint svelte-iywwdf">Reload the page, or run <code class="svelte-iywwdf">__amqUI.quizBuilder.useLegacy()</code> to use AMQ's own builder.</span>`,
-		1
-	);
-
+	var root_4$7 = from_html(`The song library did not load, so anime and song names cannot be shown. <span class="hint svelte-iywwdf">Reload the page, or run <code class="svelte-iywwdf">__amqUI.quizBuilder.useLegacy()</code> to use AMQ's own builder.</span>`, 1);
 	var root_5$6 = from_html(`<p class="empty svelte-iywwdf"><!></p>`);
 	var root_6$2 = from_html(`<p class="capped svelte-iywwdf"> </p>`);
 	var root_7 = from_html(`<section class="pane svelte-iywwdf"><header class="band svelte-iywwdf"><h2 class="title svelte-iywwdf"> </h2> <div class="tabs svelte-iywwdf" role="tablist"></div> <span class="totals mono svelte-iywwdf"> </span></header> <div class="band filters svelte-iywwdf"><label class="search svelte-iywwdf"><!> <input id="amq-ui-library-search" type="search" placeholder="Search anime, songs, artists" class="svelte-iywwdf"/></label> <!> <button type="button" class="filter-btn svelte-iywwdf" aria-label="Filters" title="Filters"><!> <!></button></div> <div class="adds-to svelte-iywwdf"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="6.5" stroke="currentColor" stroke-width="2"></circle><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg> <span class="adds-label svelte-iywwdf">Adds to</span> <button type="button" class="target svelte-iywwdf"><span aria-hidden="true"></span> <!></button> <span class="drag-hint svelte-iywwdf">or drag across</span></div> <div class="columns svelte-iywwdf"><span class="col-text svelte-iywwdf">Anime · song</span> <span class="col-count svelte-iywwdf">Songs</span> <span class="col-action svelte-iywwdf"></span></div> <div class="list svelte-iywwdf"><!> <!></div></section>`);
 
 	const $$css$q = {
 		hash: 'svelte-iywwdf',
-		code: '.pane.svelte-iywwdf {flex:1 1 38%;min-width:0;display:flex;flex-direction:column;background:var(--bg-list);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}.band.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:8px;height:var(--qb-band-h);padding:0 14px;background:var(--bg-head);border-bottom:1px solid var(--line);}.filters.svelte-iywwdf {background:var(--bg-strip);}.title.svelte-iywwdf {margin:0;font-family:var(--font-display);font-size:16px;font-weight:700;}.tabs.svelte-iywwdf {display:flex;align-items:center;gap:2px;padding:2px;border-radius:7px;background:var(--bg-sunken);}.tab.svelte-iywwdf {height:27px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;cursor:pointer;}.tab.on.svelte-iywwdf {background:var(--bg-raised);color:var(--text);}.totals.svelte-iywwdf {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-4);white-space:nowrap;}.search.svelte-iywwdf {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:8px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text-4);}.search.svelte-iywwdf input:where(.svelte-iywwdf) {flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:var(--qb-text);outline:none;}.chip.svelte-iywwdf {height:31px;padding:0 11px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.chip.on.svelte-iywwdf {background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);}.filter-btn.svelte-iywwdf {position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--line-soft);border-radius:8px;background:var(--bg-raised);color:var(--text-2);cursor:pointer;}.badge.svelte-iywwdf {position:absolute;top:-5px;right:-5px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--accent);color:var(--accent-fg);font-size:9px;font-weight:700;line-height:14px;text-align:center;}\n\n  /* Accent-tinted so the strip reads as a live target, not a heading. */.adds-to.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:7px;height:46px;padding:0 14px;background:rgba(91, 155, 245, 0.1);border-bottom:1px solid var(--line);color:var(--blue-fg);}.adds-label.svelte-iywwdf {font-size:var(--qb-text);font-weight:600;}.target.svelte-iywwdf {display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.dot.svelte-iywwdf {width:7px;height:7px;border-radius:50%;background:var(--tone);}.tone-accent.svelte-iywwdf {--tone: var(--accent);}.tone-violet.svelte-iywwdf {--tone: var(--violet);}.tone-teal.svelte-iywwdf {--tone: var(--teal);}.tone-amber.svelte-iywwdf {--tone: var(--amber);}.tone-rose.svelte-iywwdf {--tone: var(--rose);}.drag-hint.svelte-iywwdf {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-5);}.columns.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:10px;height:30px;padding:0 14px;border-bottom:1px solid var(--line);font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-5);}.col-text.svelte-iywwdf {flex:1 1 0;}.col-count.svelte-iywwdf {flex:0 0 var(--qb-lib-count);text-align:right;}.col-action.svelte-iywwdf {flex:0 0 var(--qb-lib-action);}.list.svelte-iywwdf {flex:1 1 0;overflow-y:auto;overflow-x:hidden;}.hint.svelte-iywwdf {display:block;margin-top:8px;font-size:10.5px;color:var(--text-5);}code.svelte-iywwdf {font-family:var(--font-mono);font-size:10px;}.empty.svelte-iywwdf,\n  .capped.svelte-iywwdf {padding:22px 14px;text-align:center;font-size:var(--qb-text);color:var(--text-4);}.capped.svelte-iywwdf {border-top:1px solid var(--line);}'
+		code: '.pane.svelte-iywwdf {flex:1 1 38%;min-width:0;display:flex;flex-direction:column;background:var(--bg-list);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}.band.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:8px;height:var(--qb-band-h);padding:0 14px;background:var(--bg-head);border-bottom:1px solid var(--line);}.filters.svelte-iywwdf {background:var(--bg-strip);}.title.svelte-iywwdf {margin:0;font-family:var(--font-display);font-size:16px;font-weight:700;}.tabs.svelte-iywwdf {display:flex;align-items:center;gap:2px;padding:2px;border-radius:7px;background:var(--bg-sunken);}.tab.svelte-iywwdf {height:27px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;cursor:pointer;}.tab.on.svelte-iywwdf {background:var(--bg-raised);color:var(--text);}.totals.svelte-iywwdf {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-4);white-space:nowrap;}.search.svelte-iywwdf {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:8px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text-4);}.search.svelte-iywwdf input:where(.svelte-iywwdf) {flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:var(--qb-text);outline:none;}.chip.svelte-iywwdf {height:31px;padding:0 11px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.chip.on.svelte-iywwdf {background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);}.filter-btn.svelte-iywwdf {position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--line-soft);border-radius:8px;background:var(--bg-raised);color:var(--text-2);cursor:pointer;}.badge.svelte-iywwdf {position:absolute;top:-5px;right:-5px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--accent);color:var(--accent-fg);font-size:9px;font-weight:700;line-height:14px;text-align:center;}\n\n  /* The accent tint marks the strip as the current target, not a heading. */.adds-to.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:7px;height:46px;padding:0 14px;background:rgba(91, 155, 245, 0.1);border-bottom:1px solid var(--line);color:var(--blue-fg);}.adds-label.svelte-iywwdf {font-size:var(--qb-text);font-weight:600;}.target.svelte-iywwdf {display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text);font-family:inherit;font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.dot.svelte-iywwdf {width:7px;height:7px;border-radius:50%;background:var(--tone);}.tone-accent.svelte-iywwdf {--tone: var(--accent);}.tone-violet.svelte-iywwdf {--tone: var(--violet);}.tone-teal.svelte-iywwdf {--tone: var(--teal);}.tone-amber.svelte-iywwdf {--tone: var(--amber);}.tone-rose.svelte-iywwdf {--tone: var(--rose);}.drag-hint.svelte-iywwdf {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-5);}.columns.svelte-iywwdf {flex:none;display:flex;align-items:center;gap:10px;height:30px;padding:0 14px;border-bottom:1px solid var(--line);font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-5);}.col-text.svelte-iywwdf {flex:1 1 0;}.col-count.svelte-iywwdf {flex:0 0 var(--qb-lib-count);text-align:right;}.col-action.svelte-iywwdf {flex:0 0 var(--qb-lib-action);}.list.svelte-iywwdf {flex:1 1 0;overflow-y:auto;overflow-x:hidden;}.hint.svelte-iywwdf {display:block;margin-top:8px;font-size:10.5px;color:var(--text-5);}code.svelte-iywwdf {font-family:var(--font-mono);font-size:10px;}.empty.svelte-iywwdf,\n  .capped.svelte-iywwdf {padding:22px 14px;text-align:center;font-size:var(--qb-text);color:var(--text-4);}.capped.svelte-iywwdf {border-top:1px solid var(--line);}'
 	};
 
 	function Library($$anchor, $$props) {
@@ -12524,7 +12492,7 @@
 					};
 
 					var alternate = ($$anchor) => {
-						var text_7 = text('Nothing in the library matches these filters.');
+						var text_7 = text('No anime or songs match these filters.');
 
 						append($$anchor, text_7);
 					};
@@ -12544,8 +12512,8 @@
 				var p_1 = root_6$2();
 				var text_8 = only_child(p_1);
 
-				template_effect(() => set_text(text_8, `Showing the first ${libraryStore.shown ?? ''} of ${libraryStore.total ?? ''} — search to
-        narrow it down.`));
+				template_effect(() => set_text(text_8, `Showing the first ${libraryStore.shown ?? ''} of ${libraryStore.total ?? ''} . Search to
+        narrow the list.`));
 
 				append($$anchor, p_1);
 			};
@@ -12656,7 +12624,7 @@
 
 	const $$css$o = {
 		hash: 'svelte-192qg3i',
-		code: '.gutter.svelte-192qg3i {position:relative;flex:0 0 var(--qb-chain);align-self:stretch;}\n\n  /* Half-height each, meeting at the row boundary. */.rail.svelte-192qg3i {position:absolute;left:50%;width:2px;margin-left:-1px;background:var(--accent);border-radius:1px;}.up.svelte-192qg3i {top:0;height:50%;}.down.svelte-192qg3i {top:50%;height:50%;}\n\n  /*\n   * Centred on the boundary, not inside the row: half of it overhangs the row\n   * above. `z-index` keeps it over the rail it interrupts.\n   */.link.svelte-192qg3i {position:absolute;top:0;left:50%;z-index:1;transform:translate(-50%, -50%);display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;padding:0;border:0;border-radius:4px;background:var(--bg-list);color:var(--text-5);cursor:pointer;opacity:0.3;}.link.svelte-192qg3i:hover,\n  .link.svelte-192qg3i:focus-visible {opacity:1;color:var(--accent-soft);}.link.on.svelte-192qg3i {opacity:1;color:var(--accent);}'
+		code: '.gutter.svelte-192qg3i {position:relative;flex:0 0 var(--qb-chain);align-self:stretch;}\n\n  /* Each half is 50% high. The halves meet at the row boundary. */.rail.svelte-192qg3i {position:absolute;left:50%;width:2px;margin-left:-1px;background:var(--accent);border-radius:1px;}.up.svelte-192qg3i {top:0;height:50%;}.down.svelte-192qg3i {top:50%;height:50%;}\n\n  /*\n   * Centred on the row boundary: half of it overhangs the row above.\n   * `z-index` keeps it above the rail.\n   */.link.svelte-192qg3i {position:absolute;top:0;left:50%;z-index:1;transform:translate(-50%, -50%);display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;padding:0;border:0;border-radius:4px;background:var(--bg-list);color:var(--text-5);cursor:pointer;opacity:0.3;}.link.svelte-192qg3i:hover,\n  .link.svelte-192qg3i:focus-visible {opacity:1;color:var(--accent-soft);}.link.on.svelte-192qg3i {opacity:1;color:var(--accent);}'
 	};
 
 	function ChainGutter($$anchor, $$props) {
@@ -12725,15 +12693,15 @@
 
 	const $$css$n = {
 		hash: 'svelte-duxq9o',
-		code: '.pick.svelte-duxq9o {flex:0 0 var(--qb-pick);display:flex;flex-direction:column;justify-content:center;gap:2px;}.track-host.svelte-duxq9o {position:relative;height:3px;}.track.svelte-duxq9o,\n  .fill.svelte-duxq9o {position:absolute;top:0;left:0;height:3px;border-radius:2px;}.track.svelte-duxq9o {width:100%;background:var(--bg-sunken);}.fill.svelte-duxq9o {background:var(--accent);}\n\n  /*\n   * The input covers the track so the whole width is draggable, but only the\n   * thumb takes the pointer — otherwise a click anywhere in the cell jumps the\n   * value, which at 74px wide is almost always an accident.\n   */.rng.svelte-duxq9o {position:absolute;top:-5px;left:0;width:100%;height:13px;margin:0;padding:0;background:transparent;appearance:none;pointer-events:none;}.rng.svelte-duxq9o::-webkit-slider-thumb {appearance:none;width:9px;height:9px;border:0;border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-duxq9o::-moz-range-thumb {width:9px;height:9px;border:0;border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-duxq9o::-moz-range-track {background:transparent;}.stepper.svelte-duxq9o {display:flex;align-items:center;justify-content:space-between;}.step.svelte-duxq9o {width:13px;height:13px;padding:0;border:0;border-radius:3px;background:transparent;color:var(--text-4);font-size:12px;line-height:1;cursor:pointer;}.step.svelte-duxq9o:hover:not(:disabled) {background:var(--bg-raised);color:var(--text);}.step.svelte-duxq9o:disabled {opacity:0.35;cursor:default;}.count.svelte-duxq9o {font-size:10.5px;color:var(--text-3);}'
+		code: '.pick.svelte-duxq9o {flex:0 0 var(--qb-pick);display:flex;flex-direction:column;justify-content:center;gap:2px;}.track-host.svelte-duxq9o {position:relative;height:3px;}.track.svelte-duxq9o,\n  .fill.svelte-duxq9o {position:absolute;top:0;left:0;height:3px;border-radius:2px;}.track.svelte-duxq9o {width:100%;background:var(--bg-sunken);}.fill.svelte-duxq9o {background:var(--accent);}\n\n  /*\n   * The input covers the track so the whole width is draggable, but only the\n   * thumb accepts the pointer. Otherwise any click in the 74px cell would\n   * change the value.\n   */.rng.svelte-duxq9o {position:absolute;top:-5px;left:0;width:100%;height:13px;margin:0;padding:0;background:transparent;appearance:none;pointer-events:none;}.rng.svelte-duxq9o::-webkit-slider-thumb {appearance:none;width:9px;height:9px;border:0;border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-duxq9o::-moz-range-thumb {width:9px;height:9px;border:0;border-radius:50%;background:var(--accent-soft);cursor:pointer;pointer-events:auto;}.rng.svelte-duxq9o::-moz-range-track {background:transparent;}.stepper.svelte-duxq9o {display:flex;align-items:center;justify-content:space-between;}.step.svelte-duxq9o {width:13px;height:13px;padding:0;border:0;border-radius:3px;background:transparent;color:var(--text-4);font-size:12px;line-height:1;cursor:pointer;}.step.svelte-duxq9o:hover:not(:disabled) {background:var(--bg-raised);color:var(--text);}.step.svelte-duxq9o:disabled {opacity:0.35;cursor:default;}.count.svelte-duxq9o {font-size:10.5px;color:var(--text-3);}'
 	};
 
 	function PickCount($$anchor, $$props) {
 		push($$props, true);
 		append_styles$1($$anchor, $$css$n);
 
-		// A pool of zero still shows 1: an anime with every type switched off has
-		// nothing to give, and `1/0` reads as the mistake it is.
+		// An empty pool still shows a maximum of 1, so the control never reads
+		// `1/0`.
 		const max = user_derived(() => Math.max($$props.pool, 1));
 
 		const pct = user_derived(() => get(max) <= 1 ? 100 : ($$props.value - 1) / (get(max) - 1) * 100);
@@ -12777,7 +12745,7 @@
 
 	const $$css$m = {
 		hash: 'svelte-1a9aku4',
-		code: '.row.svelte-1a9aku4 {display:flex;align-items:center;gap:var(--qb-row-gap);height:var(--qb-entry-h);padding:0 12px 0 var(--qb-row-pad-left);position:relative;}.row.svelte-1a9aku4:hover {background:rgba(255, 255, 255, 0.04);}\n\n  /* The inset bar reads as "selected" without tinting the text under it. */.row.selected.svelte-1a9aku4 {background:rgba(91, 155, 245, 0.13);box-shadow:inset 3px 0 0 var(--accent);}\n\n  /* An entry whose anime is not in the cache still renders — see library.svelte.ts. */.row.unknown.svelte-1a9aku4 .anime:where(.svelte-1a9aku4) {color:var(--text-5);font-style:italic;}.grip.svelte-1a9aku4 {flex:0 0 var(--qb-grip);display:flex;align-items:center;color:var(--text-5);cursor:grab;}.check.svelte-1a9aku4 {flex:0 0 var(--qb-check);display:flex;align-items:center;}.check.svelte-1a9aku4 input:where(.svelte-1a9aku4) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}\n\n  /* Both text columns flex and share the slack — see `--qb-anime-min`. */.anime.svelte-1a9aku4 {flex:1 1 0;min-width:var(--qb-anime-min);font-size:var(--qb-text);font-weight:500;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.types.svelte-1a9aku4 {flex:0 0 var(--qb-types);min-width:var(--qb-types);display:flex;align-items:center;gap:4px;}\n\n  /* Off is dashed and unfilled: the type exists but contributes nothing. */.type.svelte-1a9aku4 {display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 8px;border-radius:5px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;cursor:pointer;}.type.on.svelte-1a9aku4 {background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);}.type.svelte-1a9aku4 .n:where(.svelte-1a9aku4) {opacity:0.75;}.badge.svelte-1a9aku4 {display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:5px;background:var(--chip-teal-bg);border:1px solid var(--chip-teal-line);color:var(--teal-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;}\n\n  /*\n   * Two lines of text inside a 34px row. The line heights are tight on purpose;\n   * anything looser pushes the artist\'s descenders past the row edge.\n   */.song.svelte-1a9aku4 {flex:1 1 0;min-width:var(--qb-song-min);display:flex;flex-direction:column;justify-content:center;line-height:1.15;}.title.svelte-1a9aku4,\n  .artist.svelte-1a9aku4 {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.title.svelte-1a9aku4 {font-size:var(--qb-text-sm);font-weight:500;color:var(--text);}.artist.svelte-1a9aku4 {font-size:var(--qb-text-xs);color:var(--text-4);}\n\n  /* Keeps a song row\'s later columns in step with an anime row\'s. */.pick-spacer.svelte-1a9aku4 {flex:0 0 var(--qb-pick);}.overrides.svelte-1a9aku4 {flex:0 0 var(--qb-overrides);min-width:0;display:flex;align-items:center;gap:4px;overflow:hidden;}.chip.svelte-1a9aku4 {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;background:var(--chip-amber-bg);border:1px solid var(--chip-amber-line);color:var(--amber-fg);font-family:var(--font-mono);font-size:var(--qb-text-xs);font-weight:600;white-space:nowrap;cursor:pointer;}\n\n  /* A random range has no editor; the panel it opens is read-only. */.chip.readonly.svelte-1a9aku4 {border-style:dashed;}.actions.svelte-1a9aku4 {flex:0 0 var(--qb-actions);display:flex;align-items:center;justify-content:flex-end;gap:3px;}.act.svelte-1a9aku4 {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-4);font-size:16px;line-height:1;cursor:pointer;}.act.svelte-1a9aku4:hover {background:var(--bg-raised);color:var(--text);}.act.lock.on.svelte-1a9aku4 {background:rgba(91, 155, 245, 0.2);border-color:rgba(91, 155, 245, 0.45);color:var(--accent-soft);}'
+		code: '.row.svelte-1a9aku4 {display:flex;align-items:center;gap:var(--qb-row-gap);height:var(--qb-entry-h);padding:0 12px 0 var(--qb-row-pad-left);position:relative;}.row.svelte-1a9aku4:hover {background:rgba(255, 255, 255, 0.04);}\n\n  /* An inset bar marks the selection without tinting the text. */.row.selected.svelte-1a9aku4 {background:rgba(91, 155, 245, 0.13);box-shadow:inset 3px 0 0 var(--accent);}\n\n  /* The anime is not in the cache. See library.svelte.ts. */.row.unknown.svelte-1a9aku4 .anime:where(.svelte-1a9aku4) {color:var(--text-5);font-style:italic;}.grip.svelte-1a9aku4 {flex:0 0 var(--qb-grip);display:flex;align-items:center;color:var(--text-5);cursor:grab;}.check.svelte-1a9aku4 {flex:0 0 var(--qb-check);display:flex;align-items:center;}.check.svelte-1a9aku4 input:where(.svelte-1a9aku4) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}\n\n  /* Both text columns flex and share the free width. See `--qb-anime-min`. */.anime.svelte-1a9aku4 {flex:1 1 0;min-width:var(--qb-anime-min);font-size:var(--qb-text);font-weight:500;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.types.svelte-1a9aku4 {flex:0 0 var(--qb-types);min-width:var(--qb-types);display:flex;align-items:center;gap:4px;}\n\n  /* Off is dashed and unfilled: the type exists but adds no songs. */.type.svelte-1a9aku4 {display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 8px;border-radius:5px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;cursor:pointer;}.type.on.svelte-1a9aku4 {background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);}.type.svelte-1a9aku4 .n:where(.svelte-1a9aku4) {opacity:0.75;}.badge.svelte-1a9aku4 {display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:5px;background:var(--chip-teal-bg);border:1px solid var(--chip-teal-line);color:var(--teal-fg);font-family:var(--font-mono);font-size:var(--qb-badge);font-weight:600;}\n\n  /*\n   * Two lines of text in one entry row. Keep the line heights tight: a looser\n   * value pushes the artist\'s descenders past the row edge.\n   */.song.svelte-1a9aku4 {flex:1 1 0;min-width:var(--qb-song-min);display:flex;flex-direction:column;justify-content:center;line-height:1.15;}.title.svelte-1a9aku4,\n  .artist.svelte-1a9aku4 {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.title.svelte-1a9aku4 {font-size:var(--qb-text-sm);font-weight:500;color:var(--text);}.artist.svelte-1a9aku4 {font-size:var(--qb-text-xs);color:var(--text-4);}\n\n  /* Keeps a song row\'s later columns aligned with an anime row\'s. */.pick-spacer.svelte-1a9aku4 {flex:0 0 var(--qb-pick);}.overrides.svelte-1a9aku4 {flex:0 0 var(--qb-overrides);min-width:0;display:flex;align-items:center;gap:4px;overflow:hidden;}.chip.svelte-1a9aku4 {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;background:var(--chip-amber-bg);border:1px solid var(--chip-amber-line);color:var(--amber-fg);font-family:var(--font-mono);font-size:var(--qb-text-xs);font-weight:600;white-space:nowrap;cursor:pointer;}\n\n  /* A random range has no editor. Its panel opens read-only. */.chip.readonly.svelte-1a9aku4 {border-style:dashed;}.actions.svelte-1a9aku4 {flex:0 0 var(--qb-actions);display:flex;align-items:center;justify-content:flex-end;gap:3px;}.act.svelte-1a9aku4 {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-4);font-size:16px;line-height:1;cursor:pointer;}.act.svelte-1a9aku4:hover {background:var(--bg-raised);color:var(--text);}.act.lock.on.svelte-1a9aku4 {background:rgba(91, 155, 245, 0.2);border-color:rgba(91, 155, 245, 0.45);color:var(--accent-soft);}'
 	};
 
 	function EntryRow($$anchor, $$props) {
@@ -12791,8 +12759,8 @@
 		const song = user_derived(() => $$props.entry.kind === 'song' ? describeSong($$props.entry.annSongId) : null);
 		const animeName = user_derived(() => $$props.entry.kind === 'anime' ? get(anime).name : get(song)?.animeName ?? '');
 
-		// Counts come from the cache, never from the entry — they are what the
-		// library holds today, not what it held when the quiz was saved.
+		// Counts come from the cache, never from the entry. They reflect the
+		// current library, not the library at save time.
 		const counts = user_derived(() => $$props.entry.kind === 'anime'
 			? describeAnime($$props.entry.annId)
 			: { opCount: 0, edCount: 0, insCount: 0 });
@@ -12829,16 +12797,15 @@
 		let menuButton = state(null);
 
 		/**
-		 * Whether the row may start a drag right now.
+		 * Decides whether the row can start a drag.
 		 *
-		 * The whole row is draggable, which is the right target for a 34px row — but
-		 * an HTML5 drag started on a child still drags the parent, so pressing the
-		 * pick slider dragged the row instead of moving the handle.
+		 * The whole row is draggable. An HTML5 drag that starts on a child still
+		 * drags the parent, so a press on the pick slider would drag the row. This
+		 * handler turns the row's `draggable` off for such a press.
 		 *
-		 * The attribute is set **imperatively** rather than bound to state: it is
-		 * read when `dragstart` fires, and a reactive update is flushed
-		 * asynchronously, so binding it leaves a window in which the press has
-		 * happened and the attribute still says the old thing.
+		 * The attribute is set **imperatively**, not bound to state. The browser
+		 * reads it when `dragstart` fires, and a reactive update is flushed too
+		 * late for that.
 		 */
 		function onPointerDown(event) {
 			const row = event.currentTarget;
@@ -13059,7 +13026,7 @@
 		delegated('pointerup', div, armDrag);
 
 		event('dragstart', div, (event) => {
-			// Firefox refuses to start a drag without data on the transfer.
+			// Firefox does not start a drag unless the transfer has data.
 			event.dataTransfer?.setData('text/plain', $$props.entry.id);
 
 			if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -13223,11 +13190,11 @@
 	var root_2$e = from_html(`<span class="match svelte-11qe3ec"> </span> <!>`, 1);
 	var root_3$9 = from_html(`<span class="content svelte-11qe3ec"> </span> <span class="when svelte-11qe3ec"> </span>`, 1);
 	var root_4$5 = from_html(`<button type="button" class="act svelte-11qe3ec" aria-label="Algorithm block settings" title="Algorithm block settings"><!></button>`);
-	var root_5$4 = from_html(`<div><span class="rail svelte-11qe3ec" aria-hidden="true"></span> <div class="body svelte-11qe3ec"><div class="line svelte-11qe3ec"><label class="check svelte-11qe3ec"><input type="checkbox" class="svelte-11qe3ec"/> <span class="sr-only"> </span></label> <span> </span> <!> <div class="actions svelte-11qe3ec"><!> <button type="button" class="act svelte-11qe3ec" aria-label="Duplicate this block" title="Duplicate this block — the copy is inserted just below"><!></button> <button type="button" class="act svelte-11qe3ec" aria-label="More actions" title="More actions">⋯</button></div></div></div></div>`);
+	var root_5$4 = from_html(`<div><span class="rail svelte-11qe3ec" aria-hidden="true"></span> <div class="body svelte-11qe3ec"><div class="line svelte-11qe3ec"><label class="check svelte-11qe3ec"><input type="checkbox" class="svelte-11qe3ec"/> <span class="sr-only"> </span></label> <span> </span> <!> <div class="actions svelte-11qe3ec"><!> <button type="button" class="act svelte-11qe3ec" aria-label="Duplicate this block" title="Duplicate this block. The copy goes directly below."><!></button> <button type="button" class="act svelte-11qe3ec" aria-label="More actions" title="More actions">⋯</button></div></div></div></div>`);
 
 	const $$css$l = {
 		hash: 'svelte-11qe3ec',
-		code: '.nested.svelte-11qe3ec {position:relative;display:flex;padding-left:var(--qb-chain);}.nested.svelte-11qe3ec:hover {background:rgba(255, 255, 255, 0.04);}.nested.selected.svelte-11qe3ec {background:rgba(91, 155, 245, 0.13);box-shadow:inset 3px 0 0 var(--accent);}\n\n  /* The rail carries the containing rule block\'s colour inward. */.rail.svelte-11qe3ec {position:absolute;left:var(--qb-chain);top:0;bottom:0;width:2px;background:var(--tone);opacity:0.75;}.tone-accent.svelte-11qe3ec {--tone: var(--accent);}.tone-violet.svelte-11qe3ec {--tone: var(--violet);}.tone-teal.svelte-11qe3ec {--tone: var(--teal);}.tone-amber.svelte-11qe3ec {--tone: var(--amber);}.tone-rose.svelte-11qe3ec {--tone: var(--rose);}.body.svelte-11qe3ec {flex:1 1 0;min-width:0;\n    /* Pads out from the rail so the checkbox lands on `--qb-check-x`, level\n       with every entry row\'s. */padding:0 12px 0 calc(var(--qb-check-x) - var(--qb-chain));}.line.svelte-11qe3ec {display:flex;align-items:center;gap:var(--qb-row-gap);height:var(--qb-entry-h);}.check.svelte-11qe3ec {flex:0 0 var(--qb-check);display:flex;align-items:center;}.check.svelte-11qe3ec input:where(.svelte-11qe3ec) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}.tag.svelte-11qe3ec {flex:none;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;}.kind-algorithm.svelte-11qe3ec {background:var(--chip-teal-bg);color:var(--teal-fg);}.kind-message.svelte-11qe3ec {background:var(--chip-amber-bg);color:var(--amber-fg);}.kind-title.svelte-11qe3ec {background:var(--chip-rose-bg);color:var(--rose-fg);}.match.svelte-11qe3ec {flex:none;font-size:var(--qb-text-sm);color:var(--text-3);white-space:nowrap;}.content.svelte-11qe3ec {flex:1 1 0;min-width:0;font-size:var(--qb-text);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.when.svelte-11qe3ec {flex:none;font-size:var(--qb-text-xs);color:var(--text-4);white-space:nowrap;}.actions.svelte-11qe3ec {flex:none;display:flex;align-items:center;gap:3px;}.act.svelte-11qe3ec {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-size:16px;line-height:1;cursor:pointer;}.act.svelte-11qe3ec:hover {background:var(--bg-raised);color:var(--text);}\n\n  /* Takes the slack between the summary and the action buttons, and clips\n     rather than wrapping — the line is a fixed height. */.chips.svelte-11qe3ec {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:5px;overflow:hidden;}.chip.svelte-11qe3ec {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-3);font-family:var(--font-mono);font-size:var(--qb-text-xs);white-space:nowrap;}'
+		code: '.nested.svelte-11qe3ec {position:relative;display:flex;padding-left:var(--qb-chain);}.nested.svelte-11qe3ec:hover {background:rgba(255, 255, 255, 0.04);}.nested.selected.svelte-11qe3ec {background:rgba(91, 155, 245, 0.13);box-shadow:inset 3px 0 0 var(--accent);}\n\n  /* The rail has the colour of the rule block that contains this row. */.rail.svelte-11qe3ec {position:absolute;left:var(--qb-chain);top:0;bottom:0;width:2px;background:var(--tone);opacity:0.75;}.tone-accent.svelte-11qe3ec {--tone: var(--accent);}.tone-violet.svelte-11qe3ec {--tone: var(--violet);}.tone-teal.svelte-11qe3ec {--tone: var(--teal);}.tone-amber.svelte-11qe3ec {--tone: var(--amber);}.tone-rose.svelte-11qe3ec {--tone: var(--rose);}.body.svelte-11qe3ec {flex:1 1 0;min-width:0;\n    /* The padding puts the checkbox on `--qb-check-x`, aligned with the\n       entry rows. */padding:0 12px 0 calc(var(--qb-check-x) - var(--qb-chain));}.line.svelte-11qe3ec {display:flex;align-items:center;gap:var(--qb-row-gap);height:var(--qb-entry-h);}.check.svelte-11qe3ec {flex:0 0 var(--qb-check);display:flex;align-items:center;}.check.svelte-11qe3ec input:where(.svelte-11qe3ec) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}.tag.svelte-11qe3ec {flex:none;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;}.kind-algorithm.svelte-11qe3ec {background:var(--chip-teal-bg);color:var(--teal-fg);}.kind-message.svelte-11qe3ec {background:var(--chip-amber-bg);color:var(--amber-fg);}.kind-title.svelte-11qe3ec {background:var(--chip-rose-bg);color:var(--rose-fg);}.match.svelte-11qe3ec {flex:none;font-size:var(--qb-text-sm);color:var(--text-3);white-space:nowrap;}.content.svelte-11qe3ec {flex:1 1 0;min-width:0;font-size:var(--qb-text);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.when.svelte-11qe3ec {flex:none;font-size:var(--qb-text-xs);color:var(--text-4);white-space:nowrap;}.actions.svelte-11qe3ec {flex:none;display:flex;align-items:center;gap:3px;}.act.svelte-11qe3ec {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-size:16px;line-height:1;cursor:pointer;}.act.svelte-11qe3ec:hover {background:var(--bg-raised);color:var(--text);}\n\n  /* Takes the free width between the summary and the action buttons. Clips;\n     the line has a fixed height and must not wrap. */.chips.svelte-11qe3ec {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:5px;overflow:hidden;}.chip.svelte-11qe3ec {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-3);font-family:var(--font-mono);font-size:var(--qb-text-xs);white-space:nowrap;}'
 	};
 
 	function NestedBlock($$anchor, $$props) {
@@ -13245,9 +13212,9 @@
 		const chips = user_derived(() => $$props.entry.kind === 'algorithm' ? algorithmChips($$props.entry.settings) : []);
 
 		/**
-		 * "N matching songs · M chosen". The match count is server-supplied and
-		 * arrives asynchronously, so until it lands the line says so rather than
-		 * showing a confident zero.
+		 * "N matching songs · M chosen". The server sends the match count
+		 * asynchronously. Until it arrives, the line says the count is pending; it
+		 * does not show zero.
 		 */
 		const matchLine = user_derived(() => {
 			if ($$props.entry.kind !== 'algorithm') return '';
@@ -13260,7 +13227,7 @@
 			return `${matched.length} matching songs · ${Math.min(wanted, matched.length || wanted)} chosen`;
 		});
 
-		/** Message and title blocks say when they fire, inline (SPEC §5.3). */
+		/** When a message or title block shows (SPEC §5.3). */
 		const whenLine = user_derived(() => {
 			if ($$props.entry.kind === 'message') {
 				const where = $$props.entry.videoDisplay ? 'during guessing' : 'chat';
@@ -13409,11 +13376,11 @@
 	var root_2$d = from_html(`<button type="button" class="chip svelte-xhe0ze"> </button>`);
 	var root_3$8 = from_html(`<button type="button" class="chip mode svelte-xhe0ze"> </button>`);
 	var root_4$4 = from_html(`<button type="button" class="chip warn svelte-xhe0ze">No duplicates</button>`);
-	var root_5$3 = from_html(`<div><div class="line one svelte-xhe0ze"><button type="button"><!></button> <label class="check svelte-xhe0ze"><input type="checkbox" class="svelte-xhe0ze"/> <span class="sr-only"> </span></label> <span class="name svelte-xhe0ze"> </span> <!> <!> <div class="actions svelte-xhe0ze"><button type="button" class="act svelte-xhe0ze" aria-label="Rule block settings" title="Rule block settings"><!></button> <button type="button" class="act svelte-xhe0ze" aria-label="Duplicate this rule block" title="Duplicate this rule block — entries, settings and all, inserted just below"><!></button> <button type="button" class="act svelte-xhe0ze" aria-label="More actions" title="More actions">⋯</button></div></div> <div class="line two svelte-xhe0ze"><button type="button" class="chip plays svelte-xhe0ze"> </button> <!> <!> <!> <!> <!> <!></div></div>`);
+	var root_5$3 = from_html(`<div><div class="line one svelte-xhe0ze"><button type="button"><!></button> <label class="check svelte-xhe0ze"><input type="checkbox" class="svelte-xhe0ze"/> <span class="sr-only"> </span></label> <span class="name svelte-xhe0ze"> </span> <!> <!> <div class="actions svelte-xhe0ze"><button type="button" class="act svelte-xhe0ze" aria-label="Rule block settings" title="Rule block settings"><!></button> <button type="button" class="act svelte-xhe0ze" aria-label="Duplicate this rule block" title="Duplicate this rule block with its entries and settings. The copy goes directly below."><!></button> <button type="button" class="act svelte-xhe0ze" aria-label="More actions" title="More actions">⋯</button></div></div> <div class="line two svelte-xhe0ze"><button type="button" class="chip plays svelte-xhe0ze"> </button> <!> <!> <!> <!> <!> <!></div></div>`);
 
 	const $$css$k = {
 		hash: 'svelte-xhe0ze',
-		code: '.head.svelte-xhe0ze {padding:9px 14px 10px;background:var(--tone-bg);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);border-left:3px solid var(--tone);}.tone-accent.svelte-xhe0ze {--tone: var(--accent);--tone-bg: rgba(91, 155, 245, 0.1);--tone-fg: var(--blue-fg);}.tone-violet.svelte-xhe0ze {--tone: var(--violet);--tone-bg: rgba(155, 124, 245, 0.1);--tone-fg: var(--violet-fg);}.tone-teal.svelte-xhe0ze {--tone: var(--teal);--tone-bg: rgba(52, 201, 163, 0.1);--tone-fg: var(--teal-fg);}.tone-amber.svelte-xhe0ze {--tone: var(--amber);--tone-bg: rgba(232, 163, 61, 0.1);--tone-fg: var(--amber-fg);}.tone-rose.svelte-xhe0ze {--tone: var(--rose);--tone-bg: rgba(229, 101, 138, 0.1);--tone-fg: var(--rose-fg);}.line.svelte-xhe0ze {display:flex;align-items:center;gap:8px;}.two.svelte-xhe0ze {gap:5px;margin-top:6px;flex-wrap:wrap;}.chev.svelte-xhe0ze {display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--text-3);cursor:pointer;transition:transform 120ms ease;transform:rotate(-90deg);}.chev.open.svelte-xhe0ze {transform:rotate(0deg);color:var(--tone-fg);}.check.svelte-xhe0ze {display:flex;align-items:center;}.check.svelte-xhe0ze input:where(.svelte-xhe0ze) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}.name.svelte-xhe0ze {font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;}.badge.svelte-xhe0ze {display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:5px;font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;}.target.svelte-xhe0ze {background:rgba(91, 155, 245, 0.2);color:var(--blue-fg);}\n\n  /* Plain text, deliberately: these are derived, not settable. */.info.svelte-xhe0ze {flex:1 1 0;min-width:0;font-size:var(--qb-text-sm);color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.actions.svelte-xhe0ze {flex:none;display:flex;align-items:center;gap:3px;}.act.svelte-xhe0ze {display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-size:17px;line-height:1;cursor:pointer;}.act.svelte-xhe0ze:hover {background:var(--bg-raised);color:var(--text);}.chip.svelte-xhe0ze {display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:6px;background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.chip.svelte-xhe0ze:hover {border-color:var(--line-strong);}.plays.svelte-xhe0ze {font-family:var(--font-mono);}.mode.svelte-xhe0ze {background:var(--chip-violet-bg);border-color:var(--chip-violet-line);color:var(--violet-fg);}.warn.svelte-xhe0ze {background:var(--chip-amber-bg);border-color:var(--chip-amber-line);color:var(--amber-fg);}'
+		code: '.head.svelte-xhe0ze {padding:9px 14px 10px;background:var(--tone-bg);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);border-left:3px solid var(--tone);}.tone-accent.svelte-xhe0ze {--tone: var(--accent);--tone-bg: rgba(91, 155, 245, 0.1);--tone-fg: var(--blue-fg);}.tone-violet.svelte-xhe0ze {--tone: var(--violet);--tone-bg: rgba(155, 124, 245, 0.1);--tone-fg: var(--violet-fg);}.tone-teal.svelte-xhe0ze {--tone: var(--teal);--tone-bg: rgba(52, 201, 163, 0.1);--tone-fg: var(--teal-fg);}.tone-amber.svelte-xhe0ze {--tone: var(--amber);--tone-bg: rgba(232, 163, 61, 0.1);--tone-fg: var(--amber-fg);}.tone-rose.svelte-xhe0ze {--tone: var(--rose);--tone-bg: rgba(229, 101, 138, 0.1);--tone-fg: var(--rose-fg);}.line.svelte-xhe0ze {display:flex;align-items:center;gap:8px;}.two.svelte-xhe0ze {gap:5px;margin-top:6px;flex-wrap:wrap;}.chev.svelte-xhe0ze {display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--text-3);cursor:pointer;transition:transform 120ms ease;transform:rotate(-90deg);}.chev.open.svelte-xhe0ze {transform:rotate(0deg);color:var(--tone-fg);}.check.svelte-xhe0ze {display:flex;align-items:center;}.check.svelte-xhe0ze input:where(.svelte-xhe0ze) {width:var(--qb-check);height:var(--qb-check);margin:0;accent-color:var(--accent);cursor:pointer;}.name.svelte-xhe0ze {font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;}.badge.svelte-xhe0ze {display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:5px;font-size:var(--qb-text-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;}.target.svelte-xhe0ze {background:rgba(91, 155, 245, 0.2);color:var(--blue-fg);}\n\n  /* Plain text: these counts are derived and cannot be set. */.info.svelte-xhe0ze {flex:1 1 0;min-width:0;font-size:var(--qb-text-sm);color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.actions.svelte-xhe0ze {flex:none;display:flex;align-items:center;gap:3px;}.act.svelte-xhe0ze {display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-4);font-size:17px;line-height:1;cursor:pointer;}.act.svelte-xhe0ze:hover {background:var(--bg-raised);color:var(--text);}.chip.svelte-xhe0ze {display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:6px;background:var(--chip-blue-bg);border:1px solid var(--chip-blue-line);color:var(--blue-fg);font-size:var(--qb-text-sm);font-weight:600;white-space:nowrap;cursor:pointer;}.chip.svelte-xhe0ze:hover {border-color:var(--line-strong);}.plays.svelte-xhe0ze {font-family:var(--font-mono);}.mode.svelte-xhe0ze {background:var(--chip-violet-bg);border-color:var(--chip-violet-line);color:var(--violet-fg);}.warn.svelte-xhe0ze {background:var(--chip-amber-bg);border-color:var(--chip-amber-line);color:var(--amber-fg);}'
 	};
 
 	function RuleBlockHeader($$anchor, $$props) {
@@ -13422,7 +13389,7 @@
 
 		const infoLine = user_derived(() => `${$$props.info.uniqueAnime} anime · ${$$props.info.uniqueSongs} unique songs · ${$$props.chosen} chosen`);
 
-		// The same three numbers spelled out, using AMQ's own popover wording.
+		// The same three numbers in the wording of AMQ's popover.
 		const infoTooltip = user_derived(() => t('quiz_builder.rule_block.popovers.block_info_content', `Song Count: ${$$props.chosen} · Unique Anime: ${$$props.info.uniqueAnime} · Unique Songs: ${$$props.info.uniqueSongs}`, {
 			NUMBER: $$props.chosen,
 			NUMBER2: $$props.info.uniqueAnime,
@@ -13466,7 +13433,7 @@
 		{
 			var consequent = ($$anchor) => {
 				Tooltip($$anchor, {
-					text: 'Adds from the library land in this block',
+					text: 'Items you add from the library go to this block',
 					children: ($$anchor, $$slotProps) => {
 						var span_2 = root$k();
 
@@ -13746,7 +13713,7 @@
 
 	const $$css$j = {
 		hash: 'svelte-1kq0xj3',
-		code: '.pane.svelte-1kq0xj3 {flex:1 1 62%;min-width:0;display:flex;flex-direction:column;background:var(--bg-list);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}.band.svelte-1kq0xj3 {flex:none;display:flex;align-items:center;gap:10px;height:var(--qb-band-h);padding:0 14px;background:var(--bg-head);border-bottom:1px solid var(--line);}.title.svelte-1kq0xj3 {margin:0;font-family:var(--font-display);font-size:16px;font-weight:700;}.count.svelte-1kq0xj3 {font-size:var(--qb-text-sm);color:var(--text-4);}.search.svelte-1kq0xj3 {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:8px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text-4);}.search.svelte-1kq0xj3 input:where(.svelte-1kq0xj3) {flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:var(--qb-text);outline:none;}.add-block.svelte-1kq0xj3 {display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-size:var(--qb-text);font-weight:700;white-space:nowrap;cursor:pointer;}.add-block.svelte-1kq0xj3:disabled {background:var(--bg-raised);color:var(--text-5);cursor:default;}.list.svelte-1kq0xj3 {flex:1 1 0;overflow-y:auto;overflow-x:hidden;}\n\n  /* Positions the drop line against the row it belongs above. */.row-host.svelte-1kq0xj3 {position:relative;}.drop-line.svelte-1kq0xj3 {position:absolute;top:-1px;left:14px;right:12px;z-index:2;height:2px;background:var(--accent);border-radius:1px;}\n\n  /* The count travels with the line: a 12-row drag must not look like one. */.drop-count.svelte-1kq0xj3 {position:absolute;top:-8px;left:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-family:var(--font-mono);font-size:9.5px;font-weight:700;line-height:16px;text-align:center;}.footer.svelte-1kq0xj3 {display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:9px 14px 11px calc(var(--qb-check-x) + 4px);border-bottom:1px solid var(--line);}\n\n  /* Dropping here appends to the block, so the whole zone lights up. */.drop-into.svelte-1kq0xj3 {background:rgba(91, 155, 245, 0.12);outline:1px dashed var(--accent);outline-offset:-3px;}.hint.svelte-1kq0xj3 {flex-basis:100%;font-size:var(--qb-text-sm);color:var(--text-5);}.add-label.svelte-1kq0xj3 {font-size:var(--qb-text-xs);color:var(--text-4);}.add-nested.svelte-1kq0xj3 {display:inline-flex;align-items:center;gap:4px;height:27px;padding:0 10px;border-radius:6px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:var(--qb-text-sm);font-weight:600;cursor:pointer;}.add-nested.svelte-1kq0xj3:hover:not(:disabled) {border-color:var(--line-strong);color:var(--text);}.add-nested.svelte-1kq0xj3:disabled {opacity:0.45;cursor:default;}.rule.svelte-1kq0xj3 {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-5);font-style:italic;}.empty.svelte-1kq0xj3 {padding:24px;text-align:center;color:var(--text-4);}'
+		code: '.pane.svelte-1kq0xj3 {flex:1 1 62%;min-width:0;display:flex;flex-direction:column;background:var(--bg-list);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}.band.svelte-1kq0xj3 {flex:none;display:flex;align-items:center;gap:10px;height:var(--qb-band-h);padding:0 14px;background:var(--bg-head);border-bottom:1px solid var(--line);}.title.svelte-1kq0xj3 {margin:0;font-family:var(--font-display);font-size:16px;font-weight:700;}.count.svelte-1kq0xj3 {font-size:var(--qb-text-sm);color:var(--text-4);}.search.svelte-1kq0xj3 {flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:8px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text-4);}.search.svelte-1kq0xj3 input:where(.svelte-1kq0xj3) {flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:var(--qb-text);outline:none;}.add-block.svelte-1kq0xj3 {display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-size:var(--qb-text);font-weight:700;white-space:nowrap;cursor:pointer;}.add-block.svelte-1kq0xj3:disabled {background:var(--bg-raised);color:var(--text-5);cursor:default;}.list.svelte-1kq0xj3 {flex:1 1 0;overflow-y:auto;overflow-x:hidden;}\n\n  /* Positions the drop line against its row. */.row-host.svelte-1kq0xj3 {position:relative;}.drop-line.svelte-1kq0xj3 {position:absolute;top:-1px;left:14px;right:12px;z-index:2;height:2px;background:var(--accent);border-radius:1px;}\n\n  /* Shows how many rows the drag carries. */.drop-count.svelte-1kq0xj3 {position:absolute;top:-8px;left:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-family:var(--font-mono);font-size:9.5px;font-weight:700;line-height:16px;text-align:center;}.footer.svelte-1kq0xj3 {display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:9px 14px 11px calc(var(--qb-check-x) + 4px);border-bottom:1px solid var(--line);}\n\n  /* A drop here appends to the block, so the whole zone is highlighted. */.drop-into.svelte-1kq0xj3 {background:rgba(91, 155, 245, 0.12);outline:1px dashed var(--accent);outline-offset:-3px;}.hint.svelte-1kq0xj3 {flex-basis:100%;font-size:var(--qb-text-sm);color:var(--text-5);}.add-label.svelte-1kq0xj3 {font-size:var(--qb-text-xs);color:var(--text-4);}.add-nested.svelte-1kq0xj3 {display:inline-flex;align-items:center;gap:4px;height:27px;padding:0 10px;border-radius:6px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:var(--qb-text-sm);font-weight:600;cursor:pointer;}.add-nested.svelte-1kq0xj3:hover:not(:disabled) {border-color:var(--line-strong);color:var(--text);}.add-nested.svelte-1kq0xj3:disabled {opacity:0.45;cursor:default;}.rule.svelte-1kq0xj3 {margin-left:auto;font-size:var(--qb-text-xs);color:var(--text-5);font-style:italic;}.empty.svelte-1kq0xj3 {padding:24px;text-align:center;color:var(--text-4);}'
 	};
 
 	function QuizList($$anchor, $$props) {
@@ -13756,12 +13723,11 @@
 		let search = state('');
 		let collapsed = state(proxy(new Set()));
 
-		/** Anchor for shift-click ranges. */
+		/** The start of a shift-click range. */
 		let lastClicked = null;
 
 		/**
-		 * Quiz-pane search. It has to reach the library, because an entry holds ids
-		 * and the player is searching for the name they can see.
+		 * Quiz-pane search. Entries hold ids, so names resolve through the library.
 		 */
 		function matches(entry) {
 			const needle = get(search).trim().toLowerCase();
@@ -13781,7 +13747,7 @@
 			if (entry.kind === 'message') return entry.message.toLowerCase().includes(needle);
 			if (entry.kind === 'title') return entry.title.toLowerCase().includes(needle);
 
-			// An algorithm block has no text of its own to match.
+			// An algorithm block has no text to match.
 			return false;
 		}
 
@@ -13799,7 +13765,7 @@
 			set(collapsed, next, true);
 		}
 
-		/** Shift extends from the last plain click; a plain click starts a new range. */
+		/** Shift extends from the last plain click. A plain click starts a new range. */
 		function select(id, event) {
 			if (event.shiftKey && lastClicked) {
 				quizStore.selectRange(lastClicked, id);
@@ -13820,11 +13786,11 @@
 		}
 
 		/**
-		 * Where a drop would land, given the pointer's position within a row.
+		 * Sets the drop target from the pointer's position in a row.
 		 *
-		 * Top half inserts before the row, bottom half after it. Measuring against
-		 * the row under the pointer — rather than computing an index from a fixed row
-		 * height — is what lets entries and taller nested blocks share one list.
+		 * The top half inserts before the row and the bottom half after it. The row
+		 * under the pointer is measured, because rows have different heights:
+		 * nested blocks are taller than entries.
 		 */
 		function hover(event, blockId, index) {
 			if (!dragState.active) return;
@@ -13839,7 +13805,7 @@
 			dragState.enter({ blockId, index: after ? index + 1 : index });
 		}
 
-		/** Dropping on a block's footer appends to that block. */
+		/** A drop on a block's footer appends to that block. */
 		function hoverEnd(event, blockId) {
 			if (!dragState.active) return;
 
@@ -13881,8 +13847,8 @@
 				return;
 			}
 
-			// An algorithm block is configured before it exists: AMQ's dialog creates
-			// it, so the target block is set and the caller opens the modal.
+			// AMQ's dialog creates the algorithm block. Set the target block here;
+			// the caller opens the dialog.
 			quizStore.targetBlockId = blockId;
 
 			$$props.onAlgorithmSettings('');
@@ -14174,8 +14140,8 @@
 
 	delegate(['click']);
 
-	var root$i = from_html(`<button type="button" class="item svelte-t9u46n">Move to…</button> <button type="button" class="item svelte-t9u46n">Duplicate</button> <button type="button" class="item svelte-t9u46n">Toggle lock</button> <div class="sep svelte-t9u46n"></div> <button type="button" class="item danger svelte-t9u46n">Remove</button>`, 1);
-	var root_1$g = from_html(`<button type="button" class="item svelte-t9u46n">Duplicate block</button> <button type="button" class="item svelte-t9u46n">Add here from the library</button> <button type="button" class="item svelte-t9u46n">Select everything in it</button> <div class="sep svelte-t9u46n"></div> <button type="button" class="item danger svelte-t9u46n"> </button>`, 1);
+	var root$i = from_html(`<button type="button" class="item svelte-t9u46n">Move to…</button> <button type="button" class="item svelte-t9u46n">Duplicate</button> <button type="button" class="item svelte-t9u46n">Lock or unlock</button> <div class="sep svelte-t9u46n"></div> <button type="button" class="item danger svelte-t9u46n">Remove</button>`, 1);
+	var root_1$g = from_html(`<button type="button" class="item svelte-t9u46n">Duplicate block</button> <button type="button" class="item svelte-t9u46n">Add library items here</button> <button type="button" class="item svelte-t9u46n">Select all entries</button> <div class="sep svelte-t9u46n"></div> <button type="button" class="item danger svelte-t9u46n"> </button>`, 1);
 	var root_2$b = from_html(`<div class="menu svelte-t9u46n"><button type="button" class="item svelte-t9u46n">Settings</button> <!></div>`);
 
 	const $$css$i = {
@@ -14219,8 +14185,7 @@
 						var button_4 = sibling(button_3, 4);
 
 						delegated('click', button_1, () => {
-							// Acting on a row through its own menu should act on that row, even
-							// if the current selection is something else entirely.
+							// A row's own menu acts on that row, whatever the selection was.
 							quizStore.clearSelection();
 
 							quizStore.toggleSelected($$props.id);
@@ -14296,7 +14261,7 @@
 		push($$props, true);
 		append_styles$1($$anchor, $$css$h);
 
-		/** `{ tagId, name }` from AMQ's tag component; empty if it is not built yet. */
+		/** Tags from AMQ's tag component. Empty if the component is not built yet. */
 		const tags = user_derived(() => {
 			try {
 				const map = customQuizCreator?.tagContainer?.tagMap;
@@ -14331,8 +14296,6 @@
 			quizStore.save();
 		}
 
-		// Closing on a successful save keeps the dialog from lingering over a quiz
-		// that is already stored.
 		user_effect(() => {
 			if (quizStore.saveState === 'saved') $$props.onClose();
 		});
@@ -14412,7 +14375,7 @@
 				var text_6 = only_child(p_1);
 
 				template_effect(() => set_text(text_6, `This quiz has ${get(selected).length ?? ''}
-        ${get(selected).length === 1 ? 'tag' : 'tags'}, kept as they are.`));
+        ${get(selected).length === 1 ? 'tag' : 'tags'}. The save keeps them.`));
 
 				append($$anchor, p_1);
 			};
@@ -14506,9 +14469,8 @@
 		const count = user_derived(() => quizStore.selection.size);
 
 		/**
-		 * Lock is a single button rather than a pair, so it needs a direction: if
-		 * anything in the selection is unlocked, lock everything; otherwise unlock.
-		 * That makes it idempotent in the direction the player can see.
+		 * Lock is one button. If any selected entry is unlocked it locks all of
+		 * them; otherwise it unlocks all of them.
 		 */
 		const anyUnlocked = user_derived(() => {
 			for (const id of quizStore.selection) {
@@ -14575,7 +14537,7 @@
 
 	const $$css$f = {
 		hash: 'svelte-1ubr2ui',
-		code: '.bar.svelte-1ubr2ui {flex:none;display:flex;align-items:center;gap:12px;height:60px;padding:0 var(--gutter);background:var(--bg-top);border-bottom:1px solid var(--line);}.back.svelte-1ubr2ui {display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--line-soft);border-radius:7px;background:var(--bg-raised);color:var(--text-2);cursor:pointer;}.back.svelte-1ubr2ui:hover {color:var(--text);border-color:var(--line-strong);}.title.svelte-1ubr2ui {margin:0;font-family:var(--font-display);font-size:17px;font-weight:700;white-space:nowrap;}.name.svelte-1ubr2ui input:where(.svelte-1ubr2ui) {width:220px;height:30px;padding:0 10px;border-radius:7px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text);font-family:inherit;font-size:13px;outline:none;}.name.svelte-1ubr2ui input:where(.svelte-1ubr2ui):focus {border-color:var(--accent);}.totals.svelte-1ubr2ui {display:flex;flex-direction:column;justify-content:center;margin-left:auto;line-height:1.25;text-align:right;}.headline.svelte-1ubr2ui {font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;}\n\n  /* The cap is AMQ\'s and it refuses the save, so it is worth shouting about. */.headline.over.svelte-1ubr2ui {color:var(--rose-fg);}.sub.svelte-1ubr2ui {font-size:10.5px;color:var(--text-4);white-space:nowrap;}.toggle.svelte-1ubr2ui {height:28px;padding:0 10px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-size:11.5px;font-weight:600;white-space:nowrap;cursor:pointer;}.toggle.on.svelte-1ubr2ui {background:var(--chip-violet-bg);border:1px solid var(--chip-violet-line);color:var(--violet-fg);}.quiet.svelte-1ubr2ui {height:30px;padding:0 12px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;}.quiet.svelte-1ubr2ui:disabled {opacity:0.4;cursor:default;}.quiet.icon.svelte-1ubr2ui {display:inline-flex;align-items:center;gap:5px;}.save.svelte-1ubr2ui {height:30px;padding:0 16px;border:0;border-radius:7px;background:var(--accent);color:var(--accent-fg);font-size:12.5px;font-weight:700;cursor:pointer;}.save.svelte-1ubr2ui:disabled {opacity:0.6;cursor:default;}'
+		code: '.bar.svelte-1ubr2ui {flex:none;display:flex;align-items:center;gap:12px;height:60px;padding:0 var(--gutter);background:var(--bg-top);border-bottom:1px solid var(--line);}.back.svelte-1ubr2ui {display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--line-soft);border-radius:7px;background:var(--bg-raised);color:var(--text-2);cursor:pointer;}.back.svelte-1ubr2ui:hover {color:var(--text);border-color:var(--line-strong);}.title.svelte-1ubr2ui {margin:0;font-family:var(--font-display);font-size:17px;font-weight:700;white-space:nowrap;}.name.svelte-1ubr2ui input:where(.svelte-1ubr2ui) {width:220px;height:30px;padding:0 10px;border-radius:7px;background:var(--bg-sunken);border:1px solid var(--line-soft);color:var(--text);font-family:inherit;font-size:13px;outline:none;}.name.svelte-1ubr2ui input:where(.svelte-1ubr2ui):focus {border-color:var(--accent);}.totals.svelte-1ubr2ui {display:flex;flex-direction:column;justify-content:center;margin-left:auto;line-height:1.25;text-align:right;}.headline.svelte-1ubr2ui {font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;}\n\n  /* Over the limit. AMQ refuses the save. */.headline.over.svelte-1ubr2ui {color:var(--rose-fg);}.sub.svelte-1ubr2ui {font-size:10.5px;color:var(--text-4);white-space:nowrap;}.toggle.svelte-1ubr2ui {height:28px;padding:0 10px;border-radius:7px;background:transparent;border:1px dashed var(--chip-off-line);color:var(--chip-off-fg);font-size:11.5px;font-weight:600;white-space:nowrap;cursor:pointer;}.toggle.on.svelte-1ubr2ui {background:var(--chip-violet-bg);border:1px solid var(--chip-violet-line);color:var(--violet-fg);}.quiet.svelte-1ubr2ui {height:30px;padding:0 12px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--line-soft);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;}.quiet.svelte-1ubr2ui:disabled {opacity:0.4;cursor:default;}.quiet.icon.svelte-1ubr2ui {display:inline-flex;align-items:center;gap:5px;}.save.svelte-1ubr2ui {height:30px;padding:0 16px;border:0;border-radius:7px;background:var(--accent);color:var(--accent-fg);font-size:12.5px;font-weight:700;cursor:pointer;}.save.svelte-1ubr2ui:disabled {opacity:0.6;cursor:default;}'
 	};
 
 	function TopBar$1($$anchor, $$props) {
@@ -14704,16 +14666,16 @@
 
 	const $$css$e = {
 		hash: 'svelte-ry34my',
-		code: '\n  /*\n   * Fixed, and stopping short of AMQ\'s menu bar. `bottom: 45px` is that bar\'s\n   * height, not a margin — the strip belongs to AMQ.\n   */.screen.svelte-ry34my {position:fixed;inset:0 0 45px 0;display:flex;flex-direction:column;font-size:15px;}.panes.svelte-ry34my {flex:1 1 0;min-height:0;display:flex;gap:16px;padding:12px var(--gutter) 12px;}\n\n  /* Positions the selection island over this pane rather than the viewport. */.quiz-host.svelte-ry34my {position:relative;flex:1 1 62%;min-width:0;display:flex;}.failure.svelte-ry34my {margin:48px auto;max-width:460px;text-align:center;color:var(--text-3);}.hint.svelte-ry34my {display:block;margin-top:10px;font-size:12px;color:var(--text-5);}code.svelte-ry34my {font-family:var(--font-mono);font-size:11.5px;color:var(--text-3);}'
+		code: '\n  /* Fixed. `bottom: 45px` is the height of AMQ\'s menu bar. */.screen.svelte-ry34my {position:fixed;inset:0 0 45px 0;display:flex;flex-direction:column;font-size:15px;}.panes.svelte-ry34my {flex:1 1 0;min-height:0;display:flex;gap:16px;padding:12px var(--gutter) 12px;}\n\n  /* Positions the selection bar over this pane, not the viewport. */.quiz-host.svelte-ry34my {position:relative;flex:1 1 62%;min-width:0;display:flex;}.failure.svelte-ry34my {margin:48px auto;max-width:460px;text-align:center;color:var(--text-3);}.hint.svelte-ry34my {display:block;margin-top:10px;font-size:12px;color:var(--text-5);}code.svelte-ry34my {font-family:var(--font-mono);font-size:11.5px;color:var(--text-3);}'
 	};
 
 	function QuizBuilder($$anchor, $$props) {
 		push($$props, true);
 		append_styles$1($$anchor, $$css$e);
 
-		/** Which overlay is open, if any. One at a time, by construction. */
+		/** The open overlays. The handlers below open one at a time. */
 		let picker = state(
-			/** Set for a one-off add; absent means "re-aim the pane". */
+			/** Set for a one-off add. Absent means "change the pane's target". */
 			null
 		);
 
@@ -14729,8 +14691,8 @@
 		}
 
 		/**
-		 * AMQ checks the name before opening its save dialog, and so do we — a dialog
-		 * whose only button is disabled explains nothing.
+		 * Checks the name before the save dialog opens, as AMQ does. A dialog with
+		 * only a disabled button would not say what is wrong.
 		 */
 		function save() {
 			if (!quizStore.quiz.name.trim()) {
@@ -14743,11 +14705,10 @@
 		}
 
 		/**
-		 * Throws away every change since the last save.
+		 * Discards every change since the last save.
 		 *
-		 * Confirmed through AMQ's own Swal so it looks like every other destructive
-		 * prompt in the game, and worded as what it does rather than as its button
-		 * label — "Undo" is the affordance, discarding your work is the effect.
+		 * Asks for confirmation through AMQ's Swal, like the game's other
+		 * destructive prompts. The text says what happens: the changes are lost.
 		 */
 		function revert() {
 			if (!quizStore.dirty) return;
@@ -14755,8 +14716,8 @@
 			Swal.fire({
 				title: 'Discard changes?',
 				text: quizStore.quizId
-					? 'This puts the quiz back to the last version you saved. It cannot be undone.'
-					: 'This clears the quiz back to empty. It cannot be undone.',
+					? 'This restores the last saved version of the quiz. You cannot undo it.'
+					: 'This removes everything from the quiz. You cannot undo it.',
 				showCancelButton: true,
 				confirmButtonText: 'Discard',
 				cancelButtonText: t('common.ui.cancel_button', 'Cancel')
@@ -14772,8 +14733,8 @@
 					connectUp: false,
 					locked: false,
 					annId,
-					// Openings on, endings on, inserts off — AMQ's own default for a new
-					// anime block, and the one people change least often.
+					// AMQ's default for a new anime block: openings and endings on,
+					// inserts off.
 					includeSongTypes: { op: true, ed: true, in: false },
 					numberOfSongs: 1,
 					overrides: {}
@@ -14796,11 +14757,11 @@
 		}
 
 		/**
-		 * The algorithm dialog is AMQ's. `setModeQuizBuilder` takes the settings to
-		 * edit and an object it will call `updateSettings` on when the player
-		 * confirms — so we hand it a shim that writes back into our model. With no
-		 * entry id it creates instead, and AMQ routes that through
-		 * `customQuizCreator.createAlgorithmBlock`, which we also own.
+		 * Opens AMQ's algorithm dialog. `setModeQuizBuilder` takes the settings to
+		 * edit and an object on which it calls `updateSettings` when the player
+		 * confirms. We pass a shim that writes to our model. With no entry id the
+		 * dialog creates a block, which AMQ routes through
+		 * `customQuizCreator.createAlgorithmBlock`. We own that too.
 		 */
 		function openAlgorithm(entryId) {
 			const block = quizStore.quiz.blocks.find((item) => item.entries.some((entry) => entry.id === entryId));
@@ -14820,21 +14781,20 @@
 		}
 
 		/*
-		 * Opening is a toggle: clicking the button that opened a menu closes it.
-		 * `Floating` deliberately ignores its own anchor when dismissing on an
-		 * outside click, so without this the second click would close and reopen it
-		 * in the same gesture and the menu would look stuck.
+		 * A second click on the button that opened a menu closes it. `Floating`
+		 * ignores its own anchor on an outside click, so without this toggle the
+		 * second click would close and reopen the menu.
 		 */
 		function openMenu(anchor, kind, id) {
 			set(rowMenu, get(rowMenu)?.anchor === anchor && get(rowMenu).id === id ? null : { anchor, kind, id }, true);
 		}
 
 		/**
-		 * Whether a key belongs to whatever has focus rather than to the screen.
+		 * Whether the focused element takes typed text.
 		 *
-		 * Checking `tagName === 'INPUT'` is not enough: clicking a row's checkbox
-		 * focuses it, and every shortcut below would then be dead until you clicked
-		 * somewhere else. Only controls you actually *type* into swallow keys.
+		 * `tagName === 'INPUT'` is not enough. A click on a row's checkbox focuses
+		 * it, and the shortcuts below would then stop working until focus moved.
+		 * Only text controls keep their keys.
 		 */
 		const TYPING_TYPES = new Set([
 			'text',
@@ -14855,7 +14815,7 @@
 			return TYPING_TYPES.has(target.type);
 		}
 
-		/** SPEC §11's shortcuts. Ignored while a text field has focus. */
+		/** The shortcuts of SPEC §11. Ignored while a text field has focus. */
 		function onKeydown(event) {
 			const target = event.target;
 
@@ -14906,7 +14866,7 @@
 			if ((event.key === 'm' || event.key === 'M') && (event.ctrlKey || event.metaKey)) {
 				event.preventDefault();
 
-				// Anchor on the quiz pane itself — there is no button under the cursor.
+				// No button is under the cursor, so anchor on the focused element.
 				const anchor = document.activeElement;
 
 				if (anchor) set(moving, anchor, true);
@@ -14914,12 +14874,12 @@
 		}
 
 		/**
-		 * Keeps our own key events inside the shadow root.
+		 * Keeps our key events inside the shadow root.
 		 *
-		 * `setup.js:56` blocks Backspace unless `event.target` is an input — but an
-		 * event crossing a shadow boundary is retargeted to the host, so AMQ sees our
-		 * wrapper div, decides the key came from outside a field, and cancels it. The
-		 * result is that Backspace does nothing in either search box.
+		 * `setup.js:56` blocks Backspace unless `event.target` is an input. An
+		 * event that crosses a shadow boundary is retargeted to the host, so AMQ
+		 * sees our wrapper div and cancels the key. Backspace then does nothing in
+		 * either search box.
 		 */
 		function keepKeysLocal(event) {
 			if (isTyping(event.target)) {
@@ -15002,7 +14962,8 @@
 						},
 
 						onPick: (blockId) => {
-							// Picking from any "add to…" popover re-targets the pane too (SPEC §4).
+							// A pick from any "add to" popover also sets the pane's target
+							// (SPEC §4).
 							quizStore.targetBlockId = blockId;
 
 							get(picker)?.then?.();
@@ -15417,9 +15378,9 @@
 		}
 
 		#changedCount = user_derived((/**
-		 * Count of groups and ranges that differ from default — the Filters badge and
-		 * the active strip show the same set, so they can never disagree (SPEC §4).
-		 * Search is deliberately excluded: it has its own visible input.
+		 * How many groups and ranges differ from their default. The Filters badge
+		 * and the active strip both read this set (SPEC §4). Search is excluded
+		 * because its input is always visible.
 		 */
 		) => TOGGLE_GROUPS.filter((entry) => this.groupChanged(entry.key)).length + RANGES.filter((entry) => this.rangeChanged(entry.key)).length);
 
@@ -15484,8 +15445,8 @@
 		}
 
 		/**
-		 * Typing a low value above the high one pushes the other handle rather than
-		 * rejecting the input; values clamp to the spec's bounds (SPEC §4).
+		 * A bound that crosses the other one pushes it along. Values clamp to the
+		 * range's limits (SPEC §4).
 		 */
 		setBound(key, index, raw) {
 			const spec = RANGES_BY_KEY.get(key);
@@ -15526,7 +15487,7 @@
 			this.#save();
 		}
 
-		/** Leaves search and sort alone — neither is part of the "Active" set. */
+		/** Leaves search and sort unchanged. */
 		resetAll() {
 			const base = defaultState();
 
@@ -15553,7 +15514,7 @@
 		}
 
 		// --- predicate ----------------------------------------------------------
-		/** Order follows `roomFilter.js` testRoom, cheapest rejections first. */
+		/** Follows the order of `testRoom` in `roomFilter.js`: cheap tests first. */
 		matches(room) {
 			const { toggles, ranges } = this.state;
 			const settings = room.settings;
@@ -15700,17 +15661,17 @@
 	  return (openings ? 4 : 0) + (endings ? 2 : 0) + (inserts ? 1 : 0);
 	}
 	const COMPARATORS = {
-	  // Room ids ascend with creation order, so this is "oldest first".
+	  // Room ids ascend with creation order: oldest first.
 	  id: by((room) => room.id),
 	  room: by((room) => room.name.toLowerCase()),
 	  mode: by((room) => modeLabel(room.mode)),
 	  players: by((room) => room.playerCount),
 	  songs: by((room) => room.songCount),
-	  // A randomised range sorts by its floor, which is what the cell leads with.
+	  // A random range sorts by its minimum, the value the cell shows first.
 	  time: by((room) => room.guessTime.range?.min ?? -1),
 	  types: by(typeWeight),
 	  selection: by((room) => songSelectionLabel$1(room.songSelection)),
-	  // Lower % correct is harder; sorting on the floor puts the hardest first.
+	  // A lower % correct is harder, so ascending puts the hardest first.
 	  difficulty: by((room) => difficultyRange(room.settings).min)
 	};
 	function sortRooms(rooms, key, dir) {
@@ -15795,14 +15756,14 @@
 
 	const $$css$c = {
 		hash: 'svelte-d2bw8i',
-		code: '.header.svelte-d2bw8i {display:flex;align-items:center;gap:var(--col-gap);height:44px;padding:0 var(--row-pad);border-radius:var(--radius) var(--radius) 0 0;background:var(--bg-head);border:1px solid var(--line-soft);border-bottom:1px solid var(--line-strong);}.col.svelte-d2bw8i {display:flex;align-items:center;gap:4px;\n    /* Fixed columns must never shrink, or the headings drift out of step with\n       the rows, which do not shrink either. */flex:0 0 auto;min-width:0;padding:0;background:transparent;border:0;color:var(--text-4);font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;text-align:left;cursor:pointer;}\n\n  /*\n   * The chips column takes the leftover width. Basis 0, not auto: with `auto`\n   * the column is sized from its content, so the header\'s label and a row\'s\n   * chips would each claim a different share of the free space and the two\n   * would drift apart. `min-width` overrides the flex default of `auto`, which\n   * would otherwise raise the column to its min-content size.\n   */.col.grow.svelte-d2bw8i {flex:1 1 0;min-width:var(--col-chips);}.col.right.svelte-d2bw8i {justify-content:flex-end;}.col.static.svelte-d2bw8i {cursor:default;}.col.svelte-d2bw8i:not(.static):hover {color:var(--text-2);}.col.active.svelte-d2bw8i {color:var(--accent-soft);}.arrow.svelte-d2bw8i {display:inline-flex;}.arrow.up.svelte-d2bw8i {transform:rotate(180deg);}'
+		code: '.header.svelte-d2bw8i {display:flex;align-items:center;gap:var(--col-gap);height:44px;padding:0 var(--row-pad);border-radius:var(--radius) var(--radius) 0 0;background:var(--bg-head);border:1px solid var(--line-soft);border-bottom:1px solid var(--line-strong);}.col.svelte-d2bw8i {display:flex;align-items:center;gap:4px;\n    /* Fixed columns must not shrink. The rows do not shrink either, and the\n       headings must stay aligned with them. */flex:0 0 auto;min-width:0;padding:0;background:transparent;border:0;color:var(--text-4);font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;text-align:left;cursor:pointer;}\n\n  /*\n   * The chips column takes the leftover width. The basis is 0, not `auto`:\n   * with `auto` the header label and a row\'s chips would each size the column\n   * from their own content and get different widths. `min-width` replaces the\n   * flex default of `auto`, which would raise the column to its min-content\n   * size.\n   */.col.grow.svelte-d2bw8i {flex:1 1 0;min-width:var(--col-chips);}.col.right.svelte-d2bw8i {justify-content:flex-end;}.col.static.svelte-d2bw8i {cursor:default;}.col.svelte-d2bw8i:not(.static):hover {color:var(--text-2);}.col.active.svelte-d2bw8i {color:var(--accent-soft);}.arrow.svelte-d2bw8i {display:inline-flex;}.arrow.up.svelte-d2bw8i {transform:rotate(180deg);}'
 	};
 
 	function ColumnHeader($$anchor, $$props) {
 		push($$props, true);
 		append_styles$1($$anchor, $$css$c);
 
-		const COLUMNS = /** The token holding this column's width; absent means it flexes. */
+		const COLUMNS = /** The token with this column's width. Absent for the flexible column. */
 		[
 			{ key: 'id', label: 'ID', width: 'var(--col-id)' },
 			{
@@ -15908,7 +15869,7 @@
 
 	const $$css$b = {
 		hash: 'svelte-1yc2l3d',
-		code: '.group.svelte-1yc2l3d {margin-bottom:14px;}.head.svelte-1yc2l3d {display:flex;align-items:center;gap:8px;height:16px;margin-bottom:8px;}.title.svelte-1yc2l3d {font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#a3acbb;white-space:nowrap;}.rule.svelte-1yc2l3d {flex-grow:1;height:1px;background:rgba(255, 255, 255, 0.08);}.reset.svelte-1yc2l3d {display:inline-flex;align-items:center;gap:5px;height:16px;padding:0;background:transparent;border:0;color:var(--blue-fg);font-size:10px;font-weight:600;cursor:pointer;}.dot.svelte-1yc2l3d {width:5px;height:5px;border-radius:50%;background:var(--accent);}.controls.svelte-1yc2l3d {display:flex;align-items:center;gap:10px;}.num.svelte-1yc2l3d {width:54px;height:26px;padding:0 4px;text-align:center;border-radius:6px;background:var(--bg-sunken);border:1px solid rgba(255, 255, 255, 0.14);color:var(--text);font-size:12px;-moz-appearance:textfield;appearance:textfield;}.num.svelte-1yc2l3d:focus {outline:none;border-color:var(--accent);}.num.svelte-1yc2l3d::-webkit-outer-spin-button,\n  .num.svelte-1yc2l3d::-webkit-inner-spin-button {-webkit-appearance:none;margin:0;}.track-host.svelte-1yc2l3d {position:relative;flex-grow:1;height:18px;}.track.svelte-1yc2l3d,\n  .bands.svelte-1yc2l3d,\n  .fill.svelte-1yc2l3d {position:absolute;top:7px;height:4px;border-radius:2px;}.track.svelte-1yc2l3d {left:0;right:0;background:rgba(255, 255, 255, 0.12);}.bands.svelte-1yc2l3d {left:0;right:0;display:flex;overflow:hidden;opacity:0.42;}.band.svelte-1yc2l3d {height:4px;}.fill.svelte-1yc2l3d {background:rgba(255, 255, 255, 0.34);}.fill.on.svelte-1yc2l3d {background:var(--accent);}.rng.svelte-1yc2l3d {position:absolute;left:0;top:0;width:100%;height:18px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;\n    /* The track must not swallow clicks; only the thumbs take them back. */pointer-events:none;}.rng.svelte-1yc2l3d:focus {outline:none;}.rng.svelte-1yc2l3d::-webkit-slider-runnable-track {height:18px;background:transparent;border:none;}.rng.svelte-1yc2l3d::-moz-range-track {height:18px;background:transparent;border:none;}.rng.svelte-1yc2l3d::-webkit-slider-thumb {-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:#fff;border:3px solid var(--text-5);box-sizing:border-box;cursor:grab;pointer-events:auto;}.rng.svelte-1yc2l3d::-moz-range-thumb {width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--text-5);box-sizing:border-box;cursor:grab;pointer-events:auto;}.rng.on.svelte-1yc2l3d::-webkit-slider-thumb {border-color:var(--accent);}.rng.on.svelte-1yc2l3d::-moz-range-thumb {border-color:var(--accent);}.rng.svelte-1yc2l3d:focus-visible::-webkit-slider-thumb {box-shadow:0 0 0 3px rgba(91, 155, 245, 0.45);}.legend.svelte-1yc2l3d {position:absolute;z-index:40;right:-6px;bottom:calc(100% + 6px);width:208px;padding:7px 9px;border-radius:var(--radius);background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 8px 22px rgba(0, 0, 0, 0.55);opacity:0;visibility:hidden;transition:opacity 0.12s ease;pointer-events:none;}.has-tiers.svelte-1yc2l3d:hover .legend:where(.svelte-1yc2l3d),\n  .has-tiers.svelte-1yc2l3d:focus-within .legend:where(.svelte-1yc2l3d) {opacity:1;visibility:visible;}.legend-head.svelte-1yc2l3d {margin-bottom:5px;font-size:10px;color:var(--text-4);}.legend-row.svelte-1yc2l3d {display:flex;align-items:center;gap:8px;padding:1px 0;}.swatch.svelte-1yc2l3d {width:9px;height:9px;border-radius:2px;flex-shrink:0;}.legend-name.svelte-1yc2l3d {font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;}.legend-range.svelte-1yc2l3d {font-size:10px;color:var(--text-3);white-space:nowrap;}'
+		code: '.group.svelte-1yc2l3d {margin-bottom:14px;}.head.svelte-1yc2l3d {display:flex;align-items:center;gap:8px;height:16px;margin-bottom:8px;}.title.svelte-1yc2l3d {font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#a3acbb;white-space:nowrap;}.rule.svelte-1yc2l3d {flex-grow:1;height:1px;background:rgba(255, 255, 255, 0.08);}.reset.svelte-1yc2l3d {display:inline-flex;align-items:center;gap:5px;height:16px;padding:0;background:transparent;border:0;color:var(--blue-fg);font-size:10px;font-weight:600;cursor:pointer;}.dot.svelte-1yc2l3d {width:5px;height:5px;border-radius:50%;background:var(--accent);}.controls.svelte-1yc2l3d {display:flex;align-items:center;gap:10px;}.num.svelte-1yc2l3d {width:54px;height:26px;padding:0 4px;text-align:center;border-radius:6px;background:var(--bg-sunken);border:1px solid rgba(255, 255, 255, 0.14);color:var(--text);font-size:12px;-moz-appearance:textfield;appearance:textfield;}.num.svelte-1yc2l3d:focus {outline:none;border-color:var(--accent);}.num.svelte-1yc2l3d::-webkit-outer-spin-button,\n  .num.svelte-1yc2l3d::-webkit-inner-spin-button {-webkit-appearance:none;margin:0;}.track-host.svelte-1yc2l3d {position:relative;flex-grow:1;height:18px;}.track.svelte-1yc2l3d,\n  .bands.svelte-1yc2l3d,\n  .fill.svelte-1yc2l3d {position:absolute;top:7px;height:4px;border-radius:2px;}.track.svelte-1yc2l3d {left:0;right:0;background:rgba(255, 255, 255, 0.12);}.bands.svelte-1yc2l3d {left:0;right:0;display:flex;overflow:hidden;opacity:0.42;}.band.svelte-1yc2l3d {height:4px;}.fill.svelte-1yc2l3d {background:rgba(255, 255, 255, 0.34);}.fill.on.svelte-1yc2l3d {background:var(--accent);}.rng.svelte-1yc2l3d {position:absolute;left:0;top:0;width:100%;height:18px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;\n    /* Only the thumbs accept the pointer. See the header comment. */pointer-events:none;}.rng.svelte-1yc2l3d:focus {outline:none;}.rng.svelte-1yc2l3d::-webkit-slider-runnable-track {height:18px;background:transparent;border:none;}.rng.svelte-1yc2l3d::-moz-range-track {height:18px;background:transparent;border:none;}.rng.svelte-1yc2l3d::-webkit-slider-thumb {-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:#fff;border:3px solid var(--text-5);box-sizing:border-box;cursor:grab;pointer-events:auto;}.rng.svelte-1yc2l3d::-moz-range-thumb {width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--text-5);box-sizing:border-box;cursor:grab;pointer-events:auto;}.rng.on.svelte-1yc2l3d::-webkit-slider-thumb {border-color:var(--accent);}.rng.on.svelte-1yc2l3d::-moz-range-thumb {border-color:var(--accent);}.rng.svelte-1yc2l3d:focus-visible::-webkit-slider-thumb {box-shadow:0 0 0 3px rgba(91, 155, 245, 0.45);}.legend.svelte-1yc2l3d {position:absolute;z-index:40;right:-6px;bottom:calc(100% + 6px);width:208px;padding:7px 9px;border-radius:var(--radius);background:var(--bg-pop);border:1px solid var(--line-strong);box-shadow:0 8px 22px rgba(0, 0, 0, 0.55);opacity:0;visibility:hidden;transition:opacity 0.12s ease;pointer-events:none;}.has-tiers.svelte-1yc2l3d:hover .legend:where(.svelte-1yc2l3d),\n  .has-tiers.svelte-1yc2l3d:focus-within .legend:where(.svelte-1yc2l3d) {opacity:1;visibility:visible;}.legend-head.svelte-1yc2l3d {margin-bottom:5px;font-size:10px;color:var(--text-4);}.legend-row.svelte-1yc2l3d {display:flex;align-items:center;gap:8px;padding:1px 0;}.swatch.svelte-1yc2l3d {width:9px;height:9px;border-radius:2px;flex-shrink:0;}.legend-name.svelte-1yc2l3d {font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;}.legend-range.svelte-1yc2l3d {font-size:10px;color:var(--text-3);white-space:nowrap;}'
 	};
 
 	function RangeSlider($$anchor, $$props) {
@@ -15916,13 +15877,11 @@
 		append_styles$1($$anchor, $$css$b);
 
 		/**
-		 * Structurally what the room browser's `RangeSpec` already is, declared here
-		 * rather than imported so this component is not tied to one screen's filter
-		 * module — the quiz builder needs the same slider for vintage and sample
-		 * point, which have nothing to do with room filters.
+		 * The same shape as the room browser's `RangeSpec`. Declared here so the
+		 * quiz builder can use the slider without importing the room filter module.
 		 */
-		/** Paints the five difficulty tier bands behind the track. */
-		/** The top stop means "unlimited" rather than literally `max`. */
+		/** Draws the five difficulty tier bands behind the track. */
+		/** The maximum means "unlimited", not the literal `max`. */
 		const id = user_derived(() => `rng-${$$props.spec.key}`);
 
 		const title = user_derived(() => $$props.spec.label());
@@ -16236,7 +16195,7 @@
 
 	const $$css$9 = {
 		hash: 'svelte-1ypl3kj',
-		code: '.chip.svelte-1ypl3kj {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:500;white-space:nowrap;background:var(--chip-bg);border:1px solid var(--chip-line);color:var(--chip-fg);}\n\n  /* Optional genre/tag entries read as provisional, so the border is dashed. */.dashed.svelte-1ypl3kj {background:transparent;border-style:dashed;}.tone-teal.svelte-1ypl3kj {--chip-bg: var(--chip-teal-bg);--chip-line: var(--chip-teal-line);--chip-fg: var(--teal-fg);}.tone-amber.svelte-1ypl3kj {--chip-bg: var(--chip-amber-bg);--chip-line: var(--chip-amber-line);--chip-fg: var(--amber-fg);}.tone-violet.svelte-1ypl3kj {--chip-bg: var(--chip-violet-bg);--chip-line: var(--chip-violet-line);--chip-fg: var(--violet-fg);}.tone-rose.svelte-1ypl3kj {--chip-bg: var(--chip-rose-bg);--chip-line: var(--chip-rose-line);--chip-fg: var(--rose-fg);}.tone-blue.svelte-1ypl3kj {--chip-bg: var(--chip-blue-bg);--chip-line: var(--chip-blue-line);--chip-fg: var(--blue-fg);}.tone-off.svelte-1ypl3kj {--chip-bg: var(--chip-off-bg);--chip-line: var(--chip-off-line);--chip-fg: var(--chip-off-fg);}'
+		code: '.chip.svelte-1ypl3kj {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:500;white-space:nowrap;background:var(--chip-bg);border:1px solid var(--chip-line);color:var(--chip-fg);}\n\n  /* A dashed border marks an optional genre or tag. */.dashed.svelte-1ypl3kj {background:transparent;border-style:dashed;}.tone-teal.svelte-1ypl3kj {--chip-bg: var(--chip-teal-bg);--chip-line: var(--chip-teal-line);--chip-fg: var(--teal-fg);}.tone-amber.svelte-1ypl3kj {--chip-bg: var(--chip-amber-bg);--chip-line: var(--chip-amber-line);--chip-fg: var(--amber-fg);}.tone-violet.svelte-1ypl3kj {--chip-bg: var(--chip-violet-bg);--chip-line: var(--chip-violet-line);--chip-fg: var(--violet-fg);}.tone-rose.svelte-1ypl3kj {--chip-bg: var(--chip-rose-bg);--chip-line: var(--chip-rose-line);--chip-fg: var(--rose-fg);}.tone-blue.svelte-1ypl3kj {--chip-bg: var(--chip-blue-bg);--chip-line: var(--chip-blue-line);--chip-fg: var(--blue-fg);}.tone-off.svelte-1ypl3kj {--chip-bg: var(--chip-off-bg);--chip-line: var(--chip-off-line);--chip-fg: var(--chip-off-fg);}'
 	};
 
 	function Chip($$anchor, $$props) {
@@ -16281,8 +16240,7 @@
 			}
 		}
 
-		// Without a canvas, fall back to a per-character estimate rather than
-		// dropping every chip.
+		// Without a canvas, estimate the width per character.
 		const value = context ? context.measureText(label).width : label.length * 5.5;
 
 		widths.set(label, value);
@@ -16295,7 +16253,7 @@
 
 	const $$css$8 = {
 		hash: 'svelte-1sajf5u',
-		code: '\n  /*\n   * Two lines of chips, centred in the row without changing its height: two\n   * 22px chips plus the 4px gap is 48px, inside a 56px row.\n   */.cell.svelte-1sajf5u {display:flex;flex-wrap:wrap;align-content:center;gap:4px;height:48px;\n    /* Matches `.col.grow` in ColumnHeader — see the note there. */flex:1 1 0;min-width:var(--col-chips);overflow:hidden;}.more.svelte-1sajf5u {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:500;white-space:nowrap;background:var(--chip-off-bg);border:1px solid var(--chip-off-line);color:var(--chip-off-fg);}'
+		code: '\n  /*\n   * Two lines of chips, centred in the 56px row: two 22px chips and the 4px\n   * gap make 48px.\n   */.cell.svelte-1sajf5u {display:flex;flex-wrap:wrap;align-content:center;gap:4px;height:48px;\n    /* Same as `.col.grow` in ColumnHeader. See the comment there. */flex:1 1 0;min-width:var(--col-chips);overflow:hidden;}.more.svelte-1sajf5u {display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:500;white-space:nowrap;background:var(--chip-off-bg);border:1px solid var(--chip-off-line);color:var(--chip-off-fg);}'
 	};
 
 	function ChipsCell($$anchor, $$props) {
@@ -16303,10 +16261,10 @@
 		append_styles$1($$anchor, $$css$8);
 
 		const GAP = 4;
-		const CHIP_PADDING = 18; // 8px each side + 1px border each side
-		const OVERFLOW_RESERVE = 38; // room for the widest plausible `+N`
+		const CHIP_PADDING = 18; // 8px padding and 1px border on each side
+		const OVERFLOW_RESERVE = 38; // width kept free for the `+N` chip
 
-		/** Two 22px chips plus the 4px gap — see `.cell` height below. */
+		/** Two 22px chips and the 4px gap. See the `.cell` height below. */
 		const MAX_LINES = 2;
 
 		let cell = state(null);
@@ -16332,9 +16290,8 @@
 				return { shown: $$props.chips, hidden: [] };
 			}
 
-			// Pack once with the full width. If everything fits there is no `+N` chip
-			// to make room for, so reserving space for one would drop a chip that had
-			// room. Only when something overflows is the pack redone with the reserve.
+			// Pack with the full width first. Reserve space for the `+N` chip only if
+			// something overflows; otherwise the reserve would drop a chip that fits.
 			const full = pack($$props.chips, get(width), get(width));
 
 			return full.hidden.length
@@ -16343,10 +16300,9 @@
 		});
 
 		/**
-		 * Fills up to `MAX_LINES` lines, left to right.
-		 *
-		 * `lastLineBudget` is narrower than the rest only when something overflowed,
-		 * because that is the only case where a `+N` has to share the final line.
+		 * Fills up to `MAX_LINES` lines, left to right. `lastLineBudget` is the
+		 * width of the last line, which is narrower when it also holds the `+N`
+		 * chip.
 		 */
 		function pack(list, budget, lastLineBudget) {
 			const shown = [];
@@ -16356,8 +16312,8 @@
 			let used = 0;
 
 			for (const chip of list) {
-				// Once anything has overflowed, everything after it does too — otherwise
-				// the order in the cell would stop matching the order in the tooltip.
+				// After the first hidden chip, hide all the rest. The visible chips and
+				// the tooltip then keep the same order.
 				if (hidden.length) {
 					hidden.push(chip);
 
@@ -16562,7 +16518,7 @@
 
 	const $$css$6 = {
 		hash: 'svelte-1elzj7b',
-		code: '.section-title.svelte-1elzj7b {margin-bottom:5px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-4);}.section-title.divided.svelte-1elzj7b {margin:8px 0 5px;padding-top:7px;border-top:1px solid rgba(255, 255, 255, 0.1);}.row.svelte-1elzj7b {display:flex;align-items:baseline;gap:10px;padding:2px 0;}.spacer.svelte-1elzj7b {flex-grow:1;}.name.svelte-1elzj7b {background:none;border:0;padding:0;text-align:left;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);}.name.svelte-1elzj7b:hover {text-decoration:underline;}.name.spectator.svelte-1elzj7b {font-weight:500;color:var(--text-3);}\n\n  /* Repeated here as well as on the count, so the friend signal is never\n     carried by colour alone in only one place (SPEC §7). */.name.friend.svelte-1elzj7b {color:var(--teal-fg);}.level.svelte-1elzj7b {font-size:11px;color:var(--text-3);}.empty.svelte-1elzj7b {font-size:12px;color:var(--text-5);}'
+		code: '.section-title.svelte-1elzj7b {margin-bottom:5px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-4);}.section-title.divided.svelte-1elzj7b {margin:8px 0 5px;padding-top:7px;border-top:1px solid rgba(255, 255, 255, 0.1);}.row.svelte-1elzj7b {display:flex;align-items:baseline;gap:10px;padding:2px 0;}.spacer.svelte-1elzj7b {flex-grow:1;}.name.svelte-1elzj7b {background:none;border:0;padding:0;text-align:left;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);}.name.svelte-1elzj7b:hover {text-decoration:underline;}.name.spectator.svelte-1elzj7b {font-weight:500;color:var(--text-3);}\n\n  /* The name is coloured as well as the count, so the friend signal appears\n     in both places (SPEC §7). */.name.friend.svelte-1elzj7b {color:var(--teal-fg);}.level.svelte-1elzj7b {font-size:11px;color:var(--text-3);}.empty.svelte-1elzj7b {font-size:12px;color:var(--text-5);}'
 	};
 
 	function RosterPopover($$anchor, $$props) {
@@ -16572,12 +16528,12 @@
 		const friends = user_derived(() => new Set($$props.friendNames));
 
 		/**
-		 * roomTile.js `buildPlayerList` sorts friends first, then blocked.
+		 * `buildPlayerList` in roomTile.js sorts friends first, then blocked
+		 * players.
 		 *
-		 * The list is keyed by name, and a keyed `{#each}` throws on a duplicate —
-		 * which would blank the whole screen, not just this popover. The reducer
-		 * keeps the roster unique, so a repeat means the payload disagreed with that
-		 * assumption; drop it rather than take the list down over it.
+		 * Duplicates are dropped. The list is keyed by name, and a keyed `{#each}`
+		 * throws on a duplicate key, which breaks the whole screen. The store keeps
+		 * the roster unique, but the payload is the server's.
 		 */
 		function ordered(list) {
 			const seen = new Set();
@@ -16591,7 +16547,7 @@
 			try {
 				if (socialTab.isBlocked(name)) return 1;
 			} catch {
-				// socialTab is not up yet; treat as an ordinary player.
+				// `socialTab` is not ready yet. Treat the player as not blocked.
 			}
 
 			return 2;
@@ -16691,7 +16647,7 @@
 
 	const $$css$5 = {
 		hash: 'svelte-fd6uy5',
-		code: '.cell.svelte-fd6uy5 {flex:0 0 var(--col-players);}.bar.svelte-fd6uy5 {height:5px;border-radius:3px;background:rgba(255, 255, 255, 0.12);overflow:hidden;}.fill.svelte-fd6uy5 {height:5px;background:var(--accent);}.fill.full.svelte-fd6uy5 {background:var(--rose);}\n\n  /*\n   * Baseline-aligned, and pushed to the two ends of the bar above: the used/cap\n   * sits under its start, the spectator count under its end.\n   *\n   * Centring the boxes is not the same as aligning the text — the two spans are\n   * different sizes, so their glyphs still sat off from each other. Baseline is\n   * the only alignment that is correct whatever the font metrics turn out to\n   * be, which matters because the real IBM Plex Mono is not what a fallback\n   * stack measures.\n   */.counts.svelte-fd6uy5 {display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:4px;}.count.svelte-fd6uy5 {font-size:13px;font-weight:500;white-space:nowrap;color:var(--text-2);}\n\n  /* A friend in the room outranks "full" — it is the reason you\'d still look. */.count.full.svelte-fd6uy5 {color:var(--rose-fg);}.count.friend.svelte-fd6uy5 {color:var(--teal-fg);}\n\n  /*\n   * `align-items: baseline` makes this box expose its *text\'s* baseline to the\n   * row above. The eye is excluded from that with `align-self: center` —\n   * otherwise, being the first item and having no baseline of its own, it\n   * would force the browser to synthesise one from its bottom edge, which is\n   * what sat the whole group too high.\n   */.specs.svelte-fd6uy5 {display:inline-flex;align-items:baseline;gap:3px;font-size:12px;color:var(--chip-off-fg);}.specs.svelte-fd6uy5 svg {align-self:center;flex-shrink:0;}'
+		code: '.cell.svelte-fd6uy5 {flex:0 0 var(--col-players);}.bar.svelte-fd6uy5 {height:5px;border-radius:3px;background:rgba(255, 255, 255, 0.12);overflow:hidden;}.fill.svelte-fd6uy5 {height:5px;background:var(--accent);}.fill.full.svelte-fd6uy5 {background:var(--rose);}\n\n  /*\n   * Baseline-aligned and pushed to the two ends of the bar: `used/cap` under\n   * its start, the spectator count under its end.\n   *\n   * The two spans have different font sizes, so centring their boxes does not\n   * align the text. Baseline alignment is correct for any font metrics, and\n   * the fallback fonts measure differently from IBM Plex Mono.\n   */.counts.svelte-fd6uy5 {display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:4px;}.count.svelte-fd6uy5 {font-size:13px;font-weight:500;white-space:nowrap;color:var(--text-2);}\n\n  /* The friend colour below takes priority over "full". */.count.full.svelte-fd6uy5 {color:var(--rose-fg);}.count.friend.svelte-fd6uy5 {color:var(--teal-fg);}\n\n  /*\n   * `align-items: baseline` exposes this box\'s text baseline to the row. The\n   * eye icon gets `align-self: center`. As the first item with no baseline of\n   * its own, it would otherwise make the browser derive one from its bottom\n   * edge, which places the whole group too high.\n   */.specs.svelte-fd6uy5 {display:inline-flex;align-items:baseline;gap:3px;font-size:12px;color:var(--chip-off-fg);}.specs.svelte-fd6uy5 svg {align-self:center;flex-shrink:0;}'
 	};
 
 	function PlayersCell($$anchor, $$props) {
@@ -16709,8 +16665,7 @@
 		let open = state(false);
 		let dismiss = null;
 
-		// A short delay on leave is what makes the gap between trigger and popover
-		// survivable with a real pointer.
+		// The delay lets the pointer cross the gap between the cell and the popover.
 		const DISMISS_DELAY_MS = 180;
 
 		function show() {
@@ -16832,7 +16787,7 @@
 		push($$props, true);
 		append_styles$1($$anchor, $$css$4);
 
-		// `songsLeft` counts down; the cell shows how far the game has come.
+		// `songsLeft` counts down. The cell shows the songs already played.
 		const played = user_derived(() => Math.max(0, $$props.room.songCount - $$props.room.songsLeft));
 
 		const pct = user_derived(() => $$props.room.songCount > 0
@@ -16895,7 +16850,7 @@
 
 	const $$css$3 = {
 		hash: 'svelte-14ydh0w',
-		code: '.cell.svelte-14ydh0w {display:flex;gap:4px;flex:0 0 var(--col-types);}.type.svelte-14ydh0w {display:inline-flex;align-items:center;justify-content:center;width:32px;height:22px;border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600;background:transparent;border:1px dashed rgba(255, 255, 255, 0.12);color:#545d6b;}\n\n  /*\n   * These labels are all capitals, so their ink stops at the baseline while the\n   * line box still reserves room for descenders — centring the box therefore\n   * leaves the letters sitting high. Measured against the rendered pixels at\n   * 12px IBM Plex Mono: 5.4px of space above the glyphs and 7.9px below. One\n   * pixel down splits the difference and stays on the pixel grid, which a\n   * fractional transform would not.\n   */.glyph.svelte-14ydh0w {position:relative;top:1px;}.type.on.svelte-14ydh0w {background:rgba(91, 155, 245, 0.22);border:1px solid rgba(91, 155, 245, 0.45);color:#9cc4f9;}'
+		code: '.cell.svelte-14ydh0w {display:flex;gap:4px;flex:0 0 var(--col-types);}.type.svelte-14ydh0w {display:inline-flex;align-items:center;justify-content:center;width:32px;height:22px;border-radius:4px;font-family:var(--font-mono);font-size:12px;font-weight:600;background:transparent;border:1px dashed rgba(255, 255, 255, 0.12);color:#545d6b;}\n\n  /*\n   * The labels are all capitals, so nothing goes below the baseline, but the\n   * line box still reserves room for descenders. Centring the box leaves the\n   * letters too high: at 12px IBM Plex Mono there is 5.4px above the glyphs\n   * and 7.9px below. A 1px shift evens that out and stays on the pixel grid.\n   */.glyph.svelte-14ydh0w {position:relative;top:1px;}.type.on.svelte-14ydh0w {background:rgba(91, 155, 245, 0.22);border:1px solid rgba(91, 155, 245, 0.45);color:#9cc4f9;}'
 	};
 
 	function TypesCell($$anchor, $$props) {
@@ -16965,7 +16920,7 @@
 
 	const $$css$2 = {
 		hash: 'svelte-1t1x2e',
-		code: '.row.svelte-1t1x2e {display:flex;align-items:center;gap:var(--col-gap);height:56px;padding:0 var(--row-pad);border-bottom:1px solid var(--line);background:transparent;}.row.zebra.svelte-1t1x2e {background:var(--bg-row);}.row.svelte-1t1x2e:hover {background:var(--bg-row-hover);}\n\n  /* Every fixed column is `flex: 0 0 <token>` so it matches the header\n     exactly; only Room/Host flexes. */.id.svelte-1t1x2e {flex:0 0 var(--col-id);font-size:13px;color:var(--text-5);}.identity.svelte-1t1x2e {flex:0 0 var(--col-identity);min-width:0;display:flex;align-items:center;gap:9px;}.avatar.svelte-1t1x2e {width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#343a47;border:1px solid rgba(255, 255, 255, 0.18);overflow:hidden;}.avatar.svelte-1t1x2e img:where(.svelte-1t1x2e) {width:100%;height:100%;object-fit:cover;}.names.svelte-1t1x2e {min-width:0;}.name-line.svelte-1t1x2e {display:flex;align-items:center;gap:6px;}.name.svelte-1t1x2e {font-size:15px;font-weight:600;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.lock.svelte-1t1x2e {display:inline-flex;color:var(--rose);flex-shrink:0;}.host.svelte-1t1x2e {display:block;max-width:100%;padding:0;background:none;border:0;text-align:left;cursor:pointer;font-size:13px;color:var(--text-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.host.svelte-1t1x2e:hover {color:var(--text-2);text-decoration:underline;}.mode-cell.svelte-1t1x2e {flex:0 0 var(--col-mode);min-width:0;}\n\n  /* "Last Man Standing" is the longest label AMQ ships; the cell is sized for\n     it, and anything longer ellipsises rather than pushing into Players. */.pill.svelte-1t1x2e {display:inline-flex;align-items:center;max-width:100%;height:22px;padding:0 9px;border-radius:5px;font-size:12px;font-weight:700;letter-spacing:0.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--pill-bg);color:var(--pill-fg);}.tone-blue.svelte-1t1x2e {--pill-bg: rgba(91, 155, 245, 0.15);--pill-fg: var(--blue-fg);--sel-bg: var(--chip-blue-bg);--sel-line: rgba(91, 155, 245, 0.3);--sel-fg: var(--blue-fg);}.tone-teal.svelte-1t1x2e {--pill-bg: rgba(52, 201, 163, 0.15);--pill-fg: var(--teal-fg);--sel-bg: rgba(52, 201, 163, 0.15);--sel-line: var(--chip-teal-line);--sel-fg: var(--teal-fg);}.tone-amber.svelte-1t1x2e {--pill-bg: rgba(232, 163, 61, 0.15);--pill-fg: var(--amber-fg);--sel-bg: var(--chip-amber-bg);--sel-line: var(--chip-amber-line);--sel-fg: var(--amber-fg);}.tone-rose.svelte-1t1x2e {--pill-bg: rgba(229, 101, 138, 0.15);--pill-fg: var(--rose-fg);}.tone-cyan.svelte-1t1x2e {--pill-bg: rgba(63, 185, 214, 0.16);--pill-fg: var(--cyan-fg);}.tone-violet.svelte-1t1x2e {--pill-bg: rgba(155, 124, 245, 0.15);--pill-fg: var(--violet-fg);--sel-bg: rgba(155, 124, 245, 0.14);--sel-line: rgba(155, 124, 245, 0.34);--sel-fg: var(--violet-fg);}.time.svelte-1t1x2e {flex:0 0 var(--col-time);display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}.time-base.svelte-1t1x2e {font-size:14px;color:var(--text-2);}\n\n  /* Extra time is a secondary fact, so it renders a step smaller and dimmer. */.time-extra.svelte-1t1x2e {font-size:12px;color:var(--text-4);white-space:nowrap;}.selection-cell.svelte-1t1x2e {flex:0 0 var(--col-selection);}.sel.svelte-1t1x2e {display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:4px;font-size:13px;font-weight:600;white-space:nowrap;background:var(--sel-bg);border:1px solid var(--sel-line);color:var(--sel-fg);}.actions.svelte-1t1x2e {flex:0 0 var(--col-action);display:flex;align-items:center;justify-content:flex-end;gap:6px;}.settings.svelte-1t1x2e,\n  .join.svelte-1t1x2e,\n  .spec.svelte-1t1x2e {height:30px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;}\n\n  /*\n   * Fixed widths, sized to the longest label each button can take ("Spectate"\n   * and "Playing"). Sizing to content instead made the buttons jump sideways\n   * whenever a room started or ended a game.\n   */.join.svelte-1t1x2e,\n  .spec.svelte-1t1x2e {flex:0 0 78px;padding:0;text-align:center;}.settings.svelte-1t1x2e {display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;padding:0;background:rgba(255, 255, 255, 0.06);border:1px solid rgba(255, 255, 255, 0.12);color:var(--text-3);}.settings.svelte-1t1x2e:hover {background:rgba(255, 255, 255, 0.13);color:var(--text);}.join.svelte-1t1x2e {background:var(--accent);border:0;color:var(--accent-fg);font-weight:700;}.join.locked.svelte-1t1x2e {background:rgba(255, 255, 255, 0.035);border:1px solid rgba(255, 255, 255, 0.08);color:var(--text-5);cursor:not-allowed;}.spec.svelte-1t1x2e {background:rgba(255, 255, 255, 0.06);border:1px solid rgba(255, 255, 255, 0.12);color:var(--text-2);}.spec.svelte-1t1x2e:hover {background:rgba(255, 255, 255, 0.11);}'
+		code: '.row.svelte-1t1x2e {display:flex;align-items:center;gap:var(--col-gap);height:56px;padding:0 var(--row-pad);border-bottom:1px solid var(--line);background:transparent;}.row.zebra.svelte-1t1x2e {background:var(--bg-row);}.row.svelte-1t1x2e:hover {background:var(--bg-row-hover);}\n\n  /* Each fixed column is `flex: 0 0 <token>` so it matches the header. */.id.svelte-1t1x2e {flex:0 0 var(--col-id);font-size:13px;color:var(--text-5);}.identity.svelte-1t1x2e {flex:0 0 var(--col-identity);min-width:0;display:flex;align-items:center;gap:9px;}.avatar.svelte-1t1x2e {width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#343a47;border:1px solid rgba(255, 255, 255, 0.18);overflow:hidden;}.avatar.svelte-1t1x2e img:where(.svelte-1t1x2e) {width:100%;height:100%;object-fit:cover;}.names.svelte-1t1x2e {min-width:0;}.name-line.svelte-1t1x2e {display:flex;align-items:center;gap:6px;}.name.svelte-1t1x2e {font-size:15px;font-weight:600;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.lock.svelte-1t1x2e {display:inline-flex;color:var(--rose);flex-shrink:0;}.host.svelte-1t1x2e {display:block;max-width:100%;padding:0;background:none;border:0;text-align:left;cursor:pointer;font-size:13px;color:var(--text-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.host.svelte-1t1x2e:hover {color:var(--text-2);text-decoration:underline;}.mode-cell.svelte-1t1x2e {flex:0 0 var(--col-mode);min-width:0;}\n\n  /* The cell fits "Last Man Standing", the longest label AMQ ships. A longer\n     label gets an ellipsis. */.pill.svelte-1t1x2e {display:inline-flex;align-items:center;max-width:100%;height:22px;padding:0 9px;border-radius:5px;font-size:12px;font-weight:700;letter-spacing:0.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--pill-bg);color:var(--pill-fg);}.tone-blue.svelte-1t1x2e {--pill-bg: rgba(91, 155, 245, 0.15);--pill-fg: var(--blue-fg);--sel-bg: var(--chip-blue-bg);--sel-line: rgba(91, 155, 245, 0.3);--sel-fg: var(--blue-fg);}.tone-teal.svelte-1t1x2e {--pill-bg: rgba(52, 201, 163, 0.15);--pill-fg: var(--teal-fg);--sel-bg: rgba(52, 201, 163, 0.15);--sel-line: var(--chip-teal-line);--sel-fg: var(--teal-fg);}.tone-amber.svelte-1t1x2e {--pill-bg: rgba(232, 163, 61, 0.15);--pill-fg: var(--amber-fg);--sel-bg: var(--chip-amber-bg);--sel-line: var(--chip-amber-line);--sel-fg: var(--amber-fg);}.tone-rose.svelte-1t1x2e {--pill-bg: rgba(229, 101, 138, 0.15);--pill-fg: var(--rose-fg);}.tone-cyan.svelte-1t1x2e {--pill-bg: rgba(63, 185, 214, 0.16);--pill-fg: var(--cyan-fg);}.tone-violet.svelte-1t1x2e {--pill-bg: rgba(155, 124, 245, 0.15);--pill-fg: var(--violet-fg);--sel-bg: rgba(155, 124, 245, 0.14);--sel-line: rgba(155, 124, 245, 0.34);--sel-fg: var(--violet-fg);}.time.svelte-1t1x2e {flex:0 0 var(--col-time);display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}.time-base.svelte-1t1x2e {font-size:14px;color:var(--text-2);}\n\n  /* Extra time is secondary, so it is smaller and dimmer. */.time-extra.svelte-1t1x2e {font-size:12px;color:var(--text-4);white-space:nowrap;}.selection-cell.svelte-1t1x2e {flex:0 0 var(--col-selection);}.sel.svelte-1t1x2e {display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:4px;font-size:13px;font-weight:600;white-space:nowrap;background:var(--sel-bg);border:1px solid var(--sel-line);color:var(--sel-fg);}.actions.svelte-1t1x2e {flex:0 0 var(--col-action);display:flex;align-items:center;justify-content:flex-end;gap:6px;}.settings.svelte-1t1x2e,\n  .join.svelte-1t1x2e,\n  .spec.svelte-1t1x2e {height:30px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;}\n\n  /*\n   * Fixed widths that fit the longest labels, "Spectate" and "Playing". With\n   * content sizing, the buttons move sideways when a room starts or ends a\n   * game.\n   */.join.svelte-1t1x2e,\n  .spec.svelte-1t1x2e {flex:0 0 78px;padding:0;text-align:center;}.settings.svelte-1t1x2e {display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;padding:0;background:rgba(255, 255, 255, 0.06);border:1px solid rgba(255, 255, 255, 0.12);color:var(--text-3);}.settings.svelte-1t1x2e:hover {background:rgba(255, 255, 255, 0.13);color:var(--text);}.join.svelte-1t1x2e {background:var(--accent);border:0;color:var(--accent-fg);font-weight:700;}.join.locked.svelte-1t1x2e {background:rgba(255, 255, 255, 0.035);border:1px solid rgba(255, 255, 255, 0.08);color:var(--text-5);cursor:not-allowed;}.spec.svelte-1t1x2e {background:rgba(255, 255, 255, 0.06);border:1px solid rgba(255, 255, 255, 0.12);color:var(--text-2);}.spec.svelte-1t1x2e:hover {background:rgba(255, 255, 255, 0.11);}'
 	};
 
 	function RoomRow($$anchor, $$props) {
@@ -16978,8 +16933,8 @@
 		const chips = user_derived(() => chipsFor($$props.room.settings));
 		const guess = user_derived(() => $$props.room.guessTime);
 
-		// The head crop is not published for every avatar/outfit; the fallback is the
-		// full render, cropped to the face by object-position (SPEC §3).
+		// Some avatars and outfits have no head crop. The fallback is the full
+		// render, positioned on the face with `object-position` (SPEC §3).
 		let headFailed = state(false);
 
 		const joinLabel = user_derived(() => !$$props.room.inLobby
@@ -17295,7 +17250,7 @@
 
 	const $$css = {
 		hash: 'svelte-gp1rd2',
-		code: '.screen.svelte-gp1rd2 {position:fixed;inset:0;\n    /* AMQ\'s menu bar owns the bottom strip; leave it alone (SPEC §1). */bottom:45px;display:flex;flex-direction:column;overflow:hidden;}.table.svelte-gp1rd2 {flex:1;min-height:0;display:flex;flex-direction:column;margin:0 var(--gutter) var(--gutter);}.list.svelte-gp1rd2 {flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;border-radius:0 0 var(--radius) var(--radius);border:1px solid var(--line-soft);border-top:0;background:var(--bg-list);}.empty.svelte-gp1rd2 {padding:28px var(--gutter);text-align:center;color:var(--text-4);font-size:13px;}.panel-anchor.svelte-gp1rd2 {position:absolute;top:56px;\n    /* Lines up under the Filters button, which sits left of Host Room. */right:calc(var(--gutter) + 132px);z-index:60;}'
+		code: '.screen.svelte-gp1rd2 {position:fixed;inset:0;\n    /* AMQ\'s menu bar uses the bottom strip (SPEC §1). */bottom:45px;display:flex;flex-direction:column;overflow:hidden;}.table.svelte-gp1rd2 {flex:1;min-height:0;display:flex;flex-direction:column;margin:0 var(--gutter) var(--gutter);}.list.svelte-gp1rd2 {flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;border-radius:0 0 var(--radius) var(--radius);border:1px solid var(--line-soft);border-top:0;background:var(--bg-list);}.empty.svelte-gp1rd2 {padding:28px var(--gutter);text-align:center;color:var(--text-4);font-size:13px;}.panel-anchor.svelte-gp1rd2 {position:absolute;top:56px;\n    /* Aligns under the Filters button, which is left of Host Room. */right:calc(var(--gutter) + 132px);z-index:60;}'
 	};
 
 	function RoomBrowser($$anchor, $$props) {
@@ -17328,15 +17283,15 @@
 		}
 
 		/**
-		 * Stops key events from our own text fields reaching AMQ's document-level
+		 * Stops key events from our text fields from reaching AMQ's document-level
 		 * handlers.
 		 *
-		 * `setup.js:56` blocks Backspace unless `event.target` is an input — but an
-		 * event crossing a shadow boundary is retargeted to the host element, so it
-		 * sees our wrapper `<div>`, decides the key came from outside a field and
-		 * calls `preventDefault()`. The result is that Backspace does nothing in the
-		 * search box. Keeping the event inside the shadow root also stops AMQ's
-		 * other global shortcuts firing while you type.
+		 * `setup.js:56` blocks Backspace unless `event.target` is an input. An
+		 * event that crosses a shadow boundary is retargeted to the host element,
+		 * so AMQ sees our wrapper `<div>` and calls `preventDefault()`. Backspace
+		 * then does nothing in the search box. Keeping the event inside the shadow
+		 * root also keeps AMQ's global shortcuts from firing while the player
+		 * types.
 		 */
 		function keepKeysLocal(event) {
 			const target = event.target;
@@ -17497,11 +17452,10 @@
 	  component: QuizBuilder,
 	  props: {},
 	  /**
-	   * `setupNewQuiz` is how AMQ's own browser says "blank quiz" — it calls it
-	   * immediately before `changeView` (`customQuizBrowser.js:93`). Observing it
-	   * is what lets `openView` tell a real new-quiz navigation apart from merely
-	   * re-entering the view, which `useNew()` does and which must not wipe the
-	   * quiz being edited.
+	   * AMQ's quiz browser calls `setupNewQuiz` right before `changeView` to ask
+	   * for a blank quiz (`customQuizBrowser.js:93`). Recording the call lets
+	   * `onOpen` tell a new-quiz navigation from a plain re-entry of the view.
+	   * `useNew()` re-enters the view and must not wipe the quiz being edited.
 	   */
 	  extra: (original) => ({
 	    setupNewQuiz() {
@@ -17512,10 +17466,10 @@
 	  /**
 	   * `changeView('customQuizCreator', { quizLoadId })` carries the quiz to edit.
 	   *
-	   * The library has to be in the cache before the quiz is read, because entries
-	   * store only ids and resolve against it — AMQ nests its own load inside
-	   * `library.setup(callback)` for exactly this reason, and drops uncached
-	   * entries silently. Ours refuses the load instead of half-reading it.
+	   * The library must be cached before the quiz is read, because entries store
+	   * only ids and resolve against it. AMQ nests its own load inside
+	   * `library.setup(callback)` for the same reason and silently drops uncached
+	   * entries. We refuse the load instead.
 	   */
 	  onOpen: (arg) => {
 	    quizStore.bind();

@@ -1,9 +1,8 @@
 /**
  * Mounts Svelte components into a shadow root.
  *
- * AMQ's page is global Bootstrap 3 + jQuery UI + perfectScrollbar CSS, and the
- * tampermonkey repo layers more on top. A shadow root is what makes rewriting
- * one screen at a time viable: their CSS cannot reach in, ours cannot leak out.
+ * AMQ's page loads global Bootstrap 3, jQuery UI and perfectScrollbar CSS, and
+ * other userscripts add more. A shadow root keeps their CSS out and ours in.
  */
 
 import { mount, unmount, type Component } from 'svelte'
@@ -28,18 +27,16 @@ function styleSheet() {
 }
 
 /*
- * Token edits, hot.
+ * Hot updates for `app.css`.
  *
- * Component styles already hot-reload on their own — `css: 'injected'` makes
- * each one part of its component's module, so Svelte's HMR carries it. This
- * file's `?inline` import is just a string, though, and a string has no
- * handler: without this, editing a token in `app.css` falls back to a full
- * page reload, which on the live site means reconnecting to the game and
- * navigating back to the screen you were looking at.
+ * Component styles hot-reload through Svelte's HMR, because `css: 'injected'`
+ * makes each one part of its component's module. `app.css` is imported with
+ * `?inline` as a plain string, which has no HMR handler. Without this one,
+ * editing `app.css` reloads the page, and on the live site that means
+ * reconnecting to the game.
  *
- * Every shadow root adopts this one sheet object, so replacing its contents
- * restyles every mounted screen in place. `import.meta.hot` is undefined in a
- * build, so none of this ships.
+ * Every shadow root adopts the same sheet object, so replacing its contents
+ * restyles every mounted screen. `import.meta.hot` is undefined in a build.
  */
 if (import.meta.hot) {
   import.meta.hot.accept('../ui/app.css?inline', (updated) => {
@@ -49,11 +46,8 @@ if (import.meta.hot) {
 }
 
 /**
- * Creates a host element, attaches a shadow root with our stylesheet, and
- * mounts `component` inside it.
- *
- * Caveat: `@font-face` does not inherit into a shadow root — webfonts must be
- * declared in the document, see `ui/fonts.ts`.
+ * `@font-face` rules do not apply from inside a shadow root. Declare webfonts
+ * in the document; see `ui/fonts.ts`.
  */
 export function mountShadowApp<Props extends Record<string, any>>(
   parent: HTMLElement,

@@ -1,6 +1,6 @@
 <!--
-  Top band: back to the main menu, the page title and counts, search, the
-  Filters toggle and Host Room.
+  Top band: back to the main menu, the title and counts, search, the Filters
+  toggle and Host Room.
 -->
 <script lang="ts">
   import { t } from '../../amq/derive'

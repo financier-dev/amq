@@ -1,22 +1,19 @@
 /*
- * Enough of AMQ's client to boot the room browser outside the game.
+ * Enough of AMQ's client to boot our screens outside the game.
  *
- * Shapes are copied from the mirrored client source at
- * `~/amq-source/<latest>/animemusicquiz.com`, not invented — if a stub drifts
- * from the real payload the screen would still render here and break in game,
- * which is the whole failure mode these tests exist to catch.
+ * Shapes are copied from the client source at
+ * `~/amq-source/<latest>/animemusicquiz.com`. Do not invent shapes: a stub
+ * that differs from the real payload still renders here and breaks in game.
  */
 
 /*
- * Models Tampermonkey's sandbox for the one global that matters.
+ * Models Tampermonkey's sandbox for jQuery.
  *
- * A granted userscript gets its own `window`; page globals resolve as bare
+ * A granted userscript gets its own `window`. Page globals resolve as bare
  * identifiers but are NOT properties of the script's `globalThis`. Everything
- * here is read as a bare identifier and so lives on `window` — except jQuery,
- * which Svelte forbids as a bare `$` and which therefore has to be looked up
- * by name. Putting it only on `unsafeWindow` reproduces the real environment,
- * where reading it off `globalThis` silently yielded `undefined` and the
- * player profile never opened.
+ * else here is read as a bare identifier, so it lives on `window`. Svelte
+ * reserves the bare `$`, so jQuery is looked up by name. Defining it only on
+ * `unsafeWindow` reproduces the game, where `globalThis.$` is `undefined`.
  */
 const pageJQuery = (element) => ({
   hasClass: () => false,
@@ -75,7 +72,7 @@ window.socket = {
   listners: listeners,
   sendCommand(content) {
     window.__log.push(['sendCommand', content])
-    // The real server answers `get rooms` with a `New Rooms` snapshot.
+    // The server answers `get rooms` with a `New Rooms` snapshot.
     if (content?.command === 'get rooms') {
       setTimeout(
         () => window.__fire('New Rooms', { standard: window.__rooms }),
@@ -88,9 +85,9 @@ window.socket = {
 // --- view system ----------------------------------------------------------
 
 /*
- * AMQ's own room browser, reduced to what makes it observable: openView
- * unhides `#roomBrowserPage`, closeView hides it again. That is what has to
- * come back when `__amqUI.useLegacy()` runs.
+ * AMQ's room browser, reduced to what a test can observe: `openView` shows
+ * `#roomBrowserPage` and `closeView` hides it. `__amqUI.useLegacy()` must
+ * bring this back.
  */
 const legacyRoomBrowser = {
   openView(callback) {
@@ -104,7 +101,7 @@ const legacyRoomBrowser = {
   },
 }
 
-/* AMQ's own custom quiz creator, the screen the quiz builder replaces. */
+/* AMQ's custom quiz creator, the screen the quiz builder replaces. */
 const legacyQuizCreator = {
   openView(cb, arg) {
     window.__log.push(['legacy quiz openView', arg])
@@ -128,7 +125,7 @@ window.viewChanger = {
     roomBrowser: legacyRoomBrowser,
     customQuizCreator: legacyQuizCreator,
   },
-  // Verbatim from viewChanger.js:44 — the early return is load-bearing.
+  // Copied from viewChanger.js:44. Keep the early return.
   changeView(newView, arg = {}) {
     if (newView === this.currentView) return
     this.__controllers[this.currentView].closeView(arg)
@@ -144,24 +141,22 @@ window.viewChanger = {
 
 window.customQuizCreator = legacyQuizCreator
 
-/* AMQ's toast; the builder uses it for the "no quiz name" refusal. */
+/* AMQ's message box. The builder uses it to refuse a save without a name. */
 window.messageDisplayer = {
   displayMessage: (title, body) => window.__log.push(['message', title, body]),
 }
 
 /*
- * The library cache. Shaped exactly as `libraryCacheHandler.js` builds it:
- * `animeCache` keyed by annId, each anime holding `songs.{OP,ED,INS}` of
- * annSong entries whose `songEntry` carries the title and a resolved `artist`,
- * `composer` and `arranger`. The quiz builder reads every name on screen
- * through this, and searches all of them.
+ * The library cache, in the shape `libraryCacheHandler.js` builds:
+ * `animeCache` keyed by annId, each anime with `songs.{OP,ED,INS}` of annSong
+ * entries, whose `songEntry` has the title and a resolved `artist`, `composer`
+ * and `arranger`. The quiz builder reads and searches every name through it.
  */
 
 /*
- * `replaceCharactersForSeachCharacters` (`shared/animeSearchRegex.js`), trimmed
- * to the characters the fixture names below actually contain. The real map
- * covers every macron, accent and decorative separator AMQ has met; add to this
- * one if a fixture name needs it, rather than letting a name fold to itself.
+ * `replaceCharactersForSeachCharacters` (`shared/animeSearchRegex.js`),
+ * reduced to the characters in the fixture names below. If a new fixture name
+ * needs another character, add it here.
  */
 const SEARCH_CHARACTER_REPLACEMENT_MAP = {
   ō: 'o',
@@ -183,9 +178,9 @@ const fold = (value) =>
     .join('')
 
 /*
- * `searchNames`, as every cache entry builds it: the name lowercased, plus the
- * folded form when folding changes it. This is why a search for "re re" finds
- * "Re:Re:" — and why our own search reads this array rather than the name.
+ * `searchNames` as every cache entry builds it: the lowercased name, and the
+ * folded form when folding changes it. The folded form lets "re re" find
+ * "Re:Re:".
  */
 const searchNames = (...names) => {
   const out = []
@@ -200,9 +195,9 @@ const searchNames = (...names) => {
 }
 
 /*
- * `LibraryCacheArtistEntry` (`libraryCacheHandler.js:558`): one person, whose
- * alt names are folded into `searchNames` by `addAltName` and listed again by
- * `getFullMemberEntryList` — which is what a non-strict search walks.
+ * `LibraryCacheArtistEntry` (`libraryCacheHandler.js:558`): one person.
+ * `addAltName` adds the alt names to `searchNames`, and
+ * `getFullMemberEntryList` lists them again for a non-strict search.
  */
 const artist = (name, altNames = []) => ({
   name,
@@ -214,10 +209,10 @@ const artist = (name, altNames = []) => ({
 })
 
 /*
- * `LibraryCacheGroupEntry` (`libraryCacheHandler.js:597`). Note its own
- * `searchNames` does **not** contain its members' — only
- * `getFullMemberEntryList()` reaches them, so a search for a member's name
- * finds the group's songs exactly when Strict is off, as it is by default.
+ * `LibraryCacheGroupEntry` (`libraryCacheHandler.js:597`). Its `searchNames`
+ * do **not** include its members' names. Only `getFullMemberEntryList()`
+ * reaches them, so a member's name finds the group's songs only when Strict
+ * is off, the default.
  */
 const group = (name, members) => ({
   name,
@@ -376,8 +371,8 @@ for (const fixture of LIBRARY_FIXTURE) {
     seasonId: fixture.seasonId,
     mainNames: fixture.mainNames,
     names: [{ name: fixture.mainNames.EN }, { name: fixture.mainNames.JA }],
-    // Every name, not just the main one, exactly as the cache does it — which
-    // is how searching "Boku dake" finds the show listed as "Erased".
+    // Every name, as in the cache. Searching "Boku dake" then finds the anime
+    // shown as "Erased".
     searchNames: searchNames(fixture.mainNames.EN, fixture.mainNames.JA),
     watched: fixture.watched !== false,
     songs,
@@ -388,11 +383,9 @@ for (const fixture of LIBRARY_FIXTURE) {
 }
 
 /*
- * The cache starts **empty**, exactly as it does in game: `animeCache` is `{}`
- * until someone calls `getCache`, which asks the server for the master list and
- * its overlays. A stub that handed the cache over pre-filled is precisely what
- * hid the bug where the builder never requested it and rendered every entry as
- * `Anime #4591` with a song count of zero.
+ * The cache starts **empty**, as in game. `animeCache` is `{}` until
+ * `getCache` fetches the master list and its overlays. A pre-filled stub
+ * would hide a builder that never requests the cache.
  */
 window.__libraryLoadCalls = 0
 
@@ -401,7 +394,7 @@ window.libraryCacheHandler = {
   getCache(callback) {
     window.__libraryLoadCalls += 1
     window.__log.push(['getCache'])
-    // Asynchronous, as the real one is — it round-trips the socket first.
+    // Asynchronous, as in the real client, which waits for the socket.
     setTimeout(() => {
       window.libraryCacheHandler.animeCache = animeCache
       callback(animeCache)
@@ -426,7 +419,7 @@ window.libraryCacheHandler = {
   },
 }
 
-/** Handy in assertions: the ids the fixture generated. */
+/** The ids the fixture generated, for assertions. */
 window.__libraryIds = {
   annIds: LIBRARY_FIXTURE.map((entry) => entry.annId),
   annSongIds: Object.keys(annSongIdToAnnId).map(Number),
@@ -443,12 +436,11 @@ window.roomBrowser = {
 }
 
 /*
- * AMQ's global backspace guard, ported from setup.js:54-100.
+ * AMQ's global Backspace guard, ported from setup.js:54-100.
  *
- * It blocks Backspace unless `event.target` is a text-like input. Events that
- * cross a shadow boundary are retargeted to the host element, so without care
- * it sees our wrapper `<div>` and swallows the key — which is why Backspace
- * did nothing in the search box.
+ * It blocks Backspace unless `event.target` is a text input. An event that
+ * crosses a shadow boundary is retargeted to the host element, so the guard
+ * sees our wrapper `<div>` and blocks the key unless we stop the event.
  */
 const TEXT_INPUT_TYPES = [
   'text',
@@ -489,18 +481,18 @@ document.addEventListener('keydown', (event) => {
 // --- lookups --------------------------------------------------------------
 
 window.localizationHandler = {
-  // Real strings from the client's en.json (tests/locale.js); unknown keys come
-  // back as the key, which is how `derive.t()` detects a miss and falls back.
+  // Real strings from the client's en.json (tests/locale.js). An unknown key
+  // returns the key itself, which `derive.t()` treats as a miss.
   translate: (key, data) => {
     let value = window.__locale?.[key]
     if (value === undefined) return key
-    // The real handler substitutes `_UPPERCASE_` slots from lowercase keys on
-    // the data object, and leaves a slot alone when nothing supplies it.
+    // The real handler fills `_UPPERCASE_` placeholders from lowercase keys
+    // of the data object. A placeholder with no value stays as it is.
     for (const [name, replacement] of Object.entries(data ?? {})) {
       value = value.split(`_${name.toUpperCase()}_`).join(String(replacement))
     }
-    // A `_NUMBER_` with nothing to fill it collapses, so "OVA _NUMBER_"
-    // renders as "OVA" rather than leaking the placeholder.
+    // A `_NUMBER_` placeholder with no value is removed, so "OVA _NUMBER_"
+    // renders as "OVA".
     return value
       .replace(/_NUMBER_/g, '')
       .replace(/\s+/g, ' ')
@@ -508,7 +500,7 @@ window.localizationHandler = {
   },
   convertAnimeGenreToKey: (name) => name,
   convertAnimeTagToKey: (name) => name,
-  // `localizationHandler.js:423` — verbatim.
+  // Copied from `localizationHandler.js:423`.
   convertCategoryToKey: ({ name, number }) => ({
     key: `anime_types.${name.toLowerCase().replace(/ /g, '_')}`,
     parameters: { number: number != null ? number : '' },
@@ -544,8 +536,8 @@ window.__friends = []
 window.playerProfileController = {
   loadProfile: () => {},
   // The real implementation calls `closeHandler()` unconditionally when the
-  // profile closes (playerProfileController.js:28), so a missing one throws.
-  // Record its type and let the test assert on it.
+  // profile closes (playerProfileController.js:28), so a missing handler
+  // throws. Record its type for the test to assert on.
   loadProfileIfClosed: (name, $requestObject, offsets, closeHandler) =>
     window.__log.push(['profile', name, typeof closeHandler]),
 }
@@ -554,7 +546,7 @@ window.Swal = {
   fire: () => Promise.resolve({ isConfirmed: true, value: 'hunter2' }),
 }
 
-// Deliberately NOT on `window`: see the sandbox note at the top.
+// jQuery is NOT on `window`. See the sandbox comment at the top.
 
 window.cdnFormater = {
   AVATAR_SIZES: [100, 150, 250, 350, 500, 600, 900],
@@ -568,7 +560,7 @@ window.cdnFormater = {
     `https://animemusicquiz.com/cdn/v1/avatars/${a}/${o}/${on ? opt : 'No ' + opt}/${c}/250px/Basic.webp`,
 }
 
-// --- default settings (hostModal.DEFUALT_SETTINGS, verbatim) --------------
+// --- default settings (copied from hostModal.DEFUALT_SETTINGS) --------------
 
 window.hostModal = {
   openHostModal: () => window.__log.push(['host']),
@@ -580,10 +572,9 @@ window.hostModal = {
   },
   showSettings: () => window.__log.push(['showSettings']),
   /*
-   * `hostModal.js:2399`. The second argument is the object AMQ calls
-   * `updateSettings` on when the player confirms — the quiz builder passes a
-   * shim that writes back into its own model, so the test drives it the same
-   * way the real modal would.
+   * `hostModal.js:2399`. AMQ calls `updateSettings` on the second argument
+   * when the player confirms. The quiz builder passes a shim that writes to
+   * its model, and the test calls it as the real modal does.
    */
   setModeQuizBuilder(existingSettings, targetBlock) {
     window.__quizBuilderTarget = targetBlock ?? null

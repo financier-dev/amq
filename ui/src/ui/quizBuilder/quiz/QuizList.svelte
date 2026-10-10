@@ -1,14 +1,12 @@
 <!--
-  The quiz pane: header band over one scrolling, grouped list (SPEC §5).
+  The quiz pane: a header band over one scrolling, grouped list (SPEC §5).
 
-  The list is a flat array of row descriptors rather than a component per rule
-  block (SPEC §13). That is what makes selection span blocks, a drag cross from
-  one block to another, and the whole pane scroll as one — all three are awkward
-  across a component boundary and trivial over a flat array.
+  The list is a flat array of row descriptors, not a component per rule block
+  (SPEC §13). See `rows.ts` for the reasons.
 
-  Nesting is one level and the UI says so: the button up here reads *Add rule
-  block*, and each block's footer offers only the three kinds that may live
-  inside one.
+  Nesting is one level deep. The button in the header reads *Add rule block*,
+  and each block's footer offers only the three kinds a rule block can
+  contain.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -34,12 +32,11 @@
 
   let search = $state('')
   let collapsed = $state(new Set<string>())
-  /** Anchor for shift-click ranges. */
+  /** The start of a shift-click range. */
   let lastClicked: string | null = null
 
   /**
-   * Quiz-pane search. It has to reach the library, because an entry holds ids
-   * and the player is searching for the name they can see.
+   * Quiz-pane search. Entries hold ids, so names resolve through the library.
    */
   function matches(entry: Entry): boolean {
     const needle = search.trim().toLowerCase()
@@ -60,7 +57,7 @@
       return entry.message.toLowerCase().includes(needle)
     if (entry.kind === 'title')
       return entry.title.toLowerCase().includes(needle)
-    // An algorithm block has no text of its own to match.
+    // An algorithm block has no text to match.
     return false
   }
 
@@ -79,7 +76,7 @@
     collapsed = next
   }
 
-  /** Shift extends from the last plain click; a plain click starts a new range. */
+  /** Shift extends from the last plain click. A plain click starts a new range. */
   function select(id: string, event: MouseEvent) {
     if (event.shiftKey && lastClicked) {
       quizStore.selectRange(lastClicked, id)
@@ -96,11 +93,11 @@
   }
 
   /**
-   * Where a drop would land, given the pointer's position within a row.
+   * Sets the drop target from the pointer's position in a row.
    *
-   * Top half inserts before the row, bottom half after it. Measuring against
-   * the row under the pointer — rather than computing an index from a fixed row
-   * height — is what lets entries and taller nested blocks share one list.
+   * The top half inserts before the row and the bottom half after it. The row
+   * under the pointer is measured, because rows have different heights:
+   * nested blocks are taller than entries.
    */
   function hover(event: DragEvent, blockId: string, index: number) {
     if (!dragState.active) return
@@ -111,7 +108,7 @@
     dragState.enter({ blockId, index: after ? index + 1 : index })
   }
 
-  /** Dropping on a block's footer appends to that block. */
+  /** A drop on a block's footer appends to that block. */
   function hoverEnd(event: DragEvent, blockId: string) {
     if (!dragState.active) return
     event.preventDefault()
@@ -148,8 +145,8 @@
       )
       return
     }
-    // An algorithm block is configured before it exists: AMQ's dialog creates
-    // it, so the target block is set and the caller opens the modal.
+    // AMQ's dialog creates the algorithm block. Set the target block here;
+    // the caller opens the dialog.
     quizStore.targetBlockId = blockId
     onAlgorithmSettings('')
   }
@@ -283,7 +280,6 @@
               {option.label}
             </button>
           {/each}
-          <!-- Stating the nesting rule where it would otherwise be violated. -->
           <span class="rule">no rule block inside a rule block</span>
         </div>
       {/if}
@@ -381,7 +377,7 @@
     overflow-x: hidden;
   }
 
-  /* Positions the drop line against the row it belongs above. */
+  /* Positions the drop line against its row. */
   .row-host {
     position: relative;
   }
@@ -397,7 +393,7 @@
     border-radius: 1px;
   }
 
-  /* The count travels with the line: a 12-row drag must not look like one. */
+  /* Shows how many rows the drag carries. */
   .drop-count {
     position: absolute;
     top: -8px;
@@ -424,7 +420,7 @@
     border-bottom: 1px solid var(--line);
   }
 
-  /* Dropping here appends to the block, so the whole zone lights up. */
+  /* A drop here appends to the block, so the whole zone is highlighted. */
   .drop-into {
     background: rgba(91, 155, 245, 0.12);
     outline: 1px dashed var(--accent);

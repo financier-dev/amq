@@ -1,43 +1,39 @@
 /**
  * Dragging entries between and within rule blocks (SPEC §7).
  *
- * Last by design, and the only part of the screen that is pure luxury:
- * everything drag does is reachable through Move, so this must never be the
- * only route to an action, and a browser that drops an event mid-gesture must
- * leave the quiz untouched rather than half-moved.
+ * Drag is optional. Move does everything drag does, so drag must never be the
+ * only way to an action. An interrupted drag must leave the quiz unchanged.
  *
- * Two rules from AMQ's own builder are enforced here rather than left to the
- * drop handler to remember:
+ * Two rules from AMQ's builder:
  *
- *   - **A rule block never enters a rule block.** AMQ gates this with
- *     `if (!currentDragBlock.RULE_BLOCK) return` on the rule body's own
- *     handlers; here, rule blocks simply are not draggable items.
- *   - **A drag carries the selection when the dragged row is part of it**,
- *     so dragging one of twelve selected rows moves all twelve — otherwise the
- *     gesture silently disagrees with the count in the action island.
+ *   - **A rule block never enters a rule block.** AMQ checks
+ *     `if (!currentDragBlock.RULE_BLOCK) return` in the rule body's handlers.
+ *     Here, rule blocks are not draggable.
+ *   - **A drag of a selected row carries the whole selection.** Dragging one
+ *     of twelve selected rows moves all twelve, which matches the count in
+ *     the selection bar.
  */
 
 import { quizStore } from '../../amq/quiz.svelte'
 
 export interface DropTarget {
   blockId: string
-  /** Index within the block's entries to insert before; -1 means append. */
+  /** Insert before this index in the block's entries. -1 appends. */
   index: number
 }
 
 class DragState {
-  /** Entry ids being dragged, or null when nothing is. */
+  /** Ids of the dragged entries. Null when no drag is active. */
   ids = $state<string[] | null>(null)
-  /** Where the drop would land, for the dashed zone. */
+  /** Where a drop would insert. Drives the dashed drop zone. */
   over = $state<DropTarget | null>(null)
 
   readonly active = $derived(this.ids !== null)
   readonly count = $derived(this.ids?.length ?? 0)
 
   /**
-   * Starts a drag. A row inside the current selection drags the whole
-   * selection; a row outside it drags only itself and replaces the selection,
-   * which is what every file manager does and what people expect.
+   * Starts a drag. A selected row drags the whole selection. An unselected
+   * row drags only itself and replaces the selection.
    */
   start(entryId: string) {
     if (quizStore.selection.has(entryId)) {
@@ -58,7 +54,7 @@ class DragState {
     if (this.over?.blockId === blockId) this.over = null
   }
 
-  /** Applies the move. A drop with no target is a no-op, not an error. */
+  /** Applies the move. Does nothing without a target. */
   drop() {
     const ids = this.ids
     const target = this.over

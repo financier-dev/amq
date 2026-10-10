@@ -1,12 +1,11 @@
 #!/bin/sh
 #
-# Keeps the committed userscripts in step with the source they were built from,
-# and keeps secrets out of a public repo.
+# Rebuilds dist/ so the committed userscripts match their source, and keeps
+# secrets out of a public repo.
 #
-# dist/ is tracked so a script can be installed straight from GitHub, which
-# means a source change committed without a rebuild ships a stale build. This
-# rebuilds and stages dist/ whenever anything that feeds a bundle is part of
-# the commit.
+# dist/ is tracked so a script can be installed from GitHub. A source change
+# committed without a rebuild would ship a stale build, so this hook rebuilds
+# and stages dist/ when the commit touches anything that feeds a bundle.
 #
 # Enable once per clone:  git config core.hooksPath .githooks
 # Skip for one commit:    git commit --no-verify
@@ -15,11 +14,9 @@ set -e
 
 staged=$(git diff --cached --name-only)
 
-# Nothing that affects a bundle? Then there is nothing to rebuild.
 if echo "$staged" | grep -qE '^(ui/src/|shared/|build/|vite\.config\.ts$|svelte\.config\.js$|package(-lock)?\.json$)'; then
-  # The build reads the working tree, not the index, so anything staged only in
-  # part would still reach dist. Worth saying out loud rather than silently
-  # shipping a build of work that is not in this commit.
+  # The build reads the working tree, not the index, so it includes changes
+  # that are not staged. Warn about them.
   unstaged=$(git diff --name-only -- ui/src shared build vite.config.ts svelte.config.js package.json)
   if [ -n "$unstaged" ]; then
     echo "pre-commit: warning — these are modified but not staged, and the rebuild will include them:"
@@ -31,20 +28,20 @@ if echo "$staged" | grep -qE '^(ui/src/|shared/|build/|vite\.config\.ts$|svelte\
   git add dist
 fi
 
-# This repo is public, and the scripts moving into it have carried hardcoded
-# account details. A commit is the last cheap moment to catch that.
+# This repo is public, and the scripts moving into it have had hardcoded
+# account details.
 #
-# Added lines only, and a deliberately narrow pattern: a secret-ish name
-# assigned a literal value. The three exclusions are what keep it quiet enough
-# to leave enabled — without them this fires on ordinary code:
+# The check reads added lines only and uses a narrow pattern: a secret-like
+# name assigned a literal value. Three exclusions keep ordinary code from
+# matching:
 #
 #   password?: string                          a type annotation
 #   AMQ_TEST_ACCOUNT_PASSWORD=                 an empty env template
 #   password: document.querySelector(…)        a value read at runtime
 #   'room_browser.….wrong_password': 'Wrong Password'   an i18n key
 #
-# A line carrying both an i18n key and a real secret would slip through. This
-# is a backstop for the obvious shapes, not the check — read the diff.
+# A line with both an i18n key and a real secret passes. This check catches
+# only the obvious shapes. Read the diff.
 secrets=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude)package-lock.json' |
   grep -E '^\+' | grep -vE '^\+\+\+' |
   grep -iE "(password|passwd|secret|api[_-]?key|auth[_-]?token|credential)[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[^\"'[:space:],;)}]{4,}" |
@@ -59,8 +56,8 @@ if [ -n "$secrets" ]; then
   exit 1
 fi
 
-# Personal details: this repo deliberately carries none. Catch the common ones
-# rather than every possible shape.
+# Personal details: this repo has none. This catches home paths and email
+# addresses only.
 personal=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude)package-lock.json' |
   grep -E '^\+' | grep -vE '^\+\+\+' |
   grep -iE "(/Users/[a-z0-9._-]+|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})" || true)

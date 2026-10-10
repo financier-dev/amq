@@ -1,20 +1,19 @@
 /**
  * Our quiz model (SPEC §3, corrected against the client source).
  *
- * Pure types and pure helpers — no runes, no DOM, no AMQ globals — so the
- * serializer and the unit tests can use it without pulling in a store.
+ * Types and pure helpers only: no runes, no DOM, no AMQ globals. The
+ * serializer and the tests use it without a store.
  *
- * Two deliberate differences from SPEC §3, both forced by the real save format:
+ * Two differences from SPEC §3, both required by the real save format:
  *
  *   - Chaining is `connectUp` on the **lower** entry, not `linkNext` on the
- *     upper one. The spec drew the affordance correctly but guessed the
- *     direction; rendering is unchanged, the click target is not.
- *   - Guess mode is a **set** of three booleans, not one of three values, and
- *     at least one must stay enabled.
+ *     upper one.
+ *   - Guess mode is a **set** of three booleans, not one of three values. At
+ *     least one must stay enabled.
  *
  * Entries hold ids, never display text. Anime names, song titles, artists and
- * OP/ED/IN counts are resolved at render time from AMQ's library cache — the
- * client does the same, and storing them would let them drift.
+ * OP/ED/IN counts resolve from AMQ's library cache at render time, as in the
+ * client. Stored copies would go stale.
  */
 
 import type {
@@ -27,7 +26,7 @@ import type {
 
 export type { GuessModesSave as GuessModes }
 
-/** Keys AMQ sent that we do not model, kept so a round-trip never drops them. */
+/** Keys AMQ sent that we do not model. A round-trip must carry them back. */
 export type UnknownFields = Record<string, unknown>
 
 export interface EntryOverrides {
@@ -38,7 +37,7 @@ export interface EntryOverrides {
 }
 
 interface EntryCommon {
-  /** Client-local, ours. Never serialized — AMQ identifies entries by position. */
+  /** Client-local. Never serialized: AMQ identifies entries by position. */
   id: string
   connectUp: boolean
   locked: boolean
@@ -49,7 +48,7 @@ export interface AnimeEntry extends EntryCommon {
   kind: 'anime'
   annId: number
   includeSongTypes: IncludeSongTypesSave
-  /** "How many songs to take from this anime", 1..pool. */
+  /** How many songs to take from this anime, from 1 to the pool size. */
   numberOfSongs: number
   overrides: EntryOverrides
 }
@@ -62,17 +61,17 @@ export interface SongEntry extends EntryCommon {
 
 export interface AlgorithmEntry extends EntryCommon {
   kind: 'algorithm'
-  /** Opaque host-modal settings blob; round-tripped untouched. */
+  /** Opaque settings from the host modal. Carried through unchanged. */
   settings: Record<string, unknown>
   overrides: EntryOverrides
   /**
-   * Server-supplied matches, refreshed by `get algorithm songs`. Never saved —
-   * AMQ deletes them off the payload after load.
+   * Matches from the server, refreshed by `get algorithm songs`. Never saved:
+   * AMQ deletes them from the payload after load.
    */
   matchedAnnSongIds?: number[]
   /**
-   * Client-local correlation id for the `get algorithm songs` round-trip. AMQ
-   * uses a plain counter for the same job; it is not part of the save.
+   * Client-local id that pairs a `get algorithm songs` reply with its
+   * request. Not part of the save.
    */
   algorithmBlockId?: number
 }
@@ -97,9 +96,9 @@ export type Entry =
 /**
  * An entry before the store gives it an id.
  *
- * Distributive on purpose: a plain `Omit<Entry, 'id'>` over a union keeps only
- * the keys every member shares, which here is `kind | connectUp | locked` — so
- * passing a message's `message` would be rejected as an unknown property.
+ * The conditional type distributes over the union. A plain
+ * `Omit<Entry, 'id'>` keeps only the keys every member shares
+ * (`kind | connectUp | locked`), so it would reject a message's `message`.
  */
 export type NewEntry = Entry extends infer T
   ? T extends Entry
@@ -107,7 +106,7 @@ export type NewEntry = Entry extends infer T
     : never
   : never
 
-/** The three that play a song, and so can carry per-entry overrides. */
+/** The kinds that play a song. Only these carry per-entry overrides. */
 export type PlayEntry = AnimeEntry | SongEntry | AlgorithmEntry
 
 export function isPlayEntry(entry: Entry): entry is PlayEntry {
@@ -119,7 +118,7 @@ export function isPlayEntry(entry: Entry): entry is PlayEntry {
 }
 
 export interface RuleBlock {
-  /** Client-local. Rule blocks have no name in AMQ; they are identified by position. */
+  /** Client-local. AMQ identifies rule blocks by position. */
   id: string
   randomOrder: boolean
   songCount: number
@@ -144,12 +143,12 @@ export interface Quiz {
 // --- limits (customQuizBuilder.js:432-436, customQuizCreator.js:287) --------
 
 export const MAX_RULE_BLOCKS = 30
-/** `MAX_ALGORIHMN_BLOCKS` in the client — the misspelling is theirs. */
+/** `MAX_ALGORIHMN_BLOCKS` in the client (sic). */
 export const MAX_ALGORITHM_BLOCKS = 7
 export const MAX_SONG_COUNT = 250
 export const MAX_MESSAGE_BLOCKS = 500
 export const MAX_TITLE_BLOCKS = 100
-/** Every entry across the whole quiz. */
+/** Counts every entry in the quiz. */
 export const MAX_BLOCK_COUNT = 2000
 export const MAX_TAGS = 2
 
@@ -191,9 +190,8 @@ export function emptyQuiz(id: string): Quiz {
 // --- derived counts ---------------------------------------------------------
 
 /**
- * Songs available from an anime entry, given which types are switched on.
- * The per-type counts are not stored — they come from the library cache, so the
- * caller passes them in.
+ * Songs available from an anime entry for its enabled types. The caller
+ * passes the per-type counts, which come from the library cache.
  */
 export function animePool(
   entry: AnimeEntry,
@@ -205,19 +203,19 @@ export function animePool(
   )
 }
 
-/** `pick` is clamped every time a type toggles, so a pool of 0 still yields 1. */
+/** Never below 1, even for an empty pool. */
 export function clampPick(value: number, pool: number): number {
   return Math.max(1, Math.min(value, Math.max(pool, 1)))
 }
 
-/** Total songs the quiz will play — the number the 250 cap applies to. */
+/** Total songs the quiz plays. The 250-song limit applies to this number. */
 export function totalSongCount(quiz: Quiz): number {
   return quiz.blocks.reduce((total, block) => total + block.songCount, 0)
 }
 
 /**
- * How much of the 250-song budget is left for `block` — i.e. the cap on its own
- * slider. Mirrors `customQuizBuilder.js:314` + `customQuizRuleBlock.js:539`.
+ * The most songs `block` may take: what is left of the 250-song limit.
+ * Follows `customQuizBuilder.js:314` and `customQuizRuleBlock.js:539`.
  */
 export function songCountCeiling(quiz: Quiz, block: RuleBlock): number {
   const others = totalSongCount(quiz) - block.songCount
@@ -237,13 +235,12 @@ export function totalEntryCount(quiz: Quiz): number {
 }
 
 /**
- * Chains, as runs of consecutive entries. AMQ rebuilds its runtime block groups
- * from `connectUp` exactly this way (`customQuizBuilder.js:345`): an entry with
- * the flag joins the run above it, one without starts a new run.
+ * Chains, as runs of consecutive entries. AMQ rebuilds its runtime block
+ * groups from `connectUp` the same way (`customQuizBuilder.js:345`): an entry
+ * with the flag joins the run above it, an entry without starts a new run.
  *
- * The first entry of a block can never continue a chain, so its flag is ignored
- * here — and `toSave` clears it, because a stale `true` there would silently
- * merge the block's opening entry into nothing.
+ * The first entry of a block cannot continue a chain, so its flag is ignored
+ * here. `toSave` clears it.
  */
 export function chainRuns(entries: Entry[]): Entry[][] {
   const runs: Entry[][] = []

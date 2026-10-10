@@ -1,7 +1,7 @@
 /*
- * Renders the built userscript against the AMQ stubs and asserts the things a
- * typecheck cannot see: that styles actually crossed into the shadow root, that
- * the columns line up, and that the interactive bits do what the spec says.
+ * Renders the built userscript against the AMQ stubs and asserts what a
+ * typecheck cannot: that styles reach the shadow root, that the columns
+ * align, and that the interactive parts follow the spec.
  *
  *   node ui/tests/render.mjs            # assert, write screenshots
  *   node ui/tests/render.mjs --headed   # watch it run
@@ -19,9 +19,9 @@ const shots = path.join(here, 'screenshots')
 fs.mkdirSync(shots, { recursive: true })
 
 /*
- * Served over http rather than opened as a file:// URL — Chromium gives
- * file:// pages an opaque origin with no localStorage, and filter persistence
- * is part of what needs testing.
+ * Served over http, not opened as a file:// URL. Chromium gives file:// pages
+ * an opaque origin with no localStorage, and the suite tests filter
+ * persistence.
  */
 const TYPES = {
   '.html': 'text/html',
@@ -47,11 +47,8 @@ const check = (label, pass, detail = '') =>
   results.push({ label, pass, detail })
 
 /*
- * Prints what has been collected so far.
- *
- * Also wired to an uncaught exception: a single timed-out selector used to
- * abort the run and discard every result with it, which turns "one thing
- * broke" into "no information at all" — exactly when the results matter most.
+ * Prints the results collected so far. Also runs on an uncaught exception, so
+ * one timed-out selector does not discard every result.
  */
 function printResults() {
   let failed = 0
@@ -78,7 +75,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1760, height: 980 } })
 
 page.on('console', (msg) => {
-  // Avatar and font requests are deliberately aborted below; don't report them.
+  // The suite aborts avatar and font requests below. Do not report them.
   if (
     msg.type() === 'error' &&
     !msg.text().includes('Failed to load resource')
@@ -90,7 +87,7 @@ page.on('pageerror', (error) =>
   console.log('  [page exception]', error.message)
 )
 
-// Avatar art lives on AMQ's CDN; the point here is layout, not asset fetching.
+// Avatar art is on AMQ's CDN. The suite tests layout, not asset fetching.
 await page.route('**/cdn/v1/**', (route) => route.abort())
 await page.route('**fonts.googleapis.com**', (route) => route.abort())
 
@@ -106,9 +103,8 @@ await page.waitForFunction(
       ?.shadowRoot?.querySelectorAll('.row').length > 0,
   { timeout: 5000 }
 )
-// A webfont is only fetched once something uses it, so this has to come after
-// the screen renders. Measuring fallback metrics would quietly weaken every
-// layout assertion below.
+// A webfont is fetched only once something uses it, so wait after the screen
+// renders. Fallback metrics would weaken every layout assertion below.
 const fontsReady = await page.evaluate(async () => {
   await Promise.all([
     document.fonts.load("500 13px 'IBM Plex Mono'"),
@@ -124,7 +120,7 @@ await page.waitForTimeout(250)
 
 const root = page.locator('[data-amq-ui]').locator('.amq-ui-root')
 
-// --- the bug that started this: did CSS reach the shadow root? -------------
+// --- did CSS reach the shadow root? ----------------------------------------
 
 const styling = await page.evaluate(() => {
   const shadow = document.querySelector('[data-amq-ui]').shadowRoot
@@ -142,7 +138,7 @@ const styling = await page.evaluate(() => {
 })
 
 // One <style> per mounted component. The filter panel and the roster popover
-// mount lazily, so the initial list is the floor, not the total.
+// mount later, so the initial count is a minimum.
 check(
   'component styles reach the shadow root',
   styling.styleTags >= 10,
@@ -188,8 +184,8 @@ const alignment = await page.evaluate(() => {
   }
 })
 
-// One short of the total: the private room is hidden by the default
-// "Public only" filter.
+// One fewer than the total: the default "Public" filter hides the private
+// room.
 check(
   'every public room renders',
   alignment.rowCount === 17,
@@ -251,8 +247,8 @@ const columnWidths = await page.evaluate(() => {
   const cells = [...shadow.querySelector('.row').children].map(width)
   return headers.map((value, index) => value - cells[index])
 })
-// A cell wider than its token (flex `min-width: auto` raising it to
-// min-content) pushes every column after it out of step.
+// A cell wider than its token moves every column after it out of alignment.
+// A flex item's `min-width: auto` can raise it to its min-content width.
 check(
   'every column is the same width in the header and the rows',
   columnWidths.every((delta) => Math.abs(delta) <= 1),
@@ -283,7 +279,7 @@ const modeFit = await page.evaluate(() => {
     truncated: truncated.map((pill) => pill.textContent.trim()),
   }
 })
-// "Last Man Standing" is the longest label AMQ ships and it was overflowing.
+// "Last Man Standing" is the longest label AMQ ships.
 check(
   'Mode labels are the real localised strings',
   modeFit.labels.some((label) => label === 'Last Man Standing'),
@@ -331,15 +327,14 @@ const buttonStability = await page.evaluate(() => {
   ]
   return { unique: [...new Set(lefts.map((entry) => entry.join(',')))], labels }
 })
-// Rows in lobby say "Join", playing ones say "Playing", full ones "Full" —
-// all three have to sit in the same place.
+// "Join", "Playing" and "Full" must all be in the same position.
 check(
   'action buttons never move between lobby and playing',
   buttonStability.unique.length === 1,
   `${buttonStability.labels.join('/')} → ${buttonStability.unique.length} position(s)`
 )
 
-// --- the menu bar is not ours ---------------------------------------------
+// --- AMQ's menu bar stays visible -------------------------------------------
 
 const menuBar = await page.evaluate(() => {
   const shadow = document.querySelector('[data-amq-ui]').shadowRoot
@@ -366,7 +361,7 @@ const content = await page.evaluate(() => {
   const text = (row, selector) =>
     row?.querySelector(selector)?.textContent.trim()
   return {
-    // The counts moved out of the top bar; the strip still reports them.
+    // The strip under the top bar reports the counts.
     counts: shadow.querySelector('.bar .counts')?.textContent.trim() ?? null,
     ids: rows.map((row) => row.querySelector('.id')?.textContent.trim()),
     playerOrder: rows.map((row) => text(row, '.count')),
@@ -561,8 +556,8 @@ check(
 
 // --- filtering actually filters -------------------------------------------
 
-// The private room is hidden by default; turning Public off must reveal it,
-// with its lock, and it must be unjoinable because it is mid-game.
+// The private room is hidden by default. Turning Public off must show it with
+// its lock. It is mid-game, so it must not be joinable.
 await root.locator('.group').first().locator('.chip').first().click()
 await page.waitForTimeout(150)
 const withPrivate = await page.evaluate(() => {
@@ -597,7 +592,7 @@ await root.locator('.group').first().locator('.chip').first().click()
 await page.waitForTimeout(150)
 
 const before = await root.locator('.row').count()
-// "Show only: Open slots" — the third chip in the first group.
+// "Show only: Open slots" is the third chip in the first group.
 await root.locator('.group').first().locator('.chip').nth(2).click()
 await page.waitForTimeout(150)
 const after = await root.locator('.row').count()
@@ -605,7 +600,7 @@ const badge = await root.locator('.badge').first().textContent()
 check('toggling a filter drops rooms', after < before, `${before} → ${after}`)
 check('badge counts the changed group', badge.trim() === '1', badge)
 
-// The store debounces writes by 300ms so dragging a slider does not thrash.
+// The store debounces writes by 300ms.
 await page.waitForTimeout(500)
 const persisted = await page.evaluate(() =>
   localStorage.getItem('amq-room-filters')
@@ -618,7 +613,7 @@ check(
   persisted ? 'stored' : 'nothing written'
 )
 
-// Anime type must really filter — the mock's known gap (SPEC §8).
+// Anime type must filter. The mock did not cover it (SPEC §8).
 await root.locator('.group').first().locator('.chip').nth(2).click()
 await page.waitForTimeout(100)
 const animeGroup = root.locator('.group').nth(4)
@@ -638,7 +633,7 @@ await page.waitForTimeout(150)
 
 // --- sorting ---------------------------------------------------------------
 
-// First column is now ID.
+// The first column is ID.
 await root.locator('.col').first().click()
 await page.waitForTimeout(150)
 const byId = (await root.locator('.row .id').allTextContents()).map(Number)
@@ -689,13 +684,12 @@ const chipDetail = await page.evaluate(() => {
     rows.find((row) => row.querySelector('.name')?.textContent.trim() === name)
 
   /*
-   * Where a run of text actually sits its baseline.
+   * Returns the baseline of a run of text.
    *
-   * A zero-height inline-block's own baseline is its bottom margin edge, so
-   * once it is aligned into the parent's text it reports the parent's
-   * baseline. Comparing line-box rects instead does not work here: the two
-   * spans are different sizes, so their boxes differ by the descent even when
-   * the baselines match perfectly.
+   * The baseline of a zero-height inline-block is its bottom margin edge, so
+   * a probe aligned into the parent's text reports the parent's baseline.
+   * Line-box rects do not work here: the two spans have different sizes, so
+   * their boxes differ by the descent even when the baselines match.
    */
   const baselineOf = (element) => {
     const probe = document.createElement('span')
@@ -747,7 +741,8 @@ check(
   chipDetail.specsAtBarEnd <= 1,
   `${chipDetail.specsAtBarEnd.toFixed(1)}px off`
 )
-// randomOn is set, so a differing standardValue is inert and changes nothing.
+// `randomOn` is set, so `standardValue` is unused and a different one changes
+// nothing.
 check(
   'an inert sample point produces no chip',
   chipDetail.inertSampleChips.length === 0,
@@ -775,7 +770,7 @@ const categoryTip = await page.evaluate(() => {
   const shadow = document.querySelector('[data-amq-ui]').shadowRoot
   return shadow.querySelector('.floating')?.textContent.trim() ?? null
 })
-// The label is an abbreviation, so repeating it in the tooltip explains nothing.
+// The label is an abbreviation, so the tooltip must spell it out.
 check(
   'category tooltip spells the abbreviations out',
   categoryTip?.includes('Instrumental') &&
@@ -835,7 +830,7 @@ check(
   `${wrapping.maxLines} lines`
 )
 check('the remainder still collapses to +N', wrapping.hasOverflow === true)
-// The whole point: two lines, same row height.
+// Two lines of chips must not change the row height.
 check(
   'row height is unchanged by wrapping',
   wrapping.rowHeights.length === 1 && wrapping.rowHeights[0] === 56,
@@ -862,10 +857,10 @@ check(
 )
 
 /*
- * Optical centring can only be judged from the rendered pixels: the glyphs are
- * all capitals, so their ink stops at the baseline while the line box still
- * reserves descender room, and every box-based measurement says "centred"
- * while the letters visibly sit high.
+ * Optical centring must be measured from rendered pixels. The glyphs are all
+ * capitals, so nothing goes below the baseline, but the line box reserves
+ * descender room. Box measurements report "centred" while the letters sit
+ * high.
  */
 const chipBox = await page.evaluate(() => {
   const shadow = document.querySelector('[data-amq-ui]').shadowRoot
@@ -899,8 +894,8 @@ const ink = await zoom.evaluate(
     const context = canvas.getContext('2d')
     context.drawImage(image, 0, 0)
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
-    // The glyphs are the lightest thing in the chip; the fill and border are
-    // both far darker.
+    // The glyphs are the lightest pixels in the chip. The fill and the border
+    // are much darker.
     const rows = []
     for (let y = 0; y < canvas.height; y++) {
       for (let x = 0; x < canvas.width; x++) {
@@ -956,7 +951,7 @@ check(
   teamChip.team.includes('TEAM 2'),
   teamChip.team.join(' ')
 )
-// Solo is the default, and defaults render nothing.
+// Solo is the default, and a default renders no chip.
 check(
   'a solo room shows no team chip',
   !teamChip.solo.some((label) => label.startsWith('TEAM')),
@@ -966,7 +961,7 @@ check(
 // --- the search box must accept Backspace ---------------------------------
 
 // AMQ blocks Backspace document-wide unless the event target is an input, and
-// shadow events are retargeted to the host — so this key was being swallowed.
+// events from a shadow root are retargeted to the host.
 await page.evaluate(() => (window.__log.length = 0))
 const searchBox = root.locator('#amq-ui-search')
 await searchBox.fill('abcd')
@@ -1001,8 +996,8 @@ const names = await page.evaluate(() => {
       .map((cell) => cell.textContent.trim()),
   }
 })
-// hostModal.js:2055 caps a room name at 20 characters; the column is sized for
-// that, so nothing should ellipsise.
+// hostModal.js:2055 limits a room name to 20 characters and the column fits
+// that, so no name gets an ellipsis.
 check(
   'fixtures respect the 20-character name cap',
   names.longest <= 20,
@@ -1025,8 +1020,8 @@ const tooltip = await page.evaluate(() => {
   const floating = shadow.querySelector('.floating')
   if (!floating) return null
   const box = floating.getBoundingClientRect()
-  // The chips cell, reached through a chip — `:last-of-type` matches on tag,
-  // not class, so it picks the wrong div.
+  // Find the chips cell through a chip. `:last-of-type` matches on tag, not
+  // class, and selects the wrong div.
   const cell = shadow
     .querySelector('.row .chip')
     .closest('.cell')
@@ -1036,7 +1031,7 @@ const tooltip = await page.evaluate(() => {
     text: floating.textContent.trim(),
     visible: getComputedStyle(floating).visibility === 'visible',
     positioning: getComputedStyle(floating).position,
-    // The bug was the tooltip being clipped by the chips cell and the list.
+    // The chips cell and the list must not clip the tooltip.
     escapesCell: box.bottom > cell.bottom || box.right > cell.right,
     onScreen:
       box.left >= 0 &&
@@ -1104,8 +1099,8 @@ const preview = await page.evaluate(() => ({
   log: window.__log.map((entry) => entry[0]),
   tile: window.__previewTile ? Object.keys(window.__previewTile).sort() : null,
 }))
-// roomTile.js `previewSettings` order: changeSettings sets hostModal.gameMode,
-// which setModePreviewGame then reads for the modal title.
+// The order in roomTile.js `previewSettings`: `changeSettings` sets
+// `hostModal.gameMode`, and `setModePreviewGame` reads it for the title.
 check(
   'settings button drives AMQ’s host modal in order',
   JSON.stringify(preview.log) ===
@@ -1147,8 +1142,8 @@ await page.evaluate(() => window.__amqUI.useLegacy())
 await page.waitForTimeout(250)
 const handover = await page.evaluate(() => ({
   ours: document.querySelector('[data-amq-ui]').style.display,
-  // `changeView` early-returns on the current view, so the handover has to
-  // drive the restored controller itself — this is what left a blank page.
+  // `changeView` returns early on the current view, so the handover must call
+  // the restored controller itself. Otherwise the page stays blank.
   legacyVisible: !document
     .querySelector('#roomBrowserPage')
     .classList.contains('hidden'),
@@ -1186,20 +1181,19 @@ check('useNew() closes AMQ’s screen', back.legacyVisible === false)
 // --- quiz builder: the serializer round-trip ------------------------------
 
 /*
- * The load-bearing assertion for the quiz builder. Everything else on that
- * screen can look wrong and be fixed; a serializer bug corrupts a quiz the
- * player already saved, and they find out when it will not load.
+ * The most important assertion for the quiz builder. A serializer bug
+ * corrupts a quiz the player has already saved.
  *
- * Driven through `__amqUI.quizBuilder` because the repo has no unit-test
- * runner and two pure functions do not justify adding one.
+ * It runs through `__amqUI.quizBuilder` because the repo has no unit-test
+ * runner.
  */
 
 const roundTrip = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
-  // Key order differs between our output and AMQ's (message blocks spread the
-  // base last), so compare structurally rather than as text.
+  // Our output and AMQ's have different key orders (message blocks spread the
+  // base last), so compare structure, not text.
   const sortKeys = (value) => {
     if (Array.isArray(value)) return value.map(sortKeys)
     if (value && typeof value === 'object') {
@@ -1228,8 +1222,8 @@ const roundTrip = await page.evaluate(() => {
     JSON.stringify(unknownOut.ruleBlocks[0].blocks[0].someFutureEntryField),
   ]
 
-  // `annSongIds` arrives on load and is deleted by the client, so dropping it
-  // is correct — everything else must still match.
+  // `annSongIds` arrives on load and the client deletes it, so the round-trip
+  // drops it. Everything else must match.
   const loaded = window.__quizAsLoaded
   const loadedOut = api.roundTrip(loaded)
   results.annSongIdsDropped =
@@ -1243,17 +1237,17 @@ const roundTrip = await page.evaluate(() => {
   delete expected.ruleBlocks[0].matchSongCount
   results.loadedOtherwiseIntact = same(loadedOut, expected)
 
-  // The model's view of the same quiz — what the UI will actually read.
+  // The same quiz as our model, which is what the UI reads.
   const model = api.fromSave(base)
   const first = model.blocks[0]
   results.kinds = model.blocks.flatMap((block) =>
     block.entries.map((entry) => entry.kind)
   )
-  // Three consecutive entries chained together are two `connectUp` flags.
+  // Three chained entries carry two `connectUp` flags.
   results.chained = first.entries.filter((entry) => entry.connectUp).length
   results.locked = first.entries.filter((entry) => entry.locked).length
-  // An entry with no overrides must produce an empty object, not four
-  // `undefined` keys — the emptiness is what "follows the block" means.
+  // An entry with no overrides must have an empty object, not four
+  // `undefined` keys. An absent key means "follows the block".
   results.noOverrideKeys = Object.keys(first.entries[0].overrides).length
   results.allOverrideKeys = Object.keys(first.entries[3].overrides).sort()
   results.oneOverrideKeys = Object.keys(first.entries[4].overrides)
@@ -1271,13 +1265,13 @@ const roundTrip = await page.evaluate(() => {
     model.ruleBlockRandomOrder,
   ]
 
-  // A leading `connectUp` cannot mean anything and must not survive a save.
+  // `connectUp` on the first entry has no meaning and must not be saved.
   const stray = JSON.parse(JSON.stringify(base))
   stray.ruleBlocks[0].blocks[0].connectUp = true
   results.strayConnectCleared =
     api.roundTrip(stray).ruleBlocks[0].blocks[0].connectUp === false
 
-  // An unclassifiable block is refused rather than silently dropped.
+  // A block that cannot be classified must throw, not be dropped.
   try {
     api.fromSave({
       name: 'x',
@@ -1309,9 +1303,8 @@ check(
   'server-supplied annSongIds are dropped, as AMQ drops them',
   roundTrip.annSongIdsDropped && roundTrip.loadedOtherwiseIntact
 )
-// `version` and `matchSongCount` are added by the server on load and appear in
-// no save AMQ's own client makes — echoing them back would send the server
-// something its client never sends.
+// The server adds `version` and `matchSongCount` on load. No save from AMQ's
+// client carries them, so ours must not either.
 check(
   'server-added version and matchSongCount are not echoed back',
   roundTrip.serverFieldsDropped
@@ -1377,9 +1370,8 @@ check(
 // --- quiz builder: the model's mutations ----------------------------------
 
 /*
- * The mutations every later phase of the screen sits on. A fake library is
- * injected so these exercise the model alone — what the counts do with a real
- * cache is a separate concern.
+ * The store's mutations, tested against a fake library so that only the model
+ * is exercised.
  */
 
 const model = await page.evaluate(() => {
@@ -1414,7 +1406,7 @@ const model = await page.evaluate(() => {
   const results = {}
   const firstBlock = () => store.quiz.blocks[0]
 
-  // Adds land in the "Adds to" block.
+  // Adds go to the "Adds to" block.
   const first = store.addEntry({
     kind: 'anime',
     connectUp: false,
@@ -1427,12 +1419,11 @@ const model = await page.evaluate(() => {
   results.addedToTarget = firstBlock().entries.length === 1
   results.poolFromTypes = store.pool(first)
 
-  // Turning a type on widens the pool; the pick count is free to stay.
+  // Turning a type on widens the pool. The pick count stays.
   store.toggleSongType(first.id, 'in')
   results.poolAfterOn = store.pool(first)
 
-  // Turning both off leaves a pool of 0, and the pick count must re-clamp to 1
-  // rather than point past what it draws from.
+  // With both types off the pool is 0, and the pick count must clamp to 1.
   store.setNumberOfSongs(first.id, 5)
   results.pickAfterSet = first.numberOfSongs
   store.toggleSongType(first.id, 'op')
@@ -1440,20 +1431,18 @@ const model = await page.evaluate(() => {
   results.poolEmpty = store.pool(first)
   results.pickReclamped = first.numberOfSongs
 
-  // Any mutation marks the quiz dirty, which is what lights up Undo. This was
-  // a `$derived` over a plain array and so never invalidated — the button
-  // stayed greyed out no matter what you did.
+  // Any mutation marks the quiz dirty, which enables Undo.
   results.dirtyAfterEdit = store.dirty
 
-  // Revert throws away everything since the last save. It replaces the whole
-  // document, so a reference held across it is stale by design.
+  // Revert discards everything since the last save. It replaces the whole
+  // document, so a reference held across it is stale.
   const beforeRevert = firstBlock().entries.length
   store.revert()
   results.revertedToEmpty =
     firstBlock().entries.length === 0 && beforeRevert > 0
   results.cleanAfterRevert = store.dirty === false
 
-  // Rebuild what the rest of this section works on.
+  // Add the entries the rest of this section uses.
   const anime = store.addEntry({
     kind: 'anime',
     connectUp: false,
@@ -1465,7 +1454,7 @@ const model = await page.evaluate(() => {
   })
   const afterUndo = anime
 
-  // Everything below works from the live entry, not the pre-undo reference.
+  // Use the live entry from here on, not the reference from before the undo.
   const liveAnime = afterUndo
 
   // Chaining: the first entry of a block has nothing above it.
@@ -1481,8 +1470,8 @@ const model = await page.evaluate(() => {
   store.toggleChain(song.id)
   results.secondCanChain = song.connectUp === true
 
-  // Removing the entry above a chained one must not leave it chained to
-  // whatever slides into that slot.
+  // Removing the entry above a chained one must clear the chain flag, so the
+  // entry does not chain to whatever moves up.
   store.removeEntries([liveAnime.id])
   results.leadingChainCleared = firstBlock().entries[0].connectUp === false
 
@@ -1505,7 +1494,7 @@ const model = await page.evaluate(() => {
   results.overridesPreserved = moved.overrides.samplePoint.samplePoint === 42
   results.movedChainCleared = moved.connectUp === false
 
-  // Duplicating a rule block deep-copies it and lands directly after.
+  // A duplicated rule block is a deep copy placed directly after the original.
   store.setSongCount(second.id, 10)
   const copy = store.duplicateRuleBlock(second.id)
   results.duplicateIsAfter = store.quiz.blocks[2].id === copy.id
@@ -1516,8 +1505,8 @@ const model = await page.evaluate(() => {
   copy.entries[0].overrides.samplePoint.samplePoint = 99
   results.duplicateIndependent = moved.overrides.samplePoint.samplePoint === 42
 
-  // The 250-song budget is quiz-wide, and a block's slider stops at what is
-  // left for it.
+  // The 250-song limit applies to the whole quiz. A block's slider stops at
+  // what is left for it.
   results.budgetLeft = store.songBudgetLeft
   store.setSongCount(second.id, 999)
   results.songCountClamped = second.songCount === store.ceiling(second)
@@ -1626,9 +1615,9 @@ check(
   `budget was ${model.budgetLeft}`
 )
 check('shift-range selection spans blocks', model.rangeSpansBlocks)
-// 6 songs available, block wants 2 from the anime + 1 song = 3; one anime, six
-// unique songs. With duplicates off the anime contributes 1, the loose song is
-// from a different show, so 2.
+// 6 songs are available. The block takes 2 from the anime and 1 song: 3. One
+// anime, six unique songs. With duplicates off the anime contributes 1 and
+// the single song is from another anime, so 2.
 check(
   'block info matches AMQ’s own computation, duplicates on',
   JSON.stringify(model.infoDuplicatesOn) === JSON.stringify([3, 2, 7]),
@@ -1649,10 +1638,9 @@ await page.waitForTimeout(300)
 const qb = page.locator('[data-amq-ui]').last().locator('.amq-ui-root')
 
 /*
- * The library has to be *requested*. `libraryCacheHandler.animeCache` is `{}`
- * until `getCache` asks the server for it, and reading it without asking gets
- * you a screen where every entry is "Anime #4591" with a song count of zero —
- * which is how this shipped the first time.
+ * The library must be *requested*. `libraryCacheHandler.animeCache` is `{}`
+ * until `getCache` fetches it. Without the request, every entry reads
+ * "Anime #4591" with a song count of zero.
  */
 const libraryLoad = await page.evaluate(() => ({
   requested: window.__libraryLoadCalls,
@@ -1671,7 +1659,7 @@ check(
   `${libraryLoad.cached} anime cached`
 )
 
-// Build something with every row kind in it.
+// Build a quiz with every row kind.
 await page.evaluate(() => {
   const store = window.__amqUI.quizBuilder.store
   const ids = window.__libraryIds
@@ -1782,7 +1770,7 @@ const qbLayout = await page.evaluate(() => {
     anime: unique(xs('.anime')),
     types: unique(xs('.types')),
     actions: unique(xs('.actions')),
-    // Every entry row is the same height whatever it holds.
+    // Every entry row has the same height, whatever it holds.
     heights: [
       ...new Set(
         rows.map((row) => Math.round(row.getBoundingClientRect().height))
@@ -1804,7 +1792,7 @@ const qbLayout = await page.evaluate(() => {
   }
 })
 
-// Four entries in the first block; the second holds only nested blocks, which
+// Four entries in the first block. The second holds only nested blocks, which
 // are not entry rows.
 check(
   'every entry row renders',
@@ -1821,15 +1809,15 @@ check(
   qbLayout.types.length === 1,
   JSON.stringify(qbLayout.types)
 )
-// The pick cell is present on anime rows and spaced on song rows; if the
-// spacer were missing, the actions column would shift between the two.
+// Anime rows have the pick cell and song rows have a spacer of the same
+// width. Without the spacer, the actions column would shift between them.
 check(
   'the action column aligns across anime and song rows',
   qbLayout.actions.length === 1,
   JSON.stringify(qbLayout.actions)
 )
-// Read from the token rather than hardcoded: the point is that every row is
-// the *same* height whatever it holds, not what that height happens to be.
+// Read the height from the token. The test is that all rows have the *same*
+// height, not what the height is.
 check(
   'every entry row is exactly one --qb-entry-h tall',
   qbLayout.heights.length === 1 && qbLayout.heights[0] === qbLayout.entryToken,
@@ -1865,11 +1853,11 @@ const qbContent = await page.evaluate(() => {
     overrideChips: rows.flatMap((row) =>
       [...row.querySelectorAll('.chip')].map(text)
     ),
-    // Two chained rows means two rails drawn downward and two upward.
+    // Two chained rows have two rails drawn downward and two upward.
     chainRails: shadow.querySelectorAll('.rail.up').length,
     chainRailsDown: shadow.querySelectorAll('.rail.down').length,
     lockedRows: shadow.querySelectorAll('.act.lock.on').length,
-    // An insert badge carries no number; openings and endings do.
+    // An insert badge has no number. Openings and endings have one.
     typeBadges: rows
       .map((row) => text(row.querySelector('.badge')))
       .filter(Boolean),
@@ -1894,9 +1882,9 @@ check(
   qbContent.tones.join(' ')
 )
 /*
- * The three symptoms of an unloaded library, asserted directly: ids instead of
- * names, and every song count zero. Counting elements would not have caught
- * any of them — the rows rendered fine, they just said nothing true.
+ * The symptoms of an unloaded library: ids in place of names, and every song
+ * count zero. An element count does not catch them, because the rows still
+ * render.
  */
 const resolved = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
@@ -1909,20 +1897,20 @@ const resolved = await page.evaluate(() => {
     songTitles: rows
       .map((row) => text(row.querySelector('.title')))
       .filter(Boolean),
-    // `OP 1` / `ED 1` — the count beside each type toggle comes from the cache.
+    // `OP 1`, `ED 1`: the count beside each type toggle comes from the cache.
     typeCounts: rows.flatMap((row) =>
       [...row.querySelectorAll('.type .n')].map((element) =>
         Number(text(element))
       )
     ),
-    // `2/2` — the pick control's pool.
+    // `2/2`: the pick control's pool.
     pools: rows.map((row) => text(row.querySelector('.count'))).filter(Boolean),
     libraryNames: libRows.map((row) => text(row.querySelector('.name'))),
     librarySubs: libRows.map((row) => text(row.querySelector('.sub'))),
   }
 })
 
-// "Anime #4591" and "Song #46015" are the unknown-entry fallbacks.
+// "Anime #4591" and "Song #46015" are the fallbacks for an unknown entry.
 check(
   'entries resolve to real names, not ids',
   resolved.animeNames.every((name) => name && !/^Anime #\d+$/.test(name)) &&
@@ -1941,7 +1929,7 @@ check(
     resolved.typeCounts.some((count) => count > 0),
   resolved.typeCounts.join(',')
 )
-// `1/0` is what an uncached anime produces: a pool of nothing.
+// An uncached anime produces `1/0`: an empty pool.
 check(
   'no pick control shows an empty pool',
   resolved.pools.length > 0 &&
@@ -2001,7 +1989,7 @@ check(
     qbContent.algorithmChips.includes('0-60'),
   qbContent.algorithmChips.join(' | ')
 )
-// The count is server-supplied and has not arrived, so it must not read 0.
+// The server has not sent the count yet, so the line must not read 0.
 check(
   'an algorithm block with no match count yet says so',
   qbContent.matchLine.startsWith('…'),
@@ -2036,8 +2024,7 @@ const expansion = await page.evaluate(() => {
     heights: [
       ...new Set(rows.map((r) => Math.round(r.getBoundingClientRect().height))),
     ],
-    // SPEC §4.1: the chevron's *tip* lines up with the badge below it, which
-    // is what the -5px nudge on the glyph buys.
+    // SPEC §4.1: a song's badge starts near the tip of the chevron above it.
     chevronToBadge: badge ? Math.round(badge.left - chevron.left) : null,
     badges: songRows.map((row) =>
       row.querySelector('.badge').textContent.trim()
@@ -2049,8 +2036,8 @@ check(
   expansion.songRows === 6,
   `${expansion.songRows} song rows`
 )
-// A song row is shorter than the anime row it sits under — that difference is
-// what makes an expanded anime read as a group.
+// A song row is shorter than the anime row above it. The difference makes an
+// expanded anime read as a group.
 check(
   'song rows are shorter than the anime row above them',
   expansion.heights.length === 2 &&
@@ -2071,7 +2058,7 @@ check(
   expansion.badges.join(' ')
 )
 
-// One click adds into the "Adds to" block.
+// One click adds to the "Adds to" block.
 await qb.locator('.lib-row').first().locator('.add').click()
 await page.waitForTimeout(200)
 const afterAdd = await page.evaluate(() => {
@@ -2089,7 +2076,7 @@ check(
 
 await page.screenshot({ path: path.join(shots, 'quiz-builder.png') })
 
-// The whole anime row toggles, not just the 24px chevron.
+// The whole anime row toggles, not only the 24px chevron.
 const countSongRows = () =>
   page.evaluate(
     () =>
@@ -2110,15 +2097,14 @@ check(
   `${collapsedByBody} then ${expandedByBody} song rows`
 )
 
-// The guard is the part most likely to regress: the row's buttons must keep
-// doing their own thing without also toggling the row under them.
+// The row's buttons must do their own action without also toggling the row.
 await qb.locator('.lib-row').first().locator('.add').click()
 await page.waitForTimeout(200)
 const afterGuardedAdd = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
   const store = window.__amqUI.quizBuilder.store
   const songRows = shadow.querySelectorAll('.lib-row.song').length
-  // Put the entry count back where the checks above left it.
+  // Restore the entry count that the checks above expect.
   store.undo()
   return { songRows }
 })
@@ -2128,7 +2114,7 @@ check(
   `${afterGuardedAdd.songRows} song rows`
 )
 
-// --- selection, and the action island --------------------------------------
+// --- selection, and the selection bar ---------------------------------------
 
 await qb.locator('.row').first().locator('.check input').click()
 await qb
@@ -2144,7 +2130,7 @@ const selection = await page.evaluate(() => {
     size: window.__amqUI.quizBuilder.store.selection.size,
     islandShown: Boolean(island),
     label: island?.querySelector('.count')?.textContent.trim(),
-    // Every label is one word so the island can never wrap over the rows.
+    // Every label is one word, so the bar cannot wrap over the rows.
     wraps: island ? island.getBoundingClientRect().height > 44 : false,
     highlighted: shadow.querySelectorAll('.row.selected').length,
   }
@@ -2167,7 +2153,7 @@ check(
   `${selection.highlighted} highlighted`
 )
 
-// Escape clears it — SPEC §11.
+// Escape clears the selection (SPEC §11).
 await page.keyboard.press('Escape')
 await page.waitForTimeout(150)
 check(
@@ -2184,8 +2170,8 @@ await qb.locator('.nested').first().locator('.act').first().click()
 await page.waitForTimeout(150)
 const algorithm = await page.evaluate(() => ({
   log: window.__log.map((entry) => entry[0]),
-  // AMQ calls `updateSettings` on whatever we hand it; that shim is how the
-  // dialog's result gets back into our model.
+  // AMQ calls `updateSettings` on the object we pass. That shim writes the
+  // dialog's result to our model.
   shimHasUpdate:
     typeof window.__quizBuilderTarget?.updateSettings === 'function',
 }))
@@ -2197,7 +2183,7 @@ check(
 )
 check('the dialog is given a write-back shim', algorithm.shimHasUpdate)
 
-// Drive the dialog's confirm the way hostModal.js:401 does.
+// Confirm the dialog as hostModal.js:401 does.
 const written = await page.evaluate(() => {
   window.__quizBuilderTarget.updateSettings({
     numberOfSongs: 42,
@@ -2208,7 +2194,7 @@ const written = await page.evaluate(() => {
   const entry = store.quiz.blocks[1].entries[0]
   return {
     numberOfSongs: entry.settings.numberOfSongs,
-    // The old count described the old filters, so it must be cleared.
+    // The old count belongs to the old settings, so it must be cleared.
     matchesCleared: entry.matchedAnnSongIds === undefined,
   }
 })
@@ -2218,11 +2204,11 @@ check(
   JSON.stringify(written)
 )
 
-// --- caps are enforced in the UI, not left to AMQ to reject ---------------
+// --- the UI enforces the limits before AMQ rejects ---------------------------
 
 const caps = await page.evaluate(() => {
   const store = window.__amqUI.quizBuilder.store
-  // Seven is the algorithm cap (`MAX_ALGORIHMN_BLOCKS`, sic).
+  // The algorithm limit is seven (`MAX_ALGORIHMN_BLOCKS`, sic).
   for (let index = 0; index < 8; index += 1) {
     store.addEntry({
       kind: 'algorithm',
@@ -2287,7 +2273,7 @@ check(
 )
 await page.waitForTimeout(150)
 
-// --- the escape hatch, independently of the room browser ------------------
+// --- the escape hatch, independent of the room browser ----------------------
 
 await page.evaluate(() => window.__amqUI.quizBuilder.useLegacy())
 await page.waitForTimeout(250)
@@ -2296,7 +2282,7 @@ const qbHandover = await page.evaluate(() => ({
   legacyVisible: !document
     .querySelector('#customQuizCreatorPage')
     .classList.contains('hidden'),
-  // The room browser must be untouched by the quiz builder's handover.
+  // The quiz builder's handover must not affect the room browser.
   roomBrowserStillOurs: window.viewChanger.__controllers.roomBrowser.openView
     .toString()
     .includes('callback'),
@@ -2328,14 +2314,13 @@ check(
   `${qbBack.rows} rows`
 )
 
-// --- the settings panels actually have a body -----------------------------
+// --- the settings panels have a visible body --------------------------------
 
 /*
- * `flex: 1 1 0` on a scrolling body inside an auto-height column flex container
- * contributes *zero* to the container's height, so the panel collapsed to its
- * header and rendered every control at zero height. It typechecked, it threw
- * nothing, and it was invisible to every assertion that only counted elements —
- * so these measure.
+ * `flex: 1 1 0` on a scrolling body inside an auto-height column flex
+ * container adds *zero* to the container's height. The panel then collapses
+ * to its header and every control has zero height. A typecheck and an element
+ * count both miss that, so these checks measure.
  */
 await qb.locator('.head .act').first().click()
 await page.waitForTimeout(250)
@@ -2350,14 +2335,14 @@ const blockPanel = await page.evaluate(() => {
     panelHeight: Math.round(panel?.getBoundingClientRect().height ?? 0),
     bodyHeight: Math.round(body?.getBoundingClientRect().height ?? 0),
     sections: sections.length,
-    // Every section must be visible, not just present in the markup.
+    // Every section must be visible, not only present in the markup.
     allVisible: sections.every(
       (section) => section.getBoundingClientRect().height > 10
     ),
     headings: sections.map((section) =>
       section.querySelector('h3')?.textContent.trim()
     ),
-    // The live cap, spelled out (SPEC §9).
+    // The current limit, in words (SPEC §9).
     capNote: body
       ?.querySelector('.note')
       ?.textContent.replace(/\s+/g, ' ')
@@ -2386,7 +2371,7 @@ check(
 )
 check(
   'the song-count cap is spelled out live',
-  /250-song cap/.test(blockPanel.capNote ?? ''),
+  /of 250 songs/.test(blockPanel.capNote ?? ''),
   blockPanel.capNote
 )
 check('the block panel stays on screen', blockPanel.withinViewport)
@@ -2394,8 +2379,8 @@ check('the block panel stays on screen', blockPanel.withinViewport)
 await page.keyboard.press('Escape')
 await page.waitForTimeout(200)
 
-// The entry panel, opened the way an override chip opens it. Found by the chip
-// rather than by row index — earlier sections have already changed the quiz.
+// The entry panel, opened through an override chip. Find the chip, not a row
+// index: earlier sections have changed the quiz.
 await qb.locator('.row .chip').first().click()
 await page.waitForTimeout(250)
 const entryPanel = await page.evaluate(() => {
@@ -2411,7 +2396,7 @@ const entryPanel = await page.evaluate(() => {
     allVisible: sections.every(
       (section) => section.getBoundingClientRect().height > 10
     ),
-    // "Use block default" is how an override is cleared — absence, not zero.
+    // "Use block default" clears an override. The key becomes absent, not zero.
     hasClear: [...(body?.querySelectorAll('button') ?? [])].some((button) =>
       /block default/i.test(button.textContent ?? '')
     ),
@@ -2433,7 +2418,7 @@ check(
 await page.keyboard.press('Escape')
 await page.waitForTimeout(200)
 
-// The library filter panel, and the controls that are deliberately absent.
+// The library filter panel, and the controls that are absent on purpose.
 await qb.locator('.filter-btn').click()
 await page.waitForTimeout(250)
 const filterPanel = await page.evaluate(() => {
@@ -2449,8 +2434,8 @@ const filterPanel = await page.evaluate(() => {
       (box?.right ?? 0) <= window.innerWidth &&
       (box?.top ?? 0) >= 0 &&
       (box?.bottom ?? 0) <= window.innerHeight,
-    // Dropped on purpose: none of the three is in the library payload.
-    mentionsAbsent: /Difficulty, genres and tags are not filterable/.test(text),
+    // Absent on purpose: the library payload has none of the three.
+    mentionsAbsent: /cannot filter by difficulty, genres or tags/.test(text),
     hasDifficultySlider: /difficulty/i.test(
       [...(panel?.querySelectorAll('.group-title') ?? [])]
         .map((element) => element.textContent)
@@ -2480,10 +2465,9 @@ await page.waitForTimeout(200)
 // --- drag and drop, and the save dialog ------------------------------------
 
 /*
- * Drag is exercised through the store's own move, not a synthesised HTML5 drag:
- * Playwright cannot drive `dragstart`/`drop` across a shadow boundary reliably,
- * and what matters here is that a positional move lands where it says it will.
- * The gesture itself is luxury — everything it does is reachable through Move.
+ * Drag is tested through the store's move, not a synthesised HTML5 drag.
+ * Playwright cannot reliably drive `dragstart` and `drop` across a shadow
+ * boundary. What matters is that a positional move lands where it should.
  */
 const drag = await page.evaluate(() => {
   const fresh = window.__amqUI.quizBuilder.makeStore()
@@ -2517,7 +2501,7 @@ const drag = await page.evaluate(() => {
   fresh.moveEntries([first.entries[0].id, first.entries[1].id], second.id, 1)
   const across = second.entries.map((entry) => entry.title).join('')
 
-  // Dropping below a row you dragged out of must not shift the target.
+  // A drop below a row dragged out of the same block must land correctly.
   const shift = window.__amqUI.quizBuilder.makeStore()
   const block = shift.quiz.blocks[0]
   for (const name of ['1', '2', '3', '4']) {
@@ -2528,7 +2512,7 @@ const drag = await page.evaluate(() => {
       title: name,
     })
   }
-  // Take row 0 and drop it before index 3 — after removal that is index 2.
+  // Take row 0 and drop it before index 3. After the removal that is index 2.
   shift.moveEntries([block.entries[0].id], block.id, 3)
 
   return {
@@ -2548,8 +2532,8 @@ check(
   drag.across === 'xday',
   drag.across
 )
-// Removing rows above the drop point shifts it; the move has to account for
-// that or a drag downward inside one block lands one row short.
+// Removing rows above the drop point shifts it. The move must adjust for
+// that, or a downward drag within one block lands one row short.
 check(
   'dropping below a dragged row lands where the pointer was',
   drag.shifted === '2314',
@@ -2562,7 +2546,7 @@ const dragGuards = await page.evaluate(() => {
   const id = store.quiz.blocks[0].entries[0].id
   const results = {}
 
-  // A drop with nowhere to land changes nothing rather than throwing.
+  // A drop with no target changes nothing and does not throw.
   dragState.start(id)
   const before = store.quiz.blocks
     .map((block) => block.entries.length)
@@ -2572,7 +2556,7 @@ const dragGuards = await page.evaluate(() => {
     store.quiz.blocks.map((block) => block.entries.length).join(',') === before
   results.clearedAfterDrop = dragState.ids === null
 
-  // Dragging a row inside the selection carries the whole selection.
+  // A drag of a selected row carries the whole selection.
   store.clearSelection()
   const ids = store.flatIds.slice(0, 3)
   for (const entryId of ids) store.toggleSelected(entryId)
@@ -2580,7 +2564,7 @@ const dragGuards = await page.evaluate(() => {
   results.carriesSelection = dragState.count === 3
   dragState.cancel()
 
-  // Dragging a row outside it replaces the selection with just that row.
+  // A drag of an unselected row replaces the selection with that row.
   dragState.start(store.flatIds[4])
   results.replacesSelection =
     dragState.count === 1 && store.selection.size === 1
@@ -2619,8 +2603,8 @@ const noName = await page.evaluate(() => ({
   ),
   warned: window.__log.some((entry) => entry[0] === 'message'),
 }))
-// AMQ refuses to open its dialog without a name; a dialog whose only button is
-// disabled would explain nothing.
+// AMQ does not open its dialog without a name. Ours must not either: a dialog
+// with only a disabled button explains nothing.
 check(
   'saving without a name warns instead of opening the dialog',
   !noName.dialogOpen && noName.warned,
@@ -2664,7 +2648,7 @@ check(
   Array.isArray(sent?.data?.quizSave?.ruleBlocks) &&
     typeof sent?.data?.quizSave?.ruleBlockRandomOrder === 'boolean' &&
     sent?.data?.quizSave?.name === 'Saturday night' &&
-    // No `type` tag: AMQ discriminates blocks by field presence.
+    // No `type` tag. AMQ tells block kinds apart by which field is present.
     sent?.data?.quizSave?.ruleBlocks[0]?.blocks?.every(
       (entry) => entry.type === undefined
     ),
@@ -2675,9 +2659,8 @@ check(
 
 /*
  * `category` is `{ name, number }` and goes through `convertCategoryToKey`.
- * Treating it as a string threw inside a `$derived`, which aborts the render —
- * so one wrong field blanked the entire screen rather than one cell. The stub
- * used to hand over a plain `'TV'`, which is exactly why this shipped.
+ * Reading it as a string throws inside a `$derived`, which aborts the render
+ * of the whole screen.
  */
 const animeTypes = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
@@ -2689,7 +2672,7 @@ const animeTypes = await page.evaluate(() => {
     .filter((row) => row.kind === 'anime')
     .map((row) => row.sub)
 
-  // Filtering has to work off the object's `name`, folded to its locale key.
+  // The filter must use the object's `name`, converted to its locale key.
   const before = api.libraryStore.rows.filter((r) => r.kind === 'anime').length
   filters.toggle('animeType', 'tv')
   const withoutTv = api.libraryStore.rows.filter(
@@ -2697,7 +2680,7 @@ const animeTypes = await page.evaluate(() => {
   ).length
   filters.toggle('animeType', 'tv')
 
-  // A multi-word type folds to an underscored key.
+  // A multi-word type converts to a key with underscores.
   filters.toggle('animeType', 'tv_special')
   const withoutTvSpecial = api.libraryStore.rows.filter(
     (r) => r.kind === 'anime'
@@ -2713,7 +2696,7 @@ check(
     animeTypes.labels.every((sub) => !sub.includes('[object')),
   animeTypes.labels[0]
 )
-// "TV", "TV 2", "Movie", "TV Special" — the number only when there is one.
+// "TV", "TV 2", "Movie", "TV Special". The number shows only when there is one.
 check(
   'the anime type is localised, with its number when it has one',
   animeTypes.labels.some((sub) => sub.startsWith('TV ·')) &&
@@ -2732,7 +2715,7 @@ check(
   `${animeTypes.before} → ${animeTypes.withoutTvSpecial} with TV Special off`
 )
 
-// Every type the library ships needs a chip, or it can never be filtered out.
+// Every type in the library needs a chip, or it could never be filtered out.
 const animeTypeChips = await page.evaluate(() =>
   Object.keys(window.__amqUI.quizBuilder.libraryFilters.toggles('animeType'))
 )
@@ -2754,10 +2737,9 @@ check(
 )
 
 /*
- * Locale strings carry `_UPPERCASE_` slots that the handler fills from the data
- * you pass it. Forget the data and the slot renders literally — `Fall _YEAR_
- * 2006` shipped exactly that way, because the season and the year are one
- * phrase and I treated them as two. One assertion covers the whole class.
+ * Locale strings have `_UPPERCASE_` placeholders that the handler fills from
+ * the data passed to it. Without the data the placeholder renders literally,
+ * as in `Fall _YEAR_ 2006`. This assertion covers all such strings.
  */
 const placeholders = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
@@ -2771,7 +2753,7 @@ check(
   placeholders.leaks.join(' ')
 )
 
-// The vintage is one localised phrase, not a season with a year stuck on it.
+// The vintage is one localised phrase, not a season with a year appended.
 const vintage = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   return api.libraryStore.rows
@@ -2789,15 +2771,15 @@ check(
 // --- a malformed entry must not take the pane down ------------------------
 
 /*
- * The library payload is not ours and has already moved once. A record we
- * cannot read should cost that record, not the screen.
+ * The library payload is not ours and has changed before. A record we cannot
+ * read must cost only that record, not the screen.
  */
 const hostile = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   const cache = window.libraryCacheHandler.animeCache
   const before = api.libraryStore.rows.length
 
-  // Shapes that would each have thrown somewhere in the pass.
+  // Each of these shapes throws somewhere in the pass.
   cache[999001] = { annId: 999001 }
   cache[999002] = {
     annId: 999002,
@@ -2839,9 +2821,9 @@ check(
 // --- the adjustments ------------------------------------------------------
 
 /*
- * Earlier sections leave a dialog open (the save dialog waits on a reply the
- * stub never sends), and its scrim swallows every pointer event after it.
- * Clear the decks rather than have the next twenty assertions fail on it.
+ * Earlier sections leave the save dialog open, because the stub never sends
+ * the reply it waits for. Its scrim takes every pointer event, so close it
+ * first.
  */
 await page.keyboard.press('Escape')
 await page.waitForTimeout(150)
@@ -2861,11 +2843,10 @@ const adjusted = await page.evaluate(() => {
   const box = (selector, root = shadow) =>
     root.querySelector(selector)?.getBoundingClientRect() ?? null
 
-  // Watch status: the builder is for picking songs you know.
+  // Watch status defaults to watched only.
   const watch = api.libraryFilters.toggles('watchStatus')
 
-  // The nested block's checkbox must sit level with the entry rows', or the
-  // entries read as being *inside* the algorithm block.
+  // The nested block's checkbox must align with the entry rows' checkboxes.
   const entryCheck = box('.row .check input')
   const nestedCheck = box('.nested .check input')
 
@@ -2884,7 +2865,7 @@ const adjusted = await page.evaluate(() => {
       lead && chev
         ? Math.round(chev.left + chev.width / 2 - (lead.left + lead.width / 2))
         : null,
-    // A row is only draggable until a pointer lands on one of its controls.
+    // A row is draggable unless the pointer went down on one of its controls.
     rowDraggable: shadow.querySelector('.row')?.getAttribute('draggable'),
   }
 })
@@ -2905,7 +2886,7 @@ check(
   `${adjusted.chevronOffset}px off centre`
 )
 
-// An unwatched anime is hidden until the filter says otherwise.
+// An unwatched anime is hidden until the filter includes it.
 const watchFilter = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   const names = () =>
@@ -2921,21 +2902,19 @@ check(
   !watchFilter.hidden && watchFilter.shown
 )
 
-// --- the search box searches what AMQ's does ------------------------------
+// --- the search matches what AMQ's search matches ----------------------------
 
 /*
- * `applySearchFilter` searches five targets, not one: anime names, song title,
- * artist, composer and arranger, with the dropdown on its default "All". A
- * search that only read anime names shipped once — it looks like the library is
- * missing half the songs in it.
+ * `applySearchFilter` searches five targets: anime names, song title, artist,
+ * composer and arranger, with the dropdown on its default "All". A search of
+ * anime names alone makes the library look as if songs are missing.
  */
 const search = await page.evaluate(async () => {
   const api = window.__amqUI.quizBuilder
   const filters = api.libraryFilters
 
   const run = (term) => {
-    // Committed directly: the debounce is covered by its own test below, and
-    // what matters here is the pass it defers.
+    // Set the query directly. The debounce has its own test below.
     filters.state.search = term
     const rows = api.libraryStore.rows
     return {
@@ -2962,21 +2941,21 @@ const search = await page.evaluate(async () => {
   return result
 })
 
-// An anime-name hit keeps the whole show, songs included.
+// An anime-name hit keeps the whole anime, songs included.
 check(
   'searching an anime name keeps all of its songs',
   search.animeName.anime.length === 1 &&
     search.animeName.anime[0] === 'Angel Beats! (6)',
   search.animeName.anime.join(', ')
 )
-// `searchNames` covers every name, not only the one on screen.
+// `searchNames` covers every name, not only the displayed one.
 check(
   'searching a secondary anime name finds the show',
   search.altAnimeName.anime.length === 1 &&
     search.altAnimeName.anime[0].startsWith('Erased'),
   search.altAnimeName.anime.join(', ')
 )
-// The reported bug: a song title matched nothing.
+// A song title must match.
 check(
   'searching a song title finds the song, and only it',
   search.songTitle.anime.join() === 'Angel Beats! (1)' &&
@@ -2989,9 +2968,9 @@ check(
   search.artist.anime.join(', ')
 )
 /*
- * Non-strict artist search, AMQ's default (`strictSearch` off): a group is
- * matched on its members' names too. LiSA sang for Girls Dead Monster, which is
- * what Angel Beats!'s four inserts are credited to.
+ * Non-strict artist search, AMQ's default (`strictSearch` off): a group also
+ * matches on its members' names. LiSA sang for Girls Dead Monster, which is
+ * credited for the four inserts of Angel Beats!.
  */
 check(
   'searching a group member finds the group’s songs',
@@ -2999,9 +2978,9 @@ check(
   search.groupMember.anime.join(', ')
 )
 /*
- * Composer and arranger are targets of their own, and an artist's alt names are
- * inside its `searchNames` — so Yoko Kanno is findable as Gabriela Robin, which
- * is how the library credits half of Cowboy Bebop.
+ * Composer and arranger are separate targets, and an artist's alt names are
+ * in its `searchNames`. So Yoko Kanno is found as Gabriela Robin, the name
+ * credited on much of Cowboy Bebop.
  */
 check(
   'searching a composer’s alt name finds their songs',
@@ -3009,10 +2988,9 @@ check(
   search.composerAltName.anime.join(', ')
 )
 /*
- * The cache stores a character-folded variant of every name beside the raw one
- * (`replaceCharactersForSeachCharacters`), which is the only reason "re re"
- * finds "Re:Re:". Reading `searchNames` rather than lowercasing the title
- * ourselves is what gets this for free.
+ * The cache stores a character-folded variant beside each raw name
+ * (`replaceCharactersForSeachCharacters`). That variant lets "re re" find
+ * "Re:Re:", and our search gets it by reading `searchNames`.
  */
 check(
   'a folded name variant is searchable',
@@ -3026,10 +3004,10 @@ check(
 )
 
 /*
- * The New and Wrong tabs are song lists rather than anime lists, and AMQ tests
- * the anime target on each row's own show (`LibrarySongSoloEntry.searchNames`
- * delegates to the anime entry) instead of letting it decide a group of rows.
- * Same five targets, so both of these must find the same two songs.
+ * The New and Wrong tabs list songs. AMQ tests the anime target against each
+ * row's own anime (`LibrarySongSoloEntry.searchNames` delegates to the anime
+ * entry). The five targets are the same, so both tabs must find the same two
+ * songs.
  */
 const songTabSearch = await page.evaluate(async () => {
   const api = window.__amqUI.quizBuilder
@@ -3045,7 +3023,7 @@ const songTabSearch = await page.evaluate(async () => {
   }
 
   const result = { byGroup: titles('Seatbelts'), byAnime: titles('Cowboy') }
-  // Back to the library tab: everything after this asserts against anime rows.
+  // Back to the library tab. The checks after this use anime rows.
   filters.setSearch('')
   filters.setTab('library')
   return result
@@ -3058,11 +3036,11 @@ check(
   `artist ${songTabSearch.byGroup.length}, anime ${songTabSearch.byAnime.length}`
 )
 
-// Pressing the pick slider must move the handle, not drag the row away.
+// A press on the pick slider must move the handle, not drag the row.
 //
-// Dispatched rather than clicked: the range input is `pointer-events: none`
-// except for its thumb, so a synthetic hover cannot land on it — and it is the
-// handler's reaction to the press that matters, not the pixel it lands on.
+// The event is dispatched, not clicked. The range input has
+// `pointer-events: none` except on its thumb, so a synthetic hover cannot
+// reach it. The test is the handler's reaction to the press.
 const dragArming = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
   const row = shadow.querySelector('.row')
@@ -3102,7 +3080,7 @@ check(
   `grip=${dragArming.onGrip}, after release=${dragArming.afterRelease}`
 )
 
-// The slider itself still changes the value.
+// The slider still changes the value.
 const sliderMoves = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
   const input = shadow.querySelector('.row .pick .rng')
@@ -3120,7 +3098,7 @@ check(
   JSON.stringify(sliderMoves)
 )
 
-// Empty genre/tag chips are noise on an already dense row.
+// Genre and tag chips with a zero count must not render.
 const emptyChips = await page.evaluate(() => {
   const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
   const labels = [...shadow.querySelectorAll('.nested .chip')].map((chip) =>
@@ -3134,10 +3112,10 @@ check(
   emptyChips.labels.join(' | ')
 )
 
-// Duplicating a nested block works — it was silently throwing on a state proxy.
+// Duplicating a nested block works. `structuredClone` throws on a state proxy.
 const duplicated = await page.evaluate(() => {
-  // A fresh store: the caps section above has already filled this quiz's
-  // algorithm quota, and refusing to duplicate past a cap is correct.
+  // Use a new store. The limits section above filled this quiz's algorithm
+  // quota, and a duplicate past the limit is correctly refused.
   const store = window.__amqUI.quizBuilder.makeStore()
   store.addEntry({
     kind: 'algorithm',
@@ -3182,8 +3160,7 @@ const floatingCount = () =>
         .shadowRoot.querySelectorAll('.floating').length
   )
 
-// A menu that never closes does not merely linger — it sits over the page
-// swallowing every later click, so the whole screen reads as broken.
+// A menu that stays open covers the page and takes every later click.
 await qb.locator('.row .act.menu').first().click()
 await page.waitForTimeout(150)
 const menuOpened = await floatingCount()
@@ -3198,7 +3175,7 @@ check(
 
 await qb.locator('.row .act.menu').first().click()
 await page.waitForTimeout(150)
-// Click somewhere inert — the quiz pane's header.
+// Click the quiz pane's header, which has no action.
 await qb.locator('.band .title').last().click()
 await page.waitForTimeout(150)
 check(
@@ -3247,15 +3224,14 @@ check(
 // --- ids are unique across loaded and added entries ------------------------
 
 /*
- * The serializer and the store used to have separate id counters, so a quiz
- * loaded from the server produced `anime-5` and the next entry you added
- * produced `anime-5` too. Selection is by id, so clicking one row's settings
- * opened the panel on "2 entries".
+ * The serializer and the store must share one id counter. With two, a loaded
+ * quiz and a newly added entry can both get `anime-5`. Selection goes by id,
+ * so one row's settings panel would then open on "2 entries".
  */
 const ids = await page.evaluate(() => {
   const api = window.__amqUI.quizBuilder
   const store = api.makeStore()
-  // A loaded quiz, then entries added on top of it — the collision case.
+  // Load a quiz, then add entries to it.
   const loaded = api.fromSave(window.__quizRoundTrip)
   store.quiz = loaded
   const added = []
@@ -3280,7 +3256,7 @@ check(
   ids.duplicates.length ? ids.duplicates.join(' ') : `${ids.total} ids`
 )
 
-// Opening one row's settings must say so, not report a phantom second row.
+// One row's settings must report one entry.
 await page.keyboard.press('Escape')
 await page.waitForTimeout(150)
 await qb.locator('.row .act.settings').first().click()
@@ -3332,8 +3308,8 @@ const undoVsReset = await page.evaluate(() => {
   const afterAdds = block.entries.length
 
   store.undo()
-  // Undo swaps the whole document, so the reference above now points into the
-  // discarded tree — re-read from the store, as a component would.
+  // Undo replaces the whole document, so the reference above is stale. Read
+  // the entry from the store again, as a component does.
   const afterOneUndo = store.quiz.blocks[0].entries.length
   const dirtyAfterUndo = store.dirty
 
@@ -3350,7 +3326,7 @@ const undoVsReset = await page.evaluate(() => {
     depthAfterReset: store.undoDepth,
   }
 })
-// Undo steps back one change at a time; Reset throws the lot away.
+// Undo goes back one change. Reset discards all of them.
 check(
   'Undo steps back one change at a time',
   JSON.stringify(undoVsReset.depths) === JSON.stringify([1, 2, 3]) &&
@@ -3369,9 +3345,9 @@ check(
 
 // --- the adjustments, part two ---------------------------------------------
 
-// Earlier sections replaced every algorithm block's settings with a bare
-// `numberOfSongs`, which correctly produces no pool chips — give one back a
-// real filter set so there is something to measure.
+// Earlier sections replaced every algorithm block's settings with only
+// `numberOfSongs`, which produces no pool chips. Give one block a real filter
+// set to measure.
 await page.evaluate(() => {
   const store = window.__amqUI.quizBuilder.store
   for (const block of store.quiz.blocks) {
@@ -3403,8 +3379,8 @@ const layout2 = await page.evaluate(() => {
   const row = shadow.querySelector('.row')
   const anime = row?.querySelector('.anime')?.getBoundingClientRect()
   const song = row?.querySelector('.song')?.getBoundingClientRect()
-  // The caps section above added bare algorithm blocks with no pool chips;
-  // measure one that actually has them.
+  // Measure a block that has pool chips. The limits section added blocks
+  // without any.
   const nested = [...shadow.querySelectorAll('.nested')].find((element) =>
     element.querySelector('.chips')
   )
@@ -3414,21 +3390,21 @@ const layout2 = await page.evaluate(() => {
   return {
     animeWidth: anime ? Math.round(anime.width) : null,
     songWidth: song ? Math.round(song.width) : null,
-    // The chips sit on the summary line, not on a row of their own.
+    // The chips are on the summary line, not on their own line.
     chipsOnSameLine:
       nestedChips && match ? Math.abs(nestedChips.top - match.top) < 14 : null,
     nestedHeight: nested
       ? Math.round(nested.getBoundingClientRect().height)
       : null,
     lineHeight: nestedLine ? Math.round(nestedLine.height) : null,
-    // Row text is set against AMQ's own creator, which uses 16px.
+    // Row text follows AMQ's own creator, which uses 16px.
     rowText: style.getPropertyValue('--qb-text').trim(),
     scrollbarColor: style.scrollbarColor.trim(),
     scrollbarWidth: style.scrollbarWidth.trim(),
   }
 })
 
-// Both text columns flex, so neither truncates while the other sits empty.
+// Both text columns flex, so neither truncates while the other has room.
 check(
   'the anime and song columns share the slack',
   layout2.animeWidth > 0 &&
@@ -3436,15 +3412,15 @@ check(
     Math.abs(layout2.animeWidth - layout2.songWidth) <= 2,
   `anime ${layout2.animeWidth}px, song ${layout2.songWidth}px`
 )
-// One line, not two: the chips take the slack between the summary and the
-// action buttons rather than a row of their own.
+// One line: the chips take the free width between the summary and the action
+// buttons.
 check(
   'an algorithm block’s chips sit on its summary line',
   layout2.chipsOnSameLine === true &&
     layout2.nestedHeight === layout2.lineHeight,
   `same line ${layout2.chipsOnSameLine}, block ${layout2.nestedHeight}px, line ${layout2.lineHeight}px`
 )
-// AMQ's own creator sets its blocks in 16px; 11.5px read as cramped beside it.
+// AMQ's own creator sets its blocks in 16px.
 check(
   'row text is scaled to sit beside the rest of the game',
   parseFloat(layout2.rowText) >= 14,
@@ -3459,10 +3435,9 @@ check(
 // --- the library at real scale --------------------------------------------
 
 /*
- * The fixture library is four anime; the real one is tens of thousands, and
- * this pane filters it on every keystroke. Measured here rather than assumed,
- * because the failure mode is a search box that feels broken rather than one
- * that looks wrong — no screenshot or element count would show it.
+ * The fixture library has four anime. The real one has thousands, and the
+ * pane filters it on every search. A slow search does not show in a
+ * screenshot or an element count, so it is measured here.
  */
 const scale = await page.evaluate(async () => {
   const cache = {}
@@ -3517,13 +3492,12 @@ const scale = await page.evaluate(async () => {
     return performance.now() - start
   }
 
-  // Count `localeCompare` rather than timing it: a count is the same on a
-  // loaded machine as on an idle one, and it is the sort being *repeated*
-  // that the hoist exists to prevent.
+  // Count `localeCompare` calls; do not time them. A count does not depend on
+  // machine load, and the point is that the sort must not repeat.
   //
-  // Installed *before* the cache bump: the rendered pane reads `rows` as soon
-  // as the bump invalidates it, so a counter installed afterwards measures an
-  // already-cached derivation and reports a confident zero.
+  // Install the counter *before* the cache bump. The pane reads `rows` as
+  // soon as the bump invalidates it, and a counter installed later would see
+  // a cached derivation and report zero.
   const nativeCompare = String.prototype.localeCompare
   let comparisons = 0
   String.prototype.localeCompare = function (...args) {
@@ -3531,29 +3505,28 @@ const scale = await page.evaluate(async () => {
     return nativeCompare.apply(this, args)
   }
 
-  // Force the cache-revision bump the real load would cause.
+  // Bump the cache revision, as a real load does.
   window.__amqUI.quizBuilder.bumpCache()
   await new Promise((resolve) => setTimeout(resolve, 0))
 
-  // The first read pays for the sort — that is expected, and proves the
-  // counter is wired to something.
+  // The first read runs the sort. That also proves the counter works.
   const firstRead = time(() => store.rows.length)
   const sortsOnLoad = comparisons
 
-  // Four distinct terms, so each genuinely re-runs the filter. None of them
-  // should re-run the sort.
+  // Four different terms, so each re-runs the filter. None may re-run the
+  // sort.
   comparisons = 0
   const searches = []
   for (const term of ['Steel', 'Moon 1', 'Garden 12', 'Blade 123']) {
-    // Commit directly: the debounce is about typing latency, and what is being
-    // measured here is the cost of the pass it defers.
+    // Set the query directly. This measures the filter pass, not the
+    // debounce.
     filters.state.search = term
     searches.push(time(() => store.rows.length))
   }
   const sortsDuringSearch = comparisons
   String.prototype.localeCompare = nativeCompare
 
-  // Back to an unfiltered list for the cap assertions below.
+  // Clear the search for the page-limit assertions below.
   filters.setSearch('')
   const rows = store.rows.length
   const total = store.total
@@ -3569,14 +3542,13 @@ const scale = await page.evaluate(async () => {
 })
 
 /*
- * No absolute latency gate here. This runs in a browser that has already done a
- * lot of work, and the same code measured 120ms and 339ms on consecutive runs —
- * a threshold that loose catches nothing, and one that tight fails at random.
- * The wall-clock gate lives in the live suite, where it measures the real
- * library on a fresh page and sits steadily around 12ms.
+ * No absolute latency threshold here. This page has already done a lot of
+ * work, and the same code measured 120ms and 339ms on consecutive runs. The
+ * wall-clock check is in the live suite, which measures the real library on a
+ * fresh page (about 12ms).
  *
- * What is asserted here is the *structure* that made it fast, which is
- * deterministic: the sort is hoisted behind the cache revision, so a search
+ * This asserts the *structure* that makes search fast, which is
+ * deterministic: the sort depends only on the cache revision, so a search
  * re-runs only the filter.
  */
 console.log(
@@ -3584,10 +3556,9 @@ console.log(
     `${scale.firstRead.toFixed(0)}ms first read — indicative only)`
 )
 /*
- * The sort is the expensive part and it is hoisted behind the cache revision,
- * so it must run once for the load and not again per search. Asserted by
- * counting `localeCompare` calls rather than by timing them — a count is the
- * same on a loaded machine as on an idle one.
+ * The sort must run once per cache load and never per search. The assertion
+ * counts `localeCompare` calls, because a count does not depend on machine
+ * load.
  */
 check(
   'the library is sorted once, when it loads',
@@ -3599,7 +3570,7 @@ check(
   scale.sortsDuringSearch === 0,
   `${scale.sortsDuringSearch} comparisons across four searches`
 )
-// Typing must stay responsive even though the pass behind it is expensive.
+// Typing must stay responsive although the filter pass is expensive.
 const debounce = await page.evaluate(async () => {
   const filters = window.__amqUI.quizBuilder.libraryFilters
   filters.setSearch('')
@@ -3620,7 +3591,7 @@ check(
     debounce.settled === 'Steel 99',
   `draft "${debounce.immediate.draft}", committed "${debounce.immediate.committed}" → "${debounce.settled}"`
 )
-// Clearing should feel like undoing, not like waiting.
+// Clearing the search applies at once, without the debounce.
 check('clearing the search applies immediately', debounce.clearedAtOnce)
 
 check(

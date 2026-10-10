@@ -1,15 +1,13 @@
 /**
  * Entry point.
  *
- * Installs our screens in place of AMQ's by swapping entries in
- * `viewChanger.__controllers`. The original controllers stay on the prototype
- * chain, so everything that calls into them from outside — `ranked.js` calling
- * `roomBrowser.joinLobby`, game invites calling `fireSpectateGame` — keeps
- * working untouched.
+ * Replaces AMQ's screens by swapping entries in `viewChanger.__controllers`.
+ * The original controllers stay on the prototype chain, so outside callers
+ * keep working: `ranked.js` calls `roomBrowser.joinLobby`, game invites call
+ * `fireSpectateGame`.
  *
- * Each screen is independent: one can be handed back to AMQ while the other
- * stays ours, which matters because they are at very different stages of
- * trust.
+ * Each screen is independent. One can be handed back to AMQ while the other
+ * stays ours.
  */
 
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client'
@@ -26,7 +24,7 @@ import RoomBrowser from './ui/roomBrowser/RoomBrowser.svelte'
 
 const HOST_Z_INDEX = 100
 
-/** Set by AMQ's `setupNewQuiz`; see the quiz builder's `extra` below. */
+/** Set when AMQ calls `setupNewQuiz`. See the quiz builder's `extra` below. */
 let pendingNewQuiz = false
 
 const roomBrowserScreen = createScreen({
@@ -43,11 +41,10 @@ const quizBuilderScreen = createScreen({
   component: QuizBuilder,
   props: {},
   /**
-   * `setupNewQuiz` is how AMQ's own browser says "blank quiz" — it calls it
-   * immediately before `changeView` (`customQuizBrowser.js:93`). Observing it
-   * is what lets `openView` tell a real new-quiz navigation apart from merely
-   * re-entering the view, which `useNew()` does and which must not wipe the
-   * quiz being edited.
+   * AMQ's quiz browser calls `setupNewQuiz` right before `changeView` to ask
+   * for a blank quiz (`customQuizBrowser.js:93`). Recording the call lets
+   * `onOpen` tell a new-quiz navigation from a plain re-entry of the view.
+   * `useNew()` re-enters the view and must not wipe the quiz being edited.
    */
   extra: (original) => ({
     setupNewQuiz() {
@@ -58,18 +55,18 @@ const quizBuilderScreen = createScreen({
   /**
    * `changeView('customQuizCreator', { quizLoadId })` carries the quiz to edit.
    *
-   * The library has to be in the cache before the quiz is read, because entries
-   * store only ids and resolve against it — AMQ nests its own load inside
-   * `library.setup(callback)` for exactly this reason, and drops uncached
-   * entries silently. Ours refuses the load instead of half-reading it.
+   * The library must be cached before the quiz is read, because entries store
+   * only ids and resolve against it. AMQ nests its own load inside
+   * `library.setup(callback)` for the same reason and silently drops uncached
+   * entries. We refuse the load instead.
    */
   onOpen: (arg?: { quizLoadId?: number }) => {
     quizStore.bind()
 
     const startingNew = arg?.quizLoadId === undefined
     if (startingNew && (pendingNewQuiz || !quizStore.loaded)) {
-      // A blank quiz needs nothing from the library, so show it immediately
-      // rather than holding the screen behind a multi-megabyte fetch.
+      // A blank quiz needs nothing from the library, so show it without
+      // waiting for the multi-megabyte library fetch.
       quizStore.startNew()
     }
     pendingNewQuiz = false
@@ -77,9 +74,9 @@ const quizBuilderScreen = createScreen({
     void libraryStore.load().then((ok) => {
       if (arg?.quizLoadId === undefined) return
       if (!ok) {
-        // Loading a quiz against an empty cache resolves every entry to its
-        // id and every song count to zero. Refusing is the honest outcome:
-        // saving that back would be saving a quiz we could not read.
+        // Against an empty cache every entry resolves to its id and every
+        // song count to zero. Saving that back would corrupt the quiz, so
+        // refuse the load.
         quizStore.failLoad()
         return
       }
@@ -92,10 +89,9 @@ const quizBuilderScreen = createScreen({
 
 /**
  * AMQ's quest drawer is `position: absolute; z-index: 10` (main.css), so our
- * screens cover it and its stick-out tab. It isn't ours to redesign — lift it
- * over us instead. Modals sit in the Bootstrap range (1040+) and are already
- * clear of both, which is what lets the algorithm block open AMQ's own dialog
- * over our screen.
+ * screens cover it and its tab. Raise it above our screens. Modals use the
+ * Bootstrap range (1040+) and already sit above both, which lets the
+ * algorithm block open AMQ's own dialog over our screen.
  */
 function liftOverlays() {
   if (document.head.querySelector('style[data-amq-ui-overlays]')) return
@@ -128,12 +124,12 @@ async function main() {
 
 main().catch((error) => {
   console.error('[amq-ui] failed to start', error)
-  // A crash during setup must not leave the player without either screen.
+  // A crash during setup must leave the player with AMQ's own screens.
   try {
     roomBrowserScreen.useLegacy()
     quizBuilderScreen.useLegacy()
   } catch {
-    // Nothing more we can do; a reload restores AMQ's own screens.
+    // Nothing left to try. A page reload restores AMQ's screens.
   }
   ;(unsafeWindow as any).__amqUIFailed = error
 })

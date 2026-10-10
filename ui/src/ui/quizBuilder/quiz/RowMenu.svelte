@@ -1,10 +1,10 @@
 <!--
-  The ⋯ menu on a rule block header, an entry, or a nested block (SPEC §5, §7).
+  The ⋯ menu on a rule block header, an entry, or a nested block
+  (SPEC §5, §7).
 
-  Deliberately short. Everything here is reachable somewhere more discoverable —
-  the selection bar, a row button — so this is the overflow, not the main route.
-  The block variant additionally offers delete, which AMQ refuses on the last
-  rule block; the item is disabled rather than hidden so the rule is visible.
+  Every item is also available from the selection bar or a row button. The
+  block menu adds Delete. AMQ refuses to delete the last rule block, so the
+  item is disabled then, not hidden.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -41,8 +41,7 @@
         type="button"
         class="item"
         onclick={() => {
-          // Acting on a row through its own menu should act on that row, even
-          // if the current selection is something else entirely.
+          // A row's own menu acts on that row, whatever the selection was.
           quizStore.clearSelection()
           quizStore.toggleSelected(id)
           onMove(anchor)
@@ -62,7 +61,7 @@
         class="item"
         onclick={() => act(() => quizStore.toggleLock(id))}
       >
-        Toggle lock
+        Lock or unlock
       </button>
       <div class="sep"></div>
       <button
@@ -85,14 +84,14 @@
         class="item"
         onclick={() => act(() => (quizStore.targetBlockId = id))}
       >
-        Add here from the library
+        Add library items here
       </button>
       <button
         type="button"
         class="item"
         onclick={() => act(() => quizStore.selectBlock(id, true))}
       >
-        Select everything in it
+        Select all entries
       </button>
       <div class="sep"></div>
       <button

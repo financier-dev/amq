@@ -1,11 +1,10 @@
 <!--
-  The rule-block picker, behind both "Adds to" and "Move" (SPEC §6, §7).
+  The rule-block picker for "Adds to" and "Move" (SPEC §6, §7).
 
-  One component for both because they are the same question — *which rule
-  block?* — and answering it in two different shapes would be a needless second
-  thing to learn. Each row carries the block's rail colour, its position and its
-  entry count, and the list ends with `New rule block` so a player never has to
-  leave the popover to make somewhere to put things.
+  Both ask the same question, "which rule block?", so they share one
+  component. Each row shows the block's rail colour, position and entry count.
+  The list ends with `New rule block`, so the player can create a target
+  without leaving the popover.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -15,7 +14,7 @@
 
   interface Props {
     anchor: HTMLElement
-    /** Highlighted as the current answer, when there is one. */
+    /** The block to highlight as the current choice. */
     currentId?: string | null
     onPick: (blockId: string) => void
     onDismiss: () => void

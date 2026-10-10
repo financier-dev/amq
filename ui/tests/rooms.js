@@ -1,10 +1,10 @@
 /*
- * Fixture rooms, shaped like `New Rooms` entries from the 2026-09-19 client:
- * `friendNames` + `allPlayers.{players,spectators}` of `{name, level}`.
+ * Fixture rooms in the shape of `New Rooms` entries from the 2026-09-19
+ * client: `friendNames` and `allPlayers.{players,spectators}` of
+ * `{name, level}`.
  *
- * The set mirrors the design mock's sample data so the render can be compared
- * against the artboard, with the settings worked backwards from the chips the
- * mock shows.
+ * The set follows the design mock's sample data, so a render can be compared
+ * with the mock. The settings were derived from the chips the mock shows.
  */
 
 const DEF = window.hostModal.DEFUALT_SETTINGS
@@ -108,8 +108,8 @@ function room(id, name, host, over, extra = {}) {
   }
 }
 
-// Distinct names, as real ones are. Spectators draw from their own pool so a
-// room can never list the same person as both player and spectator.
+// Names are distinct. Spectators use a separate pool, so nobody is both a
+// player and a spectator of one room.
 const names = (count, seed) =>
   Array.from({ length: count }, (_, i) => SAMPLE[(seed + i) % SAMPLE.length])
 
@@ -462,11 +462,11 @@ window.__rooms = [
 ]
 
 /*
- * Two rooms that exist purely to pin down chip behaviour.
+ * Two rooms that test chip behaviour.
  *
- * `samplePoint` below is *semantically* default: with `randomOn` set only
- * `randomValue` is live, so a differing `standardValue` changes nothing and
- * must not produce a chip (roomFilter.js `compareSettings`).
+ * `samplePoint` in the first is default in effect: with `randomOn` set, only
+ * `randomValue` is used, so a different `standardValue` must not produce a
+ * chip (roomFilter.js `compareSettings`).
  */
 window.__rooms.push(
   room(
@@ -505,7 +505,7 @@ window.__rooms.push(
           character: true,
           standard: true,
         },
-        // Genuinely non-default: randomOn off, so standardValue is live.
+        // Not default: `randomOn` is off, so `standardValue` is used.
         samplePoint: {
           randomOn: false,
           standardValue: 50,
@@ -531,7 +531,7 @@ window.__rooms.push(
   )
 )
 
-// More chips than two lines can hold, to exercise wrapping and the `+N`.
+// More chips than two lines hold, to test wrapping and the `+N` chip.
 window.__rooms.push(
   room(
     18,

@@ -4,11 +4,9 @@
   Four bands over a scrolling list: the tabs and totals, the filters, the
   "Adds to" strip, and the column header.
 
-  The **"Adds to" strip** is the load-bearing idea here. Every add in this pane
-  lands in one named rule block, so a player can work down a list of shows
-  without aiming each one. It is not our invention either — AMQ has the same
-  concept as `selectedRuleBlock`; the strip just makes it visible instead of
-  implicit, and names the block it will hit.
+  Every add in this pane goes to the one rule block that the **"Adds to"
+  strip** names, so the player does not pick a target for each add. AMQ has
+  the same concept as `selectedRuleBlock`; the strip makes it visible.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -121,7 +119,7 @@
   </div>
 
   <div class="adds-to">
-    <!-- A crosshair: "this is where things land". -->
+    <!-- A crosshair icon. -->
     <svg
       width="13"
       height="13"
@@ -182,43 +180,32 @@
         {#if libraryStore.loading}
           Loading the library…
         {:else if libraryStore.broken}
-          <!--
-            A whole pass threw, which means AMQ's payload has changed shape
-            under us. Say so rather than showing an empty list that looks like
-            a filter mistake.
-          -->
-          The song library could not be read — the game's data format may have changed.
+          <!-- A whole pass threw, so AMQ's payload has changed shape. An
+               empty list would look like a filter mistake. -->
+          The song library could not be read.
           <span class="hint">
             Run <code>__amqUI.quizBuilder.useLegacy()</code> to use AMQ's own builder,
-            and please report this.
+            and report this problem.
           </span>
         {:else if libraryStore.failed}
-          <!--
-            Without the cache every entry resolves to its id and every count to
-            zero, so say so plainly and name the way out rather than leaving a
-            screen that looks merely slow.
-          -->
-          The song library could not be loaded, so anime and songs cannot be named
-          here.
+          <!-- Without the cache, every entry would show its id and a count
+               of zero. -->
+          The song library did not load, so anime and song names cannot be shown.
           <span class="hint">
             Reload the page, or run <code>__amqUI.quizBuilder.useLegacy()</code>
             to use AMQ's own builder.
           </span>
         {:else}
-          Nothing in the library matches these filters.
+          No anime or songs match these filters.
         {/if}
       </p>
     {/each}
 
     {#if libraryStore.capped}
-      <!--
-        The list is capped rather than virtualised. Saying so with the real
-        total is more honest than silently truncating, and search is the way
-        through it.
-      -->
+      <!-- The list is limited, not virtualised. Show the real total. -->
       <p class="capped">
-        Showing the first {libraryStore.shown} of {libraryStore.total} — search to
-        narrow it down.
+        Showing the first {libraryStore.shown} of {libraryStore.total} . Search to
+        narrow the list.
       </p>
     {/if}
   </div>
@@ -368,7 +355,7 @@
     text-align: center;
   }
 
-  /* Accent-tinted so the strip reads as a live target, not a heading. */
+  /* The accent tint marks the strip as the current target, not a heading. */
   .adds-to {
     flex: none;
     display: flex;

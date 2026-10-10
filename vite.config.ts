@@ -1,8 +1,8 @@
 /**
- * Dev server only — `npm run build` goes through `build/build.ts`, which builds
- * every target. Both get their config from `build/config.ts`.
+ * Dev server only. `npm run build` goes through `build/build.ts`, which builds
+ * every target.
  *
- * The dev server serves one userscript at a time, so pick which:
+ * The dev server serves one userscript at a time:
  *
  *   npm run dev                    # the default target
  *   AMQ_TARGET=amq-ui npm run dev

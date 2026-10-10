@@ -1,16 +1,15 @@
 /**
- * `viewChanger.__controllers` is a plain mutable object whose entries are only
- * ever called as `openView(callback, arg)` / `closeView(arg)`
- * (viewChanger.js:44-60). That makes it the injection seam for replacing a
- * whole screen.
+ * `viewChanger.__controllers` is a plain mutable object. AMQ only ever calls
+ * its entries as `openView(callback, arg)` and `closeView(arg)`
+ * (viewChanger.js:44-60), so swapping an entry replaces a whole screen.
  *
  * Two modes:
- *   `wrapViewController`    — AMQ's screen keeps running, we run alongside it.
- *                             Use this while verifying state against the live
- *                             game.
- *   `replaceViewController` — ours runs instead, with non-view methods still
- *                             delegated to the original (other modules call
- *                             e.g. `roomBrowser.joinLobby` from outside).
+ *   `wrapViewController`    — AMQ's screen keeps running and our hooks run
+ *                             beside it. Use it to check a new screen's state
+ *                             against the live game.
+ *   `replaceViewController` — our screen runs instead. Other methods still
+ *                             reach the original, because other modules call
+ *                             them (for example `roomBrowser.joinLobby`).
  */
 
 export interface ViewHooks {
@@ -26,7 +25,6 @@ function requireController(name: string): ViewController {
   return original
 }
 
-/** Runs our hooks around AMQ's own screen, leaving it fully functional. */
 export function wrapViewController(name: string, hooks: ViewHooks) {
   const original = requireController(name)
 
@@ -61,10 +59,9 @@ export function wrapViewController(name: string, hooks: ViewHooks) {
 }
 
 /**
- * Replaces the screen entirely. The prototype chain keeps every other method
- * on the original controller reachable — `ranked.js` calls
- * `roomBrowser.joinLobby`, game invites call `fireSpectateGame`, and those must
- * keep working.
+ * The original stays on the prototype chain, so its other methods remain
+ * callable: `ranked.js` calls `roomBrowser.joinLobby`, game invites call
+ * `fireSpectateGame`.
  */
 export function replaceViewController(
   name: string,

@@ -1,20 +1,15 @@
 <!--
-  The library filter panel (SPEC §10), a 680px popover under the filter button.
+  The library filter panel (SPEC §10), a 680px popover under the filter
+  button. Two columns, no scrolling.
 
-  Two columns, no scrolling — the control set is small enough to fit, and a
-  panel you have to scroll hides the very filters you opened it to check.
+  **Three controls from the spec are missing on purpose.** The bulk library
+  payload has no difficulty, genres or tags. Difficulty is available only per
+  song through `get song extended info`, and genres and tags only per anime
+  through `get anime extended info`: one request per row. They remain
+  available in an algorithm block, which AMQ filters on the server.
 
-  **Three controls the spec asked for are missing, deliberately.** Difficulty,
-  genres and tags are not in the bulk library payload — difficulty exists only
-  per song behind `get song extended info`, genres and tags only per anime
-  behind `get anime extended info`, so filtering a list on any of them would
-  cost one request per row. The spec's own instruction is to drop a control
-  rather than fake it. They remain available inside an algorithm block, which is
-  server-side and AMQ's.
-
-  Group conventions carry over from the room browser: a group that differs from
-  its default shows an accent dot and a Reset, and the header badge counts those
-  groups, so the badge and the panel can never disagree.
+  Groups work as in the room browser. A group that differs from its default
+  shows an accent dot and a Reset, and the header badge counts those groups.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -196,12 +191,9 @@
       {/each}
     </div>
 
-    <!--
-      Saying what is *not* here, and why, where someone would go looking for it.
-    -->
     <p class="absent">
-      Difficulty, genres and tags are not filterable here — the library payload
-      does not carry them. They are available inside an algorithm block.
+      You cannot filter by difficulty, genres or tags here. Use an algorithm
+      block for those filters.
     </p>
   </div>
 </Floating>
@@ -361,8 +353,9 @@
   }
 
   /*
-   * Both inputs overlay one track; they are `pointer-events: none` so a click
-   * on the track never jumps the wrong handle, and only the thumbs take it back.
+   * Both inputs overlay one track. They have `pointer-events: none` and only
+   * the thumbs accept the pointer, so a click on the track cannot move the
+   * wrong handle.
    */
   .rng {
     position: absolute;

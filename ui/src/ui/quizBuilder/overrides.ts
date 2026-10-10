@@ -1,16 +1,15 @@
 /**
- * Turning a per-entry override into the amber chips on its row (SPEC §5.4).
+ * Builds the amber chips that show an entry's overrides on its row
+ * (SPEC §5.4).
  *
- * Amber is the one "this differs from its block" signal on the screen, so these
- * chips are the only place an entry's own settings are visible without opening
- * a panel. They therefore have to spell the value out — colour is never the
- * only channel (SPEC §11), and an abbreviation nobody can expand is no better
- * than no chip at all.
+ * Amber means "differs from its block". The chips are the only place an
+ * entry's own settings show without opening a panel, so each chip spells out
+ * its value. Colour is never the only signal (SPEC §11).
  *
- * Guess time, sample point and playback speed may each be a *range* the game
- * picks from at random, which the spec does not anticipate. A range renders as
- * `20–30s`; SPEC §8's editor does not cover it, so those chips are read-only
- * and say so through their tooltip.
+ * Guess time, sample point and playback speed can each be a *range* the game
+ * picks from at random, which the spec does not cover. A range renders as
+ * `20–30s`. The editor of SPEC §8 cannot edit a range, so those chips are
+ * read-only and their tooltip says so.
  */
 
 import { t } from '../../amq/derive'
@@ -21,11 +20,11 @@ export interface OverrideChip {
   key: keyof EntryOverrides
   label: string
   tooltip: string
-  /** A random range has no editor yet — the panel opens read-only. */
+  /** A random range has no editor yet. The panel opens read-only. */
   readOnly: boolean
 }
 
-/** An en dash, not a hyphen: this is a range, and it is read as one. */
+/** Uses an en dash for a range. */
 export function formatMaybeRandom(value: MaybeRandom): string {
   return Array.isArray(value) ? `${value[0]}–${value[1]}` : String(value)
 }
@@ -47,7 +46,7 @@ export function guessModeNames(modes: GuessModesSave): string[] {
   return names
 }
 
-/** True when the modes are the default "Song only", which needs no chip. */
+/** True for the default "Song only", which needs no chip. */
 export function isSongOnly(modes: GuessModesSave): boolean {
   return modes.song && !modes.tinyVideo && !modes.blurVideo
 }
@@ -57,7 +56,7 @@ export function overrideChips(overrides: EntryOverrides): OverrideChip[] {
 
   if (overrides.guessTime) {
     const { guessTime, extraGuessTime } = overrides.guessTime
-    // Extra time is usually 0 and adding "+0s" to every chip is noise.
+    // Extra time is usually 0. Omit it then.
     const extra =
       extraGuessTime === 0 ? '' : ` +${formatMaybeRandom(extraGuessTime)}s`
     chips.push({
@@ -75,8 +74,8 @@ export function overrideChips(overrides: EntryOverrides): OverrideChip[] {
     const { samplePoint } = overrides.samplePoint
     chips.push({
       key: 'samplePoint',
-      // A percentage of the song, not seconds — AMQ has no song length to
-      // convert against, so the number is shown as what it actually is.
+      // A percentage of the song, not seconds. AMQ has no song length to
+      // convert with.
       label: `${formatMaybeRandom(samplePoint)}%`,
       tooltip: `${t('quiz_builder.rule_labels.sample_point', 'Sample Point')} — ${t(
         'quiz_builder.rule_labels.override_sample_point',

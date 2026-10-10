@@ -1,14 +1,12 @@
 <!--
   Difficulty as a five-tier band.
 
-  Every row paints all five bands at full width and then masks everything
-  outside the room's own range, so the position of the lit segment is
-  comparable across rows at a glance. Lower % correct is harder, so the scale
-  runs hard→easy left to right.
+  Every row draws all five bands at full width and masks what is outside the
+  room's range, so the lit segment has the same scale in every row. A lower %
+  correct is harder, so the scale runs from hard to easy.
 
-  The label is always the percentage range, and the hover tooltip names the
-  tiers the range touches — that tooltip is the only legend, which is why the
-  column header stays plain text (SPEC §3).
+  The label is the percentage range. The hover tooltip names the tiers the
+  range touches and is the only legend (SPEC §3).
 -->
 <script lang="ts">
   import {

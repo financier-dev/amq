@@ -1,15 +1,13 @@
 /**
- * Reading AMQ's globals from inside the userscript sandbox.
+ * Reads an AMQ global from inside the userscript sandbox.
  *
- * Tampermonkey runs a granted script with its own `window`, and page globals
- * are reachable as *bare identifiers* (they resolve through the sandbox's
- * prototype chain) but **not** as properties of `globalThis` — `globalThis.$`
- * is `undefined` even though `$` is a live jQuery on the page.
+ * Tampermonkey gives a granted script its own `window`. Page globals resolve
+ * as bare identifiers, through the sandbox's prototype chain, but not as
+ * properties of `globalThis`: `globalThis.$` is `undefined` while `$` is the
+ * page's jQuery.
  *
- * Most of this project reads AMQ globals as bare identifiers, which is why
- * they work. jQuery is the exception: Svelte reserves the bare `$` for runes,
- * so it has to be reached by name — and doing that through `globalThis` is
- * what stopped the player profile from ever opening.
+ * Most code here uses bare identifiers. jQuery cannot, because Svelte reserves
+ * the bare `$` for runes, so read it by name through this function.
  */
 
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client'

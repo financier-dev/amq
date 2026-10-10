@@ -1,13 +1,12 @@
 <!--
-  The floating action island over the bottom of the quiz pane (SPEC §6).
+  The floating action bar over the bottom of the quiz pane (SPEC §6).
 
-  Appears only while something is selected. Every label is one short word and
-  they must not wrap — the bar is fixed over a scrolling list, so a second line
-  would cover the rows it acts on.
+  It shows only while something is selected. Every label is one short word
+  and must not wrap: the bar floats over the list, and a second line would
+  cover rows.
 
-  A selection may span rule blocks, so every action here has to be
-  block-agnostic. `Move` is the one with a target, and its popover lists every
-  rule block with its entry count plus `New rule block`.
+  A selection can span rule blocks, so no action here depends on a block.
+  `Move` asks for a target block.
 -->
 <script lang="ts">
   import { quizStore } from '../../../amq/quiz.svelte'
@@ -22,9 +21,8 @@
   const count = $derived(quizStore.selection.size)
 
   /**
-   * Lock is a single button rather than a pair, so it needs a direction: if
-   * anything in the selection is unlocked, lock everything; otherwise unlock.
-   * That makes it idempotent in the direction the player can see.
+   * Lock is one button. If any selected entry is unlocked it locks all of
+   * them; otherwise it unlocks all of them.
    */
   const anyUnlocked = $derived.by(() => {
     for (const id of quizStore.selection) {

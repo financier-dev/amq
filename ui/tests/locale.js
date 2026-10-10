@@ -1,10 +1,9 @@
 /*
- * The English strings the screen actually asks for, lifted verbatim from the
- * client's `locales/en.json`.
+ * The English strings the screens request, copied from the client's
+ * `locales/en.json`.
  *
- * Using the real copy is the point: "Last Man Standing" is 17 characters and
- * it was overflowing the Mode column in game, which a stub returning short
- * placeholders would never have shown.
+ * Keep the real text. "Last Man Standing" is 17 characters and overflowed the
+ * Mode column in game; short placeholder strings would not show that.
  */
 
 window.__locale = {
@@ -151,7 +150,8 @@ window.__locale = {
   'game_settings.filter_types.include': 'Include',
   'game_settings.filter_types.exclude': 'Exclude',
   'game_settings.filter_types.optional': 'Optional',
-  // Anime types carry a `_NUMBER_` slot; `anime_types_base` does not.
+  // `anime_types` strings have a `_NUMBER_` placeholder. `anime_types_base`
+  // strings do not.
   'anime_types.tv': 'TV _NUMBER_',
   'anime_types.movie': 'Movie _NUMBER_',
   'anime_types.ova': 'OVA _NUMBER_',
@@ -168,8 +168,8 @@ window.__locale = {
   'anime_types_base.music_video': 'Music Video',
   'anime_types_base.doujin': 'Doujin',
   'anime_types_base.game_cutscene_compilation': 'Game Cutscene Compilation',
-  // These carry a `_YEAR_` slot filled from a lowercase `year` parameter —
-  // the season and the year are one phrase, not two things to concatenate.
+  // These have a `_YEAR_` placeholder, filled from the lowercase `year`
+  // parameter. Do not append the year separately.
   'song_library.anime_entry.vintage.winter': 'Winter _YEAR_',
   'song_library.anime_entry.vintage.spring': 'Spring _YEAR_',
   'song_library.anime_entry.vintage.summer': 'Summer _YEAR_',

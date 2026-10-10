@@ -1,9 +1,9 @@
 <!--
-  Players: a fill bar over `used/cap`, plus a spectator count when there is one.
+  Players: a fill bar for `used/cap`, and a spectator count when there are
+  spectators.
 
-  Spectators are never folded into `used/cap` — they do not consume slots
-  (SPEC §3). The Difficulty cell uses identical bar metrics so the two bars line
-  up across every row.
+  Spectators are not part of `used/cap`, because they take no slot (SPEC §3).
+  The Difficulty cell uses the same bar metrics, so the two bars align.
 -->
 <script lang="ts">
   import type { Room } from '../../../amq/rooms.svelte'
@@ -29,8 +29,7 @@
   let open = $state(false)
   let dismiss: ReturnType<typeof setTimeout> | null = null
 
-  // A short delay on leave is what makes the gap between trigger and popover
-  // survivable with a real pointer.
+  // The delay lets the pointer cross the gap between the cell and the popover.
   const DISMISS_DELAY_MS = 180
 
   function show() {
@@ -50,8 +49,7 @@
   }
 </script>
 
-<!-- `players` names this cell for the roster test, which would otherwise have
-     to reach it by position among the several cells sharing `.cell`. -->
+<!-- The roster test finds this cell by the `players` class. -->
 <div
   bind:this={anchor}
   class="cell players"
@@ -116,14 +114,12 @@
   }
 
   /*
-   * Baseline-aligned, and pushed to the two ends of the bar above: the used/cap
-   * sits under its start, the spectator count under its end.
+   * Baseline-aligned and pushed to the two ends of the bar: `used/cap` under
+   * its start, the spectator count under its end.
    *
-   * Centring the boxes is not the same as aligning the text — the two spans are
-   * different sizes, so their glyphs still sat off from each other. Baseline is
-   * the only alignment that is correct whatever the font metrics turn out to
-   * be, which matters because the real IBM Plex Mono is not what a fallback
-   * stack measures.
+   * The two spans have different font sizes, so centring their boxes does not
+   * align the text. Baseline alignment is correct for any font metrics, and
+   * the fallback fonts measure differently from IBM Plex Mono.
    */
   .counts {
     display: flex;
@@ -140,7 +136,7 @@
     color: var(--text-2);
   }
 
-  /* A friend in the room outranks "full" — it is the reason you'd still look. */
+  /* The friend colour below takes priority over "full". */
   .count.full {
     color: var(--rose-fg);
   }
@@ -150,11 +146,10 @@
   }
 
   /*
-   * `align-items: baseline` makes this box expose its *text's* baseline to the
-   * row above. The eye is excluded from that with `align-self: center` —
-   * otherwise, being the first item and having no baseline of its own, it
-   * would force the browser to synthesise one from its bottom edge, which is
-   * what sat the whole group too high.
+   * `align-items: baseline` exposes this box's text baseline to the row. The
+   * eye icon gets `align-self: center`. As the first item with no baseline of
+   * its own, it would otherwise make the browser derive one from its bottom
+   * edge, which places the whole group too high.
    */
   .specs {
     display: inline-flex;

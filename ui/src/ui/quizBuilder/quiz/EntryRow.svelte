@@ -1,12 +1,10 @@
 <!--
-  One anime or song entry, 34px, fixed columns (SPEC §5.4).
+  One anime or song entry with fixed columns, `--qb-entry-h` high (SPEC §5.4).
 
-  The column widths are tokens in `app.css`, not literals here. This table is
-  why badges line up all the way down a list that mixes anime rules and single
-  songs, and the room browser already learned the hard way that a cell sized to
-  its content silently knocks every column after it out of step: a flex item's
-  `min-width: auto` raises it to min-content. Every fixed cell is therefore
-  `flex: 0 0 <token>` with `min-width: 0`, and only the song column flexes.
+  The column widths are tokens in `app.css`. Every fixed cell is
+  `flex: 0 0 <token>` with `min-width: 0`, and only the anime and song columns
+  flex. A flex item's default `min-width: auto` would raise a cell to its
+  min-content width and move every column after it out of alignment.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -68,8 +66,8 @@
       : (song?.animeName ?? '')
   )
 
-  // Counts come from the cache, never from the entry — they are what the
-  // library holds today, not what it held when the quiz was saved.
+  // Counts come from the cache, never from the entry. They reflect the
+  // current library, not the library at save time.
   const counts = $derived(
     entry.kind === 'anime'
       ? describeAnime(entry.annId)
@@ -105,16 +103,15 @@
   let menuButton = $state<HTMLButtonElement | null>(null)
 
   /**
-   * Whether the row may start a drag right now.
+   * Decides whether the row can start a drag.
    *
-   * The whole row is draggable, which is the right target for a 34px row — but
-   * an HTML5 drag started on a child still drags the parent, so pressing the
-   * pick slider dragged the row instead of moving the handle.
+   * The whole row is draggable. An HTML5 drag that starts on a child still
+   * drags the parent, so a press on the pick slider would drag the row. This
+   * handler turns the row's `draggable` off for such a press.
    *
-   * The attribute is set **imperatively** rather than bound to state: it is
-   * read when `dragstart` fires, and a reactive update is flushed
-   * asynchronously, so binding it leaves a window in which the press has
-   * happened and the attribute still says the old thing.
+   * The attribute is set **imperatively**, not bound to state. The browser
+   * reads it when `dragstart` fires, and a reactive update is flushed too
+   * late for that.
    */
   function onPointerDown(event: PointerEvent) {
     const row = event.currentTarget as HTMLElement
@@ -127,11 +124,7 @@
   }
 </script>
 
-<!--
-  The whole row is the drag handle, not just the grip — the grip is the
-  affordance, but a 11px target is a poor one, and dragging a row by its body is
-  what people try first.
--->
+<!-- The whole row starts a drag, not only the 11px grip. -->
 <div
   class="row"
   class:selected
@@ -140,7 +133,7 @@
   onpointerdown={onPointerDown}
   onpointerup={armDrag}
   ondragstart={(event) => {
-    // Firefox refuses to start a drag without data on the transfer.
+    // Firefox does not start a drag unless the transfer has data.
     event.dataTransfer?.setData('text/plain', entry.id)
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
     onDragStart()
@@ -163,7 +156,7 @@
   />
 
   <span class="grip" aria-hidden="true">
-    <!-- Six dots: the conventional "drag me" without a label to translate. -->
+    <!-- Six dots: the usual drag handle. -->
     <svg width="8" height="14" viewBox="0 0 7 12" fill="currentColor">
       <circle cx="1.5" cy="2" r="1" /><circle cx="5.5" cy="2" r="1" />
       <circle cx="1.5" cy="6" r="1" /><circle cx="5.5" cy="6" r="1" />
@@ -285,13 +278,13 @@
     background: rgba(255, 255, 255, 0.04);
   }
 
-  /* The inset bar reads as "selected" without tinting the text under it. */
+  /* An inset bar marks the selection without tinting the text. */
   .row.selected {
     background: rgba(91, 155, 245, 0.13);
     box-shadow: inset 3px 0 0 var(--accent);
   }
 
-  /* An entry whose anime is not in the cache still renders — see library.svelte.ts. */
+  /* The anime is not in the cache. See library.svelte.ts. */
   .row.unknown .anime {
     color: var(--text-5);
     font-style: italic;
@@ -319,7 +312,7 @@
     cursor: pointer;
   }
 
-  /* Both text columns flex and share the slack — see `--qb-anime-min`. */
+  /* Both text columns flex and share the free width. See `--qb-anime-min`. */
   .anime {
     flex: 1 1 0;
     min-width: var(--qb-anime-min);
@@ -339,7 +332,7 @@
     gap: 4px;
   }
 
-  /* Off is dashed and unfilled: the type exists but contributes nothing. */
+  /* Off is dashed and unfilled: the type exists but adds no songs. */
   .type {
     display: inline-flex;
     align-items: center;
@@ -381,8 +374,8 @@
   }
 
   /*
-   * Two lines of text inside a 34px row. The line heights are tight on purpose;
-   * anything looser pushes the artist's descenders past the row edge.
+   * Two lines of text in one entry row. Keep the line heights tight: a looser
+   * value pushes the artist's descenders past the row edge.
    */
   .song {
     flex: 1 1 0;
@@ -411,7 +404,7 @@
     color: var(--text-4);
   }
 
-  /* Keeps a song row's later columns in step with an anime row's. */
+  /* Keeps a song row's later columns aligned with an anime row's. */
   .pick-spacer {
     flex: 0 0 var(--qb-pick);
   }
@@ -441,7 +434,7 @@
     cursor: pointer;
   }
 
-  /* A random range has no editor; the panel it opens is read-only. */
+  /* A random range has no editor. Its panel opens read-only. */
   .chip.readonly {
     border-style: dashed;
   }

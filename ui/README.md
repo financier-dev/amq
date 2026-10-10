@@ -1,46 +1,47 @@
 # ui — AMQ interface reimplementation
 
-A userscript that replaces parts of the
-[Anime Music Quiz](https://animemusicquiz.com) interface, over the live game:
+A userscript that replaces two screens of
+[Anime Music Quiz](https://animemusicquiz.com) on the live game:
 
-- **Room browser** — the grid of room tiles becomes a sortable list, with the
-  same filters and the same join / spectate / host behaviour.
-- **Quiz builder** — the custom quiz creator becomes a two-pane editor: the
-  song library on the left, the whole quiz as one grouped list on the right.
+- **Room browser.** The grid of room tiles becomes a sortable list. The
+  filters and the join, spectate and host actions work as before.
+- **Quiz builder.** The custom quiz creator becomes an editor with two panes:
+  the song library on the left, and the quiz as one grouped list on the right.
 
-Nothing else in the game changes, and other AMQ userscripts keep working
-alongside it.
+The rest of the game does not change, and other AMQ userscripts continue to
+work.
 
 ## Install
 
-Open [`dist/amq-ui.user.js`](../dist/amq-ui.user.js) raw on GitHub —
-Tampermonkey offers to install it — then reload animemusicquiz.com.
+1. Open the raw [`dist/amq-ui.user.js`](../dist/amq-ui.user.js) on GitHub.
+   Tampermonkey offers to install it.
+2. Reload animemusicquiz.com.
 
-Tampermonkey is what this is tested against; other userscript managers are
-untested. The only permission it asks for is `unsafeWindow`.
+The script is tested with Tampermonkey only. It asks for one permission,
+`unsafeWindow`.
 
-## If a screen misbehaves
+## If a screen does not work
 
-Either screen can be handed back to AMQ's own, live, without a reload. In the
-browser console:
+You can switch each screen back to AMQ's own without a reload. Run one of
+these in the browser console:
 
 ```js
-__amqUI.useLegacy() // the room browser, back to AMQ's
-__amqUI.quizBuilder.useLegacy() // the quiz builder, back to AMQ's
+__amqUI.useLegacy() // use AMQ's room browser
+__amqUI.quizBuilder.useLegacy() // use AMQ's quiz builder
 ```
 
-They revert independently, and `useNew()` takes either back with whatever you
-were editing still in place. If the script fails while starting up it hands
-both screens back on its own.
+Each screen switches independently. `useNew()` switches a screen back to this
+script and keeps what you were editing. If the script fails at startup, it
+switches both screens back to AMQ's automatically.
 
 ## Known limitations
 
-- **Random ranges** for guess time, sample point and playback speed are shown
-  but not editable. A quiz that uses one keeps it through a save; AMQ's own
-  builder is where you change it.
-- **Difficulty, genres and tags are not library filters.** The game does not
-  send any of the three with the library, so there is nothing to filter on.
-  All three still work inside an algorithm block, which the server evaluates.
+- **You cannot edit random ranges** for guess time, sample point and playback
+  speed. The builder shows them, and a save keeps them unchanged. Use AMQ's
+  own builder to change one.
+- **You cannot filter the library by difficulty, genres or tags.** The game
+  does not send them with the library. Use an algorithm block to filter by
+  them.
 
 ## How this was built
 

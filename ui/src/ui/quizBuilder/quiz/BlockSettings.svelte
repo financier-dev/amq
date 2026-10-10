@@ -1,18 +1,15 @@
 <!--
   Rule block settings (SPEC §9).
 
-  **No name field** — AMQ's rule blocks have no names, and nothing in this UI
-  renames one.
+  **No name field.** AMQ's rule blocks have no names.
 
-  The section order is the spec's, with one addition it could not know about:
-  `Allow duplicates`, which AMQ carries on every rule block and which visibly
-  changes the block's own info line.
+  The sections follow the spec's order, plus `Allow duplicates`. AMQ has that
+  setting on every rule block, and it changes the block's info line.
 
-  Guess time, sample point and playback speed may each hold a *random range*
-  rather than a single value. There is no editor for that — the design never
-  covered it — so a range is shown read-only with the way out named. Building a
-  half-understood range editor would risk flattening a range into a scalar on
-  save, which is exactly the silent corruption the serializer exists to prevent.
+  Guess time, sample point and playback speed can each hold a *random range*.
+  There is no editor for a range, so the panel shows it read-only and tells
+  the player where to edit it. An incomplete range editor could turn a range
+  into a single value on save and corrupt the quiz.
 -->
 <script lang="ts">
   import { t } from '../../../amq/derive'
@@ -113,10 +110,9 @@
               )}
           />
         </div>
-        <!-- The live cap, so the limit is legible before it bites. -->
         <p class="note">
-          The quiz is at {otherBlocks + block.songCount} of its {MAX_SONG_COUNT}-song
-          cap, so this block can take up to {ceiling}.
+          The quiz uses {otherBlocks + block.songCount} of {MAX_SONG_COUNT} songs.
+          This block can have up to {ceiling}.
         </p>
       </section>
 
@@ -151,8 +147,8 @@
               block.guessTime.extraGuessTime
             )}s
             <span class="why">
-              Editing a random range is not supported here yet — use
-              <code>__amqUI.quizBuilder.useLegacy()</code>. It is saved
+              You cannot edit a random range here. To edit it, run
+              <code>__amqUI.quizBuilder.useLegacy()</code>. A save keeps it
               unchanged.
             </span>
           </p>
@@ -197,7 +193,7 @@
           <p class="readonly">
             Random range: {formatMaybeRandom(block.samplePoint.samplePoint)}%
             <span class="why"
-              >Saved unchanged; edit it in AMQ's own builder.</span
+              >A save keeps it unchanged. Edit it in AMQ's own builder.</span
             >
           </p>
         {:else}
@@ -222,7 +218,7 @@
             />
             <span class="pct mono">{block.samplePoint.samplePoint}%</span>
           </div>
-          <!-- A percentage of the song: AMQ has no duration to convert against. -->
+          <!-- A percentage of the song. AMQ has no song duration to convert with. -->
           <p class="note">
             Where in the song playback starts, as a percentage.
           </p>
@@ -239,7 +235,7 @@
               ', '
             )}×
             <span class="why"
-              >Saved unchanged; edit it in AMQ's own builder.</span
+              >A save keeps it unchanged. Edit it in AMQ's own builder.</span
             >
           </p>
         {:else}
@@ -262,7 +258,7 @@
 
       <section>
         <h3>Guess mode</h3>
-        <!-- A set, not a choice: AMQ refuses to turn the last one off. -->
+        <!-- A set, not a single choice. AMQ refuses to turn the last one off. -->
         <div class="segmented">
           {#each [{ key: 'song' as const, i18n: 'quiz_builder.rule_block.guess_mode.song', fallback: 'Song' }, { key: 'tinyVideo' as const, i18n: 'quiz_builder.rule_block.guess_mode.tiny_video', fallback: 'Tiny Video' }, { key: 'blurVideo' as const, i18n: 'quiz_builder.rule_block.guess_mode.blur_video', fallback: 'Blur Video' }] as mode (mode.key)}
             <button

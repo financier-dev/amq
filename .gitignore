@@ -2,11 +2,11 @@ node_modules/
 .DS_Store
 *.log
 
-# This repo is public. CLAUDE.md is working notes, with local paths in it.
+# This repo is public. CLAUDE.md holds working notes with local paths.
 CLAUDE.md
 .claude/settings.local.json
 
-# Render-test output; regenerate with `npm test`.
+# Render-test output. `npm test` regenerates it.
 ui/tests/screenshots/
 
 # Credentials for the live-site tests. Never commit these.
@@ -14,8 +14,8 @@ ui/tests/screenshots/
 .env.*
 !.env.example
 
-# Personal inputs to the local scripts; each has a committed `.example`.
+# Personal inputs to the local scripts. Each has a committed `.example`.
 local/*.overrides.json
 
-# dist/ is deliberately NOT ignored — the built userscripts are committed so
-# they can be installed straight from GitHub.
+# dist/ is NOT ignored on purpose. The built userscripts are committed so
+# they can be installed from GitHub.

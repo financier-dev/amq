@@ -1,19 +1,19 @@
 /*
- * Prints the Japanese (romaji) title of every anime on the account's list, one
- * per line — typing practice material for MonkeyType.
+ * Prints the Japanese (romaji) title of every anime on the account's list,
+ * one per line. The output is typing practice text for MonkeyType.
  *
  *   npm run anime-titles                      # lowercase titles on stdout
  *   npm run anime-titles -- --keep-case
  *   npm run anime-titles -- --out titles.txt
- *   npm run anime-titles -- --candidates      # every registered name, to pick overrides from
+ *   npm run anime-titles -- --candidates      # every name, to choose overrides
  *
- * "On the list" is what the Song Library's Watched filter means: the anime
+ * "On the list" means what the Song Library's Watched filter shows: anime
  * whose list status is one of the types ticked under Settings → Anime List.
- * Songs play no part, so an anime with nothing uploaded yet is included.
+ * Songs are not considered, so an anime with no uploaded song is included.
  *
  * AMQ registers several names per anime and marks one as the Japanese main
- * name, which is sometimes the wrong one. The overrides file corrects that —
- * see `anime-titles.overrides.example.json`.
+ * name. That one is sometimes wrong. The overrides file replaces it; see
+ * `anime-titles.overrides.example.json`.
  */
 
 import fs from 'node:fs'
@@ -53,14 +53,14 @@ if (flags.help) {
 
 interface ListedAnime {
   annId: number
-  /** AMQ's pick; the English main name when it has no Japanese one. */
+  /** AMQ's choice. The English main name when there is no Japanese one. */
   title: string
   names: string[]
 }
 
 /**
- * Keys are an annId or the title AMQ picked (case-insensitive); the value is
- * the title to print instead, or `null` to leave the anime out.
+ * A key is an annId or the title AMQ chose (case-insensitive). The value is
+ * the title to print, or `null` to leave the anime out.
  */
 type Overrides = Record<string, string | null>
 
@@ -85,8 +85,8 @@ function loadOverrides(): Overrides {
 async function fetchListedAnime(): Promise<ListedAnime[]> {
   const { browser, page } = await openSession({ headed: flags.headed })
   try {
-    // `animeCache` is `{}` until asked for; `getCache` fetches the master list
-    // and the list-status overlay that sets `watched`, then calls back.
+    // `animeCache` is `{}` until `getCache` is called. `getCache` fetches the
+    // master list and the list-status overlay that sets `watched`.
     return await page.evaluate(
       (timeout) =>
         new Promise<ListedAnime[]>((resolve, reject) => {
@@ -121,8 +121,8 @@ const anime = await fetchListedAnime()
 
 if (anime.length === 0) {
   console.error(
-    'No anime came back as on the list — is a list linked to this account, ' +
-      'and is at least one status ticked under Settings → Anime List?'
+    'No anime is on the list. Check that an anime list is linked to this ' +
+      'account and that at least one status is ticked under Settings → Anime List.'
   )
 }
 
@@ -152,7 +152,7 @@ const lines = flags.candidates
   ? rows.map(({ anime, title }) =>
       [anime.annId, format(title), anime.names.join(' | ')].join('\t')
     )
-  : // Sequels sometimes share a title; typing it twice teaches nothing.
+  : // Several seasons can share a title. Print it once.
     [...new Set(rows.map(({ title }) => format(title)))]
 
 const output = lines.join('\n') + '\n'

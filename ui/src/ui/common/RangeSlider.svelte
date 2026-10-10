@@ -1,33 +1,30 @@
 <!--
-  Dual-handle range with a typed bound at each end (SPEC §4).
+  Dual-handle range with a number field at each end (SPEC §4).
 
-  Two `<input type="range">` overlay one track. The inputs themselves are
-  `pointer-events: none` so a click on the track never jumps the wrong handle;
-  only the thumbs take the pointer back. Fill and knobs stay grey until the
-  range is genuinely narrowed, so an untouched slider does not read as an
-  active filter.
+  Two `<input type="range">` overlay one track. The inputs have
+  `pointer-events: none` and only the thumbs accept the pointer, so a click on
+  the track cannot move the wrong handle. The fill and thumbs stay grey until
+  the range is narrowed, so an untouched slider does not look like an active
+  filter.
 
-  Pushing rather than rejecting out-of-order input is handled upstream in
-  `filterStore.setBound`, so the two number fields and the two thumbs all share
-  one rule.
+  `filterStore.setBound` handles a bound that crosses the other one, for the
+  number fields and the thumbs alike.
 -->
 <script lang="ts">
   import { DIFFICULTY_TIERS, tierLabel } from '../../amq/derive'
 
   /**
-   * Structurally what the room browser's `RangeSpec` already is, declared here
-   * rather than imported so this component is not tied to one screen's filter
-   * module — the quiz builder needs the same slider for vintage and sample
-   * point, which have nothing to do with room filters.
+   * The same shape as the room browser's `RangeSpec`. Declared here so the
+   * quiz builder can use the slider without importing the room filter module.
    */
   export interface SliderSpec {
     key: string
     label: () => string
     min: number
     max: number
-    /** Paints the five difficulty tier bands behind the track. */
+    /** Draws the five difficulty tier bands behind the track. */
     tiers?: boolean
-    /** The top stop means "unlimited" rather than literally `max`. */
+    /** The maximum means "unlimited", not the literal `max`. */
     maxIsUnbounded?: boolean
   }
 
@@ -76,8 +73,8 @@
       <div class="track"></div>
 
       {#if spec.tiers}
-        <!-- The tier bands are the legend for the difficulty scale; the hover
-             tooltip below names them, so the header can stay plain text. -->
+        <!-- The bands show the difficulty scale. The hover legend below names
+             them. -->
         <div class="bands">
           {#each DIFFICULTY_TIERS as tier (tier.key)}
             <div
@@ -277,7 +274,7 @@
     background: transparent;
     -webkit-appearance: none;
     appearance: none;
-    /* The track must not swallow clicks; only the thumbs take them back. */
+    /* Only the thumbs accept the pointer. See the header comment. */
     pointer-events: none;
   }
 

@@ -2,9 +2,8 @@
   Filter popover, anchored under the Filters button: 680px, two columns, no
   scrolling (SPEC §4).
 
-  There is no "All" / "3 of 4" status text anywhere. A group renders a marker
-  only when it differs from default — an accent dot plus a Reset that clears
-  that group — and the header badge is simply the count of those markers.
+  A group shows a marker only when it differs from its default: an accent dot
+  and a Reset that clears the group. The header badge counts those markers.
 -->
 <script lang="ts">
   import {
