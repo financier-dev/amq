@@ -4,8 +4,6 @@ import { getPlayerName } from '@shared/game'
 import { createQuizPageMutationObserver } from '@shared/pages'
 import {
   addHoverTarget,
-  clearHoverTargets,
-  hideTooltip,
   makeColoredText,
   makeTooltipLine,
   TooltipColors,
@@ -15,7 +13,9 @@ const CONTAINER_ID = 'amqSongHistoryContainer'
 const SCROLL_ID = 'amqSongHistoryScroll'
 const TABLE_ID = 'amqSongHistoryTable'
 const HOVER_GROUP = 'song-history'
+const ONLY_MISTAKES_STORAGE_KEY = 'amq-song-history-only-mistakes'
 
+// Song rows over all games. Separator rows do not count.
 const MAX_ROWS = 100
 
 // AMQ's LIST_STATUS enum. LOOTED is a battle royale specific state rather than
@@ -46,9 +46,39 @@ const css = `
   background-color: rgba(27, 27, 27, 0.7);
 }
 
-#${CONTAINER_ID} > h5 {
+#${CONTAINER_ID} > .header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   margin: 2px 0 4px;
-  text-align: center;
+}
+
+#${CONTAINER_ID} > .header > h5 {
+  grid-column: 2;
+  margin: 0;
+}
+
+#${CONTAINER_ID} > .header > label {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: normal;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+#${CONTAINER_ID} > .header input {
+  margin: 0;
+}
+
+/* Centers the capital letters on the checkbox, whatever the font's metrics */
+#${CONTAINER_ID} > .header span {
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
 }
 
 #${SCROLL_ID} {
@@ -108,8 +138,26 @@ const css = `
   background-color: #ac292577;
 }
 
-#${TABLE_ID} tbody tr:hover {
+#${TABLE_ID} tbody tr:not(.gameSeparator):hover {
   outline: 1px solid #8a8a8a;
+}
+
+#${TABLE_ID} tr.gameSeparator td {
+  padding: 2px 3px;
+  text-align: center;
+  font-size: 11px;
+  color: #a9a9a9;
+  background-color: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid #6d6d6d;
+}
+
+#${CONTAINER_ID}.onlyMistakes tbody tr:not(.wrongGuess):not(.gameSeparator) {
+  display: none;
+}
+
+/* A game without mistakes hides its separator too */
+#${CONTAINER_ID}.onlyMistakes tbody:not(:has(tr.wrongGuess)) {
+  display: none;
 }
 
 /* The sample is a fixed-shape timestamp, so it never needs to wrap */
@@ -137,9 +185,32 @@ function createPanel() {
   const container = document.createElement('div')
   container.id = CONTAINER_ID
 
+  const header = document.createElement('div')
+  header.className = 'header'
+  container.appendChild(header)
+
   const title = document.createElement('h5')
   title.textContent = 'Song History'
-  container.appendChild(title)
+  header.appendChild(title)
+
+  const onlyMistakes = document.createElement('input')
+  onlyMistakes.type = 'checkbox'
+  onlyMistakes.checked =
+    localStorage.getItem(ONLY_MISTAKES_STORAGE_KEY) === 'true'
+  container.classList.toggle('onlyMistakes', onlyMistakes.checked)
+  onlyMistakes.addEventListener('change', () => {
+    container.classList.toggle('onlyMistakes', onlyMistakes.checked)
+    localStorage.setItem(
+      ONLY_MISTAKES_STORAGE_KEY,
+      String(onlyMistakes.checked)
+    )
+  })
+
+  const onlyMistakesLabel = document.createElement('label')
+  const onlyMistakesText = document.createElement('span')
+  onlyMistakesText.textContent = 'Only mistakes'
+  onlyMistakesLabel.append(onlyMistakes, onlyMistakesText)
+  header.appendChild(onlyMistakesLabel)
 
   const scroll = document.createElement('div')
   scroll.id = SCROLL_ID
@@ -168,13 +239,43 @@ function createPanel() {
   head.appendChild(headerRow)
   table.appendChild(head)
 
-  const body = document.createElement('tbody')
-  table.appendChild(body)
-
   standingContainer.after(container)
   watchGeometry(container, standingContainer)
 
-  return { body, scroll }
+  return { table, head, scroll }
+}
+
+// Each game is one tbody. Its first row is the separator.
+function createGameBody(startTime: Date) {
+  const body = document.createElement('tbody')
+
+  const separator = document.createElement('tr')
+  separator.className = 'gameSeparator'
+
+  const cell = document.createElement('td')
+  cell.colSpan = COLUMNS.length
+  cell.textContent = startTime.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+
+  separator.appendChild(cell)
+  body.appendChild(separator)
+
+  return { body, separator }
+}
+
+const SONG_ROW_SELECTOR = 'tbody tr:not(.gameSeparator)'
+
+function removeOldestRows(table: HTMLTableElement) {
+  const rows = table.querySelectorAll(SONG_ROW_SELECTOR)
+
+  for (const row of [...rows].slice(MAX_ROWS)) {
+    const body = row.parentElement
+    row.remove()
+    if (body?.childElementCount === 1) body.remove()
+  }
 }
 
 // Both boxes are centered on the free band between the left edge of the screen
@@ -430,25 +531,36 @@ function createRow(data: AnswerResultsData, scroll: HTMLElement) {
   return row
 }
 
-/** Shows a compact song history table under the Standings box. */
+/**
+ * Shows a compact song history table under the Standings box. The table keeps
+ * the songs of earlier games until the page reloads.
+ */
 export default async function setup() {
   GM_addStyle(css)
 
-  const { body: tableBody, scroll } = createPanel()
+  const { table, head, scroll } = createPanel()
+
+  let gameStartTime: Date | null = null
+  let currentGame: ReturnType<typeof createGameBody> | null = null
 
   addListener('quiz ready', () => {
-    tableBody.replaceChildren()
-    clearHoverTargets(HOVER_GROUP)
-    hideTooltip()
+    gameStartTime = new Date()
+    currentGame = null
   })
 
   addListener('answer results', (data) => {
-    // Newest song on top, oldest dropped once the cap is reached. The dropped
-    // rows' hover targets go with them: the registry skips disconnected ones.
-    tableBody.prepend(createRow(data, scroll))
-
-    while (tableBody.childElementCount > MAX_ROWS) {
-      tableBody.lastElementChild?.remove()
+    // The game's tbody is created with its first result. A game without
+    // results then leaves no separator, and a game joined in progress, which
+    // sends no 'quiz ready', still gets one.
+    if (!currentGame) {
+      currentGame = createGameBody(gameStartTime ?? new Date())
+      gameStartTime = null
+      head.after(currentGame.body)
     }
+
+    // Newest song on top. The dropped rows' hover targets go with them: the
+    // registry skips disconnected ones.
+    currentGame.separator.after(createRow(data, scroll))
+    removeOldestRows(table)
   })
 }
