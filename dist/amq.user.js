@@ -2512,30 +2512,25 @@
   }
 
   const WORD_SEP = "    ";
-  const LETTER_SEP = " ";
+  const LETTER_SEP = " ";
   function fixTitle(title) {
     return title.split(WORD_SEP).map((x) => x.replaceAll(LETTER_SEP, "")).join(" ");
-  }
-  function isHint(title) {
-    return title.includes("_");
   }
   async function setup$7() {
     const target = document.getElementById("qpAnimeName");
     if (!target) {
       throw new Error("qpAnimeName element not found");
     }
-    const mutationCallback = () => {
-      if (isHint(target.innerText)) {
-        if (!target.style.letterSpacing) {
-          target.innerText = fixTitle(target.innerText);
-          target.style.letterSpacing = ".3em";
-        }
-      } else if (target.style.letterSpacing) {
-        target.style.letterSpacing = "";
-      }
+    const displayAnimeName = QuizInfoContainer.prototype.displayAnimeName;
+    QuizInfoContainer.prototype.displayAnimeName = function(name, ...altLists) {
+      const isHint = altLists.length === 0;
+      target.style.letterSpacing = isHint ? ".3em" : "";
+      return displayAnimeName.call(
+        this,
+        isHint ? fixTitle(name) : name,
+        ...altLists
+      );
     };
-    const observer = new MutationObserver(mutationCallback);
-    observer.observe(target, { childList: true });
   }
 
   const STORAGE_KEY = "amqForcedVideoHost";
