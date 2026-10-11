@@ -1,15 +1,26 @@
 /*
- * Prints the Japanese (romaji) title of every anime on the account's list,
- * one per line. The output is typing practice text for MonkeyType.
+ * Prints the Japanese (romaji) title of every anime the account uses in
+ * games, one per line. The output is typing practice text for MonkeyType.
  *
  *   npm run anime-titles                      # lowercase titles on stdout
  *   npm run anime-titles -- --keep-case
  *   npm run anime-titles -- --out titles.txt
+ *   npm run anime-titles -- --pipe            # title|title|…, for MonkeyType
  *   npm run anime-titles -- --candidates      # every name, to choose overrides
  *
- * "On the list" means what the Song Library's Watched filter shows: anime
- * whose list status is one of the types ticked under Settings → Anime List.
+ * It always logs in with `AMQ_ACCOUNT_*`. The test account's list is not
+ * useful here, so there is no fallback to it.
+ *
+ * "Uses in games" follows Settings → Anime List:
+ *   - anime whose list status is one of the ticked Included Entries (what the
+ *     Song Library's Watched filter shows), and
+ *   - the AMQ Custom List selected there, applied in its mode: Custom List
+ *     replaces the anime list, Include adds to it, Exclude removes from it.
  * Songs are not considered, so an anime with no uploaded song is included.
+ *
+ * The server picks the songs, so the custom list rule is not client code. It
+ * is written from the mode descriptions in `en.json`
+ * (`setting_window.anime_list.custom_list_mode`).
  *
  * AMQ registers several names per anime and marks one as the Japanese main
  * name. That one is sometimes wrong. The overrides file replaces it; see
@@ -33,6 +44,7 @@ const { values: flags } = parseArgs({
     'keep-case': { type: 'boolean', default: false },
     overrides: { type: 'string' },
     out: { type: 'string', short: 'o' },
+    pipe: { type: 'boolean', default: false },
     candidates: { type: 'boolean', default: false },
     headed: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
@@ -45,10 +57,16 @@ if (flags.help) {
   --keep-case         keep AMQ's capitalisation (default: all lowercase)
   --overrides <file>  title overrides (default: local/anime-titles.overrides.json)
   -o, --out <file>    write to a file instead of stdout
+  --pipe              separate the titles with | instead of a new line, as
+                      MonkeyType's custom text expects
   --candidates        print annId, chosen title and every registered name,
                       tab-separated, instead of the plain list
   --headed            show the browser`)
   process.exit(0)
+}
+
+if (flags.pipe && flags.candidates) {
+  throw new Error('--pipe does not apply to --candidates')
 }
 
 interface ListedAnime {
@@ -82,30 +100,66 @@ function loadOverrides(): Overrides {
   return parsed as Overrides
 }
 
-async function fetchListedAnime(): Promise<ListedAnime[]> {
-  const { browser, page } = await openSession({ headed: flags.headed })
+interface ListedResult {
+  anime: ListedAnime[]
+  /** The custom list in use and its mode, or `null` when there is none. */
+  customList: { name: string; mode: string; animeCount: number } | null
+}
+
+async function fetchListedAnime(): Promise<ListedResult> {
+  const { browser, page } = await openSession({
+    headed: flags.headed,
+    accounts: ['AMQ_ACCOUNT'],
+  })
   try {
     // `animeCache` is `{}` until `getCache` is called. `getCache` fetches the
     // master list and the list-status overlay that sets `watched`.
     return await page.evaluate(
       (timeout) =>
-        new Promise<ListedAnime[]>((resolve, reject) => {
+        new Promise<ListedResult>((resolve, reject) => {
           const timer = setTimeout(
             () => reject(new Error('timed out waiting for the library')),
             timeout
           )
+
+          const { customListAnimeList, customListMap } = customListHandler
+          const modes = customListAnimeList.CUSTOM_LIST_MODES
+          const active = [...customListMap.values()].find((list) =>
+            list.$entryAnimeList.hasClass('selected')
+          )
+          const mode = active ? customListAnimeList.currentMode : modes.DISABLE
+          const used = (anime: LibraryAnimeEntry) => {
+            const watched = Boolean(anime.watched)
+            const inCustomList = active?.animeMap.has(anime.annId) ?? false
+            if (mode === modes.LIST) return inCustomList
+            if (mode === modes.INCLUDE) return watched || inCustomList
+            if (mode === modes.EXCLUDE) return watched && !inCustomList
+            return watched
+          }
+
           libraryCacheHandler.getCache(
             (cache: Record<string, LibraryAnimeEntry>) => {
               clearTimeout(timer)
-              resolve(
-                Object.values(cache)
-                  .filter((anime) => anime.watched)
+              resolve({
+                anime: Object.values(cache)
+                  .filter(used)
                   .map((anime) => ({
                     annId: anime.annId,
                     title: anime.mainNames.JA ?? anime.mainNames.EN ?? '',
                     names: anime.names.map(({ name }) => name),
-                  }))
-              )
+                  })),
+                customList:
+                  active && mode !== modes.DISABLE
+                    ? {
+                        name: active.name,
+                        mode:
+                          Object.entries(modes).find(
+                            ([, value]) => value === mode
+                          )?.[0] ?? String(mode),
+                        animeCount: active.animeMap.size,
+                      }
+                    : null,
+              })
             }
           )
         }),
@@ -117,12 +171,19 @@ async function fetchListedAnime(): Promise<ListedAnime[]> {
 }
 
 const overrides = loadOverrides()
-const anime = await fetchListedAnime()
+const { anime, customList } = await fetchListedAnime()
+
+console.error(
+  customList
+    ? `custom list "${customList.name}" (${customList.animeCount} anime), mode ${customList.mode}`
+    : 'no custom list in use'
+)
 
 if (anime.length === 0) {
   console.error(
-    'No anime is on the list. Check that an anime list is linked to this ' +
-      'account and that at least one status is ticked under Settings → Anime List.'
+    'No anime is in use. Under Settings → Anime List, check that an anime ' +
+      'list is linked with at least one status ticked, or that a custom ' +
+      'list is selected.'
   )
 }
 
@@ -155,7 +216,7 @@ const lines = flags.candidates
   : // Several seasons can share a title. Print it once.
     [...new Set(rows.map(({ title }) => format(title)))]
 
-const output = lines.join('\n') + '\n'
+const output = lines.join(flags.pipe ? '|' : '\n') + '\n'
 if (flags.out) fs.writeFileSync(flags.out, output)
 else process.stdout.write(output)
 

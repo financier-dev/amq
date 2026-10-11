@@ -672,6 +672,40 @@ declare global {
     [key: string]: any
   }
 
+  /** `customList.js`. A list made in the Song Library. */
+  interface CustomList {
+    customListId: number
+    name: string
+    /** Only a list without songs can be the active anime list. */
+    onlyAnime: boolean
+    /** Keyed by annId. */
+    animeMap: Map<number, unknown>
+    /** Keyed by annSongId. */
+    songMap: Map<number, unknown>
+    /**
+     * The list's row under Settings → Anime List. The `selected` class is the
+     * only client-side record of which list is the active anime list.
+     */
+    $entryAnimeList: any
+    [key: string]: any
+  }
+
+  const customListHandler: {
+    customListMap: Map<number, CustomList>
+    /** `customListAnimeList.js`. Set by `setup`, after `login complete`. */
+    customListAnimeList: {
+      currentMode: number
+      CUSTOM_LIST_MODES: {
+        DISABLE: 0
+        LIST: 1
+        INCLUDE: 2
+        EXCLUDE: 3
+      }
+      [key: string]: any
+    }
+    [key: string]: any
+  }
+
   /** AMQ's own creator. We replace its view but still call into it. */
   const customQuizCreator: {
     /** Call before `changeView('customQuizCreator')` to start a blank quiz. */
