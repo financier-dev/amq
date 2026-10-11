@@ -60,6 +60,7 @@
       )
       return
     }
+    quizStore.clearSaveResult()
     saving = true
   }
 

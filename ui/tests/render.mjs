@@ -2670,6 +2670,40 @@ check(
   JSON.stringify(Object.keys(sent?.data?.quizSave ?? {}))
 )
 
+await page.evaluate(() => {
+  window.__fire('save custom quiz', { success: true, quizId: 7 })
+})
+await page.waitForTimeout(200)
+const dialogOpen = () =>
+  page.evaluate(() =>
+    Boolean(
+      document
+        .querySelectorAll('[data-amq-ui]')[1]
+        .shadowRoot.querySelector('[role="dialog"][aria-label="Save quiz"]')
+    )
+  )
+check('the save dialog closes after a successful save', !(await dialogOpen()))
+
+await qb.locator('.save').click()
+await page.waitForTimeout(200)
+check('the save dialog opens again after a save', await dialogOpen())
+await page.evaluate(() => (window.__log.length = 0))
+await qb.locator('[role="dialog"][aria-label="Save quiz"] .save').click()
+await page.waitForTimeout(200)
+const sentAgain = await page.evaluate(() => {
+  const command = window.__log.find((entry) => entry[0] === 'sendCommand')
+  return command ? command[1] : null
+})
+check(
+  'a second save sends the quiz id from the first',
+  sentAgain?.command === 'save quiz' && sentAgain?.data?.quizId === 7,
+  JSON.stringify(sentAgain?.data?.quizId)
+)
+await page.evaluate(() => {
+  window.__fire('save custom quiz', { success: true, quizId: 7 })
+})
+await page.waitForTimeout(200)
+
 // --- the anime type is an object, not a string ----------------------------
 
 /*

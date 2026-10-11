@@ -249,6 +249,14 @@ export class QuizStore {
     })
   }
 
+  /**
+   * Forgets the result of the last save. The save dialog closes on `saved`,
+   * so a result left from an earlier save would close it as it opens.
+   */
+  clearSaveResult() {
+    if (this.saveState !== 'saving') this.saveState = 'idle'
+  }
+
   #onSaved(data: { success?: boolean; quizId?: number }) {
     if (!data.success) {
       this.saveState = 'failed'
