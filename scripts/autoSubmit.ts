@@ -2,7 +2,7 @@ import { registerCommand } from './commands'
 
 /** Submits the answer whenever the answer input changes. */
 export default async function setup() {
-  const DEBOUNCE_THRESHOLD_MS = 100
+  const DEBOUNCE_THRESHOLD_MS = 50
 
   let lastSubmitTime: number = 0
   let curTimeout: number | null = null

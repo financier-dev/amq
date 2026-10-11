@@ -95,13 +95,13 @@
   const DROPDOWN_HIDDEN_CLASS = "amq-custom-commands-dd-hidden";
   const isDropdownDisabled = () => document.getElementById("qpAnswerInputContainer")?.classList.contains(DROPDOWN_HIDDEN_CLASS) ?? false;
 
-  const css$1 = `
+  const css$2 = `
 .amq-answer-input-valid-answer {
   color: orange;
 }
 `;
-  async function setup$l() {
-    _GM_addStyle(css$1);
+  async function setup$m() {
+    _GM_addStyle(css$2);
     const animeNames = new Set(await getFixedAnimeNames({ lowercase: true }));
     const answerInput = getAnswerInputEl();
     if (!answerInput) return;
@@ -415,7 +415,7 @@
     localStorage.setItem(LOCAL_STORAGE_KEY$1, JSON.stringify(data));
   }
   const isTypedAnswer = (answer, dropdownDisabled) => answer !== null && (dropdownDisabled || answer === answer.toLocaleLowerCase() || answer === answer.toLocaleUpperCase());
-  async function setup$k() {
+  async function setup$l() {
     let answerTimes = null;
     let userAnswer = null;
     let revealedAnswer = null;
@@ -518,7 +518,7 @@
     });
   }
 
-  async function setup$j() {
+  async function setup$k() {
     AfkKicker.prototype.setupAfkTimeout = function() {
       clearTimeout(this.afkWarningTimeout);
     };
@@ -536,7 +536,7 @@
     "Senki Zesshou Symphogear XV",
     "Little Busters! EX"
   ];
-  async function setup$i() {
+  async function setup$j() {
     const shouldHideVideo = (songInfo) => SHOWS_TO_HIDE.some(
       (title) => [...songInfo.altAnimeNames, ...songInfo.altAnimeNamesAnswers].some(
         (x) => title.toLocaleLowerCase() === x.toLocaleLowerCase()
@@ -586,7 +586,7 @@
       }
     }
   );
-  async function setup$h() {
+  async function setup$i() {
     const sendMessageFn = gameChat.sendMessage;
     gameChat.sendMessage = function() {
       const inputEl = document.getElementById("gcInput");
@@ -621,7 +621,7 @@
     const value = Number(trimmed);
     return Number.isFinite(value) && value >= 0 ? value : null;
   };
-  async function setup$g() {
+  async function setup$h() {
     const animeNames = getAllAnimeNames({ lowercase: true });
     const isValidAnime = (s) => animeNames.current.includes(s.toLocaleLowerCase());
     const voteSkip = () => {
@@ -718,8 +718,8 @@
     });
   }
 
-  async function setup$f() {
-    const DEBOUNCE_THRESHOLD_MS = 100;
+  async function setup$g() {
+    const DEBOUNCE_THRESHOLD_MS = 50;
     let lastSubmitTime = 0;
     let curTimeout = null;
     function getAccessorDescriptor(obj, prop) {
@@ -812,7 +812,7 @@
     themes: ["Music"],
     types: ["Openings", "Endings", "Inserts"]
   };
-  async function setup$e() {
+  async function setup$f() {
     const getLabel = (el) => el.innerText.split("\n")[0].toLocaleLowerCase();
     const cb = (mutationsList) => {
       mutationsList.forEach((mutation) => {
@@ -833,7 +833,7 @@
     new MutationObserver(cb).observe(target, { attributes: true });
   }
 
-  async function setup$d() {
+  async function setup$e() {
     let quickAnswerAuto = true;
     registerCommand(
       "qa",
@@ -1033,7 +1033,7 @@
     await removeDropdownDelay();
   }
 
-  async function setup$c() {
+  async function setup$d() {
     const cb = (mutationsList) => mutationsList.forEach((mutation) => {
       if (mutation.type !== "childList") return;
       for (const node of mutation.addedNodes) {
@@ -1077,7 +1077,7 @@
       command: "start return lobby vote"
     });
   }
-  async function setup$b() {
+  async function setup$c() {
     (function setupAutoThrow() {
       let autoAnswer = "";
       registerCommand(
@@ -1512,7 +1512,7 @@
   }
 
   const BACKGROUND_URL = "https://images8.alphacoders.com/695/695848.png";
-  async function setup$a() {
+  async function setup$b() {
     const backgroundCss = `
   :root {
 	--bg: url("${BACKGROUND_URL}");
@@ -1850,7 +1850,7 @@
     });
   }
 
-  async function setup$9() {
+  async function setup$a() {
     const CONTAINER_ID = "__amq-extra-song-info-container";
     const info = {
       type: {
@@ -2252,7 +2252,7 @@
       }
     });
   }
-  async function setup$8() {
+  async function setup$9() {
     registerCommand(
       "diff",
       () => ({
@@ -2522,7 +2522,7 @@
   function fixTitle(title) {
     return title.split(WORD_SEP).map((x) => x.replaceAll(LETTER_SEP, "")).join(" ");
   }
-  async function setup$7() {
+  async function setup$8() {
     const target = document.getElementById("qpAnimeName");
     if (!target) {
       throw new Error("qpAnimeName element not found");
@@ -2548,7 +2548,7 @@
   border-radius: 3px;
 }
 `;
-  async function setup$6() {
+  async function setup$7() {
     await ensureHostRowsLoaded();
     const hosts = videoResolver.hostOrder;
     let forcedHost = readStoredHost(hosts);
@@ -2640,7 +2640,7 @@
     }
   }
 
-  async function setup$5() {
+  async function setup$6() {
     addListener("Jam Vote Result", (data) => {
       const selectedTheme = data.themeResult.option.name;
       const winnerVote = data.themeResult.vote.profileInfo.name;
@@ -2667,7 +2667,7 @@
     NEXUS_TARGET_PREV_ENEMY: "arrowleft",
     NEXUS_TARGET_NEXT_ENEMY: "arrowright"
   };
-  async function setup$4() {
+  async function setup$5() {
     const focusAnswer = () => {
       const answerInput = $("#qpAnswerInput");
       answerInput.click();
@@ -2766,7 +2766,7 @@
   }
 
   const CONTAINER_ID$1 = "amq-online-notifications-container";
-  async function setup$3() {
+  async function setup$4() {
     const containerEl = document.createElement("div");
     containerEl.id = CONTAINER_ID$1;
     containerEl.style.position = "absolute";
@@ -2958,7 +2958,7 @@
       (el) => el.remove()
     );
   }
-  async function setup$2() {
+  async function setup$3() {
     const allTime = loadLocalStorage();
     let session = {};
     let game = {};
@@ -3115,7 +3115,7 @@
     );
   }
 
-  async function setup$1() {
+  async function setup$2() {
     const options = {
       maxHeight: "28rem"
     };
@@ -3268,7 +3268,7 @@
   const SIDE_MARGIN = 20;
   const VIDEO_CONTAINER_ID = "qpVideoContainer";
   const STANDINGS_GAP = 20;
-  const css = `
+  const css$1 = `
 #${CONTAINER_ID} {
   position: absolute;
   z-index: 5;
@@ -3643,8 +3643,8 @@
     });
     return row;
   }
-  async function setup() {
-    _GM_addStyle(css);
+  async function setup$1() {
+    _GM_addStyle(css$1);
     const { table, head, scroll } = createPanel();
     let gameStartTime = null;
     let currentGame = null;
@@ -3660,6 +3660,74 @@
       }
       currentGame.separator.after(createRow(data, scroll));
       removeOldestRows(table);
+    });
+  }
+
+  const BOX_CLASS = "amq-typing-speed";
+  const CHARACTERS_PER_WORD = 5;
+  const css = `
+.${BOX_CLASS} {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  padding: 0.1rem 0.7rem;
+  background-color: #1b1b1b;
+  opacity: 0.8;
+  color: #a9a9a9;
+  font-size: 1.1rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.${BOX_CLASS} > .value {
+  color: skyblue;
+  font-size: 1.2rem;
+}
+`;
+  function showSpeed(gamePlayerId, wpm) {
+    const answerContainer = getPlayerAvatarContainer(
+      getPlayerName(gamePlayerId)
+    )?.querySelector(".qpAvatarAnswerContainer");
+    if (!answerContainer) return;
+    let box = answerContainer.querySelector("." + BOX_CLASS);
+    if (!box) {
+      box = document.createElement("div");
+      box.className = BOX_CLASS;
+      const value2 = document.createElement("span");
+      value2.className = "value";
+      box.append(value2, " WPM");
+      answerContainer.appendChild(box);
+    }
+    const value = box.querySelector(".value");
+    if (value) value.textContent = String(Math.round(wpm));
+  }
+  const removeBoxes = () => document.querySelectorAll("." + BOX_CLASS).forEach((el) => el.remove());
+  async function setup() {
+    _GM_addStyle(css);
+    const startTimes = /* @__PURE__ */ new Map();
+    addListener("play next song", () => {
+      startTimes.clear();
+      removeBoxes();
+    });
+    addListener("team member answer", ({ answer, gamePlayerId }) => {
+      if (!isDropdownDisabled()) {
+        startTimes.clear();
+        removeBoxes();
+        return;
+      }
+      if (answer.trim() === "") {
+        startTimes.delete(gamePlayerId);
+        return;
+      }
+      const now = performance.now();
+      const startTime = startTimes.get(gamePlayerId);
+      if (startTime === void 0) {
+        startTimes.set(gamePlayerId, now);
+        return;
+      }
+      const minutes = (now - startTime) / 6e4;
+      if (minutes === 0) return;
+      showSpeed(gamePlayerId, answer.length / CHARACTERS_PER_WORD / minutes);
     });
   }
 
@@ -3690,7 +3758,7 @@
     );
   }
 
-  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": setup$l,"./answerTimes.ts": setup$k,"./antiAfk.ts": setup$j,"./autoHideVideo.ts": setup$i,"./autoSkip.ts": setup$g,"./autoSubmit.ts": setup$f,"./autoVoter.ts": setup$e,"./betterDropdown.ts": setup$d,"./chatTimestamps.ts": setup$c,"./commands.ts": setup$h,"./customCommands.ts": setup$b,"./customCss.ts": setup$a,"./easyExtraInfo.ts": setup$9,"./easySettings.ts": setup$8,"./fixHints.ts": setup$7,"./forceVideoHost.ts": setup$6,"./jamVoteResultAnnouncer.ts": setup$5,"./keyboardShortcuts.ts": setup$4,"./onlineNotifications.ts": setup$3,"./playerStats.ts": setup$2,"./showExtraSongInfo.ts": setup$1,"./songHistory.ts": setup
+  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": setup$m,"./answerTimes.ts": setup$l,"./antiAfk.ts": setup$k,"./autoHideVideo.ts": setup$j,"./autoSkip.ts": setup$h,"./autoSubmit.ts": setup$g,"./autoVoter.ts": setup$f,"./betterDropdown.ts": setup$e,"./chatTimestamps.ts": setup$d,"./commands.ts": setup$i,"./customCommands.ts": setup$c,"./customCss.ts": setup$b,"./easyExtraInfo.ts": setup$a,"./easySettings.ts": setup$9,"./fixHints.ts": setup$8,"./forceVideoHost.ts": setup$7,"./jamVoteResultAnnouncer.ts": setup$6,"./keyboardShortcuts.ts": setup$5,"./onlineNotifications.ts": setup$4,"./playerStats.ts": setup$3,"./showExtraSongInfo.ts": setup$2,"./songHistory.ts": setup$1,"./typingSpeed.ts": setup
 
 
   });

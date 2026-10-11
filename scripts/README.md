@@ -40,6 +40,7 @@ game has loaded.
 | `playerStats.ts`            | Shows each player's accuracy on songs from their own list.                            | `/stats`                                                                                                                          |
 | `showExtraSongInfo.ts`      | Shows when you last saw the song, and every accepted answer.                          |                                                                                                                                   |
 | `songHistory.ts`            | Shows a song history table under the Standings box.                                   |                                                                                                                                   |
+| `typingSpeed.ts`            | Shows each teammate's typing speed above their answer when the dropdown is off.       |                                                                                                                                   |
 
 Type `/help` in the game chat for the list of commands, and `/help <command>`
 for the details of one.
