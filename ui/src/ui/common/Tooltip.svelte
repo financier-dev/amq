@@ -52,6 +52,6 @@
     font-size: 12px;
     font-weight: 400;
     line-height: 1.45;
-    white-space: normal;
+    white-space: pre-line;
   }
 </style>

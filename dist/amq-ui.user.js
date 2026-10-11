@@ -12553,7 +12553,7 @@
 
 	const $$css$p = {
 		hash: 'svelte-1u1i0cm',
-		code: '.tip-anchor.svelte-1u1i0cm {display:inline-flex;}.text.svelte-1u1i0cm {display:block;font-size:12px;font-weight:400;line-height:1.45;white-space:normal;}'
+		code: '.tip-anchor.svelte-1u1i0cm {display:inline-flex;}.text.svelte-1u1i0cm {display:block;font-size:12px;font-weight:400;line-height:1.45;white-space:pre-line;}'
 	};
 
 	function Tooltip($$anchor, $$props) {
@@ -13389,12 +13389,13 @@
 
 		const infoLine = user_derived(() => `${$$props.info.uniqueAnime} anime · ${$$props.info.uniqueSongs} unique songs · ${$$props.chosen} chosen`);
 
-		// The same three numbers in the wording of AMQ's popover.
-		const infoTooltip = user_derived(() => t('quiz_builder.rule_block.popovers.block_info_content', `Song Count: ${$$props.chosen} · Unique Anime: ${$$props.info.uniqueAnime} · Unique Songs: ${$$props.info.uniqueSongs}`, {
-			NUMBER: $$props.chosen,
-			NUMBER2: $$props.info.uniqueAnime,
-			NUMBER3: $$props.info.uniqueSongs
-		}));
+		// The same three numbers in the wording of AMQ's popover. AMQ's popover
+		// renders HTML, so `translate` returns `<br />` between the lines.
+		const infoTooltip = user_derived(() => t('quiz_builder.rule_block.popovers.block_info_content', `Song Count: ${$$props.chosen}\nUnique Anime: ${$$props.info.uniqueAnime}\nUnique Songs: ${$$props.info.uniqueSongs}`, {
+			number: $$props.chosen,
+			number2: $$props.info.uniqueAnime,
+			number3: $$props.info.uniqueSongs
+		}).replace(/\s*<br \/>\s*/g, '\n'));
 
 		const orderLabel = user_derived(() => $$props.block.randomOrder
 			? t('quiz_builder.rule_block.order_rule.random', 'Random')

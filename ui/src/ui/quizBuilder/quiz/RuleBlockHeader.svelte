@@ -59,13 +59,14 @@
     `${info.uniqueAnime} anime · ${info.uniqueSongs} unique songs · ${chosen} chosen`
   )
 
-  // The same three numbers in the wording of AMQ's popover.
+  // The same three numbers in the wording of AMQ's popover. AMQ's popover
+  // renders HTML, so `translate` returns `<br />` between the lines.
   const infoTooltip = $derived(
     t(
       'quiz_builder.rule_block.popovers.block_info_content',
-      `Song Count: ${chosen} · Unique Anime: ${info.uniqueAnime} · Unique Songs: ${info.uniqueSongs}`,
-      { NUMBER: chosen, NUMBER2: info.uniqueAnime, NUMBER3: info.uniqueSongs }
-    )
+      `Song Count: ${chosen}\nUnique Anime: ${info.uniqueAnime}\nUnique Songs: ${info.uniqueSongs}`,
+      { number: chosen, number2: info.uniqueAnime, number3: info.uniqueSongs }
+    ).replace(/\s*<br \/>\s*/g, '\n')
   )
 
   const orderLabel = $derived(

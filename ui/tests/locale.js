@@ -158,6 +158,8 @@ window.__locale = {
   'anime_types.ona': 'ONA _NUMBER_',
   'anime_types.tv_special': 'TV Special _NUMBER_',
   'anime_types.special': 'Special _NUMBER_',
+  'quiz_builder.rule_block.popovers.block_info_content':
+    'Song Count: _NUMBER_ _BREAK_ Unique Anime: _NUMBER2_ _BREAK_ Unique Songs: _NUMBER3_',
   'anime_types_base.tv': 'TV',
   'anime_types_base.season': 'Season',
   'anime_types_base.movie': 'Movie',

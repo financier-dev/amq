@@ -489,8 +489,10 @@ window.localizationHandler = {
     // The real handler fills `_UPPERCASE_` placeholders from lowercase keys
     // of the data object. A placeholder with no value stays as it is.
     for (const [name, replacement] of Object.entries(data ?? {})) {
+      if (name !== name.toLowerCase()) continue
       value = value.split(`_${name.toUpperCase()}_`).join(String(replacement))
     }
+    value = value.replace(/_BREAK_/g, '<br />')
     // A `_NUMBER_` placeholder with no value is removed, so "OVA _NUMBER_"
     // renders as "OVA".
     return value

@@ -1977,6 +1977,21 @@ check(
   /\d+ anime · \d+ unique songs · \d+ chosen/.test(qbContent.infoLines[0]),
   qbContent.infoLines[0]
 )
+await qb.locator('.head .info').first().hover()
+await page.waitForTimeout(250)
+const infoTooltip = await page.evaluate(() => {
+  const shadow = document.querySelectorAll('[data-amq-ui]')[1].shadowRoot
+  return shadow.querySelector('.floating')?.innerText.trim() ?? null
+})
+check(
+  'the block info tooltip fills its counts, one per line',
+  /^Song Count: \d+\nUnique Anime: \d+\nUnique Songs: \d+$/.test(
+    infoTooltip ?? ''
+  ),
+  infoTooltip
+)
+await page.mouse.move(1400, 820)
+await page.waitForTimeout(250)
 check(
   'the target block is badged',
   qbContent.targetBadge === 'Adding here',
