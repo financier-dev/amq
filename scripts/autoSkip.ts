@@ -35,20 +35,27 @@ export default async function setup() {
   ) => {
     let active = defaultActive
     let delayS = DEFAULT_DELAY_S
-    let pendingTimeout: ReturnType<typeof setTimeout> | null = null
+    const pendingTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-    const cancel = () => {
-      if (pendingTimeout === null) return
-      clearTimeout(pendingTimeout)
-      pendingTimeout = null
+    const cancel = (username: string) => {
+      clearTimeout(pendingTimeouts.get(username))
+      pendingTimeouts.delete(username)
     }
 
-    const schedule = (shouldVote: () => boolean) => {
-      cancel()
-      pendingTimeout = setTimeout(() => {
-        pendingTimeout = null
-        if (active && shouldVote()) voteSkip()
-      }, delayS * 1000)
+    const cancelAll = () => {
+      pendingTimeouts.forEach((timeout) => clearTimeout(timeout))
+      pendingTimeouts.clear()
+    }
+
+    const schedule = (username: string, shouldVote: () => boolean) => {
+      cancel(username)
+      pendingTimeouts.set(
+        username,
+        setTimeout(() => {
+          pendingTimeouts.delete(username)
+          if (active && shouldVote()) voteSkip()
+        }, delayS * 1000)
+      )
     }
 
     const status = () => (active ? `enabled (${delayS}s delay)` : 'disabled')
@@ -68,7 +75,7 @@ export default async function setup() {
         }
         active = args.trim() !== '' || !active
         delayS = delay
-        if (!active) cancel()
+        if (!active) cancelAll()
         gameChat.systemMessage(`${label}: ${status()}`)
       }
     )
@@ -77,6 +84,7 @@ export default async function setup() {
       isActive: () => active,
       schedule,
       cancel,
+      cancelAll,
     }
   }
 
@@ -96,39 +104,33 @@ export default async function setup() {
   const answerInput = getAnswerInputEl()
   if (answerInput) {
     answerInput.addEventListener('input', () => {
-      autoSkip.cancel()
+      autoSkip.cancel(selfName)
       if (!autoSkip.isActive()) return
 
       const value = answerInput.value
       if (!isValidAnime(value)) return
 
-      autoSkip.schedule(() => answerInput.value === value)
+      autoSkip.schedule(selfName, () => answerInput.value === value)
     })
   } else {
     console.error('amq-auto-skip: answer input not found')
   }
 
-  let avsPendingPlayerId: number | null = null
   addListener('team member answer', (data) => {
     if (!autoVoteSkip.isActive()) return
 
     const player = quiz.players?.[data.gamePlayerId]
     if (!player || player.isSelf) return
 
-    const valid = isValidAnime(data.answer)
-    if (avsPendingPlayerId === data.gamePlayerId && !valid) {
-      autoVoteSkip.cancel()
-      avsPendingPlayerId = null
+    if (isValidAnime(data.answer)) {
+      autoVoteSkip.schedule(player._name, () => true)
+    } else {
+      autoVoteSkip.cancel(player._name)
     }
-    if (!valid) return
-
-    avsPendingPlayerId = data.gamePlayerId
-    autoVoteSkip.schedule(() => true)
   })
 
   addListener('play next song', () => {
-    autoSkip.cancel()
-    autoVoteSkip.cancel()
-    avsPendingPlayerId = null
+    autoSkip.cancelAll()
+    autoVoteSkip.cancelAll()
   })
 }
