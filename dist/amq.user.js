@@ -519,10 +519,16 @@
   }
 
   async function setup$j() {
-    AfkKicker.prototype.setupAfkTimeout = () => {
+    AfkKicker.prototype.setupAfkTimeout = function() {
+      clearTimeout(this.afkWarningTimeout);
     };
-    AfkKicker.prototype.setupHostTimeout = () => {
+    AfkKicker.prototype.setupHostTimeout = function() {
+      this.clearHostTimeout();
     };
+    if (typeof afkKicker !== "undefined") {
+      afkKicker.setupAfkTimeout();
+      afkKicker.setupHostTimeout();
+    }
   }
 
   const SHOWS_TO_HIDE = [

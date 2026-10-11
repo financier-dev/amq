@@ -379,6 +379,7 @@ declare global {
   const gameChat: any
 
   const AfkKicker: any
+  const afkKicker: any
   const QuizInfoContainer: any
 
   /** AMQ's settings object. Do not confuse it with a script's own `options`. */
