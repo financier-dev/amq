@@ -127,6 +127,11 @@
     });
   }
 
+  const __vite_glob_0_0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$m
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const STACK_CLASS = "amq-avatar-stack";
   const BASE_CONTAINER_WIDTH = 160;
   const STYLE_ID = "amq-avatar-stack-styles";
@@ -518,18 +523,27 @@
     });
   }
 
-  async function setup$k() {
+  const __vite_glob_0_1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$l
+  }, Symbol.toStringTag, { value: 'Module' }));
+
+  function beforeLoad() {
     AfkKicker.prototype.setupAfkTimeout = function() {
       clearTimeout(this.afkWarningTimeout);
     };
     AfkKicker.prototype.setupHostTimeout = function() {
       this.clearHostTimeout();
     };
-    if (typeof afkKicker !== "undefined") {
-      afkKicker.setupAfkTimeout();
-      afkKicker.setupHostTimeout();
-    }
   }
+  async function setup$k() {
+  }
+
+  const __vite_glob_0_2 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    beforeLoad,
+    default: setup$k
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const SHOWS_TO_HIDE = [
     "Senki Zesshou Symphogear AXZ",
@@ -557,6 +571,11 @@
       getPlayers().forEach((player) => player.style.removeProperty("opacity"));
     });
   }
+
+  const __vite_glob_0_3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$j
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const commands = {};
   function registerCommand(command, getHelpObject, callback) {
@@ -613,6 +632,12 @@
       }
     };
   }
+
+  const __vite_glob_0_9 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$i,
+    registerCommand
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const DEFAULT_DELAY_S = 1;
   const parseDelay = (args) => {
@@ -718,6 +743,11 @@
     });
   }
 
+  const __vite_glob_0_4 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$h
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   async function setup$g() {
     const DEBOUNCE_THRESHOLD_MS = 50;
     let lastSubmitTime = 0;
@@ -808,6 +838,11 @@
     );
   }
 
+  const __vite_glob_0_5 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$g
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const options$1 = {
     themes: ["Music"],
     types: ["Openings", "Endings", "Inserts"]
@@ -832,6 +867,11 @@
     if (!target) throw new Error("Could not find target");
     new MutationObserver(cb).observe(target, { attributes: true });
   }
+
+  const __vite_glob_0_6 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$f
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   async function setup$e() {
     let quickAnswerAuto = true;
@@ -1033,6 +1073,11 @@
     await removeDropdownDelay();
   }
 
+  const __vite_glob_0_7 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$e
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   async function setup$d() {
     const cb = (mutationsList) => mutationsList.forEach((mutation) => {
       if (mutation.type !== "childList") return;
@@ -1052,6 +1097,11 @@
     }
     observer.observe(target, { childList: true });
   }
+
+  const __vite_glob_0_8 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$d
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   function observePageVisibility(id, callback) {
     const el = document.getElementById(id);
@@ -1511,6 +1561,11 @@
     })();
   }
 
+  const __vite_glob_0_10 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$c
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const BACKGROUND_URL = "https://images8.alphacoders.com/695/695848.png";
   async function setup$b() {
     const backgroundCss = `
@@ -1850,6 +1905,11 @@
     });
   }
 
+  const __vite_glob_0_11 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$b
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   async function setup$a() {
     const CONTAINER_ID = "__amq-extra-song-info-container";
     const info = {
@@ -1966,6 +2026,11 @@
       container.classList.add("hide");
     });
   }
+
+  const __vite_glob_0_12 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$a
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   function getDefaultExportFromCjs (x) {
   	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
@@ -2517,6 +2582,11 @@
     );
   }
 
+  const __vite_glob_0_13 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$9
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const WORD_SEP = "    ";
   const LETTER_SEP = " ";
   function fixTitle(title) {
@@ -2538,6 +2608,11 @@
       );
     };
   }
+
+  const __vite_glob_0_14 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$8
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const STORAGE_KEY = "amqForcedVideoHost";
   const FORCED_CLASS = "amqForcedVideoHost";
@@ -2640,6 +2715,11 @@
     }
   }
 
+  const __vite_glob_0_15 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$7
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   async function setup$6() {
     addListener("Jam Vote Result", (data) => {
       const selectedTheme = data.themeResult.option.name;
@@ -2653,6 +2733,11 @@
       );
     });
   }
+
+  const __vite_glob_0_16 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$6
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const KEYS = {
     ANSWER: "a",
@@ -2765,6 +2850,11 @@
     });
   }
 
+  const __vite_glob_0_17 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$5
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const CONTAINER_ID$1 = "amq-online-notifications-container";
   async function setup$4() {
     const containerEl = document.createElement("div");
@@ -2798,6 +2888,11 @@
       }
     });
   }
+
+  const __vite_glob_0_18 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$4
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const TOOLTIP_ID = "amq-shared-tooltip";
   const MAX_WIDTH = 420;
@@ -3115,6 +3210,11 @@
     );
   }
 
+  const __vite_glob_0_19 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$3
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   async function setup$2() {
     const options = {
       maxHeight: "28rem"
@@ -3257,6 +3357,11 @@
       if (!visible) removeContainerIfExists();
     });
   }
+
+  const __vite_glob_0_20 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$2
+  }, Symbol.toStringTag, { value: 'Module' }));
 
   const CONTAINER_ID = "amqSongHistoryContainer";
   const SCROLL_ID = "amqSongHistoryScroll";
@@ -3663,6 +3768,11 @@
     });
   }
 
+  const __vite_glob_0_21 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$1
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const BOX_CLASS = "amq-typing-speed";
   const CHARACTERS_PER_WORD = 5;
   const css = `
@@ -3731,6 +3841,11 @@
     });
   }
 
+  const __vite_glob_0_22 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup
+  }, Symbol.toStringTag, { value: 'Module' }));
+
   const POLL_INTERVAL_MS = 200;
   function poll(isReady, timeoutMs) {
     return new Promise((resolve, reject) => {
@@ -3758,14 +3873,20 @@
     );
   }
 
-  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": setup$m,"./answerTimes.ts": setup$l,"./antiAfk.ts": setup$k,"./autoHideVideo.ts": setup$j,"./autoSkip.ts": setup$h,"./autoSubmit.ts": setup$g,"./autoVoter.ts": setup$f,"./betterDropdown.ts": setup$e,"./chatTimestamps.ts": setup$d,"./commands.ts": setup$i,"./customCommands.ts": setup$c,"./customCss.ts": setup$b,"./easyExtraInfo.ts": setup$a,"./easySettings.ts": setup$9,"./fixHints.ts": setup$8,"./forceVideoHost.ts": setup$7,"./jamVoteResultAnnouncer.ts": setup$6,"./keyboardShortcuts.ts": setup$5,"./onlineNotifications.ts": setup$4,"./playerStats.ts": setup$3,"./showExtraSongInfo.ts": setup$2,"./songHistory.ts": setup$1,"./typingSpeed.ts": setup
-
+  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": __vite_glob_0_0,"./answerTimes.ts": __vite_glob_0_1,"./antiAfk.ts": __vite_glob_0_2,"./autoHideVideo.ts": __vite_glob_0_3,"./autoSkip.ts": __vite_glob_0_4,"./autoSubmit.ts": __vite_glob_0_5,"./autoVoter.ts": __vite_glob_0_6,"./betterDropdown.ts": __vite_glob_0_7,"./chatTimestamps.ts": __vite_glob_0_8,"./commands.ts": __vite_glob_0_9,"./customCommands.ts": __vite_glob_0_10,"./customCss.ts": __vite_glob_0_11,"./easyExtraInfo.ts": __vite_glob_0_12,"./easySettings.ts": __vite_glob_0_13,"./fixHints.ts": __vite_glob_0_14,"./forceVideoHost.ts": __vite_glob_0_15,"./jamVoteResultAnnouncer.ts": __vite_glob_0_16,"./keyboardShortcuts.ts": __vite_glob_0_17,"./onlineNotifications.ts": __vite_glob_0_18,"./playerStats.ts": __vite_glob_0_19,"./showExtraSongInfo.ts": __vite_glob_0_20,"./songHistory.ts": __vite_glob_0_21,"./typingSpeed.ts": __vite_glob_0_22
 
   });
   async function main() {
     if (document.getElementById("loginUsername")) return;
+    for (const [file, { beforeLoad }] of Object.entries(scripts)) {
+      try {
+        beforeLoad?.();
+      } catch (error) {
+        console.error(`[amq] ${file} failed before load`, error);
+      }
+    }
     await ensureLoad();
-    for (const [file, setup] of Object.entries(scripts)) {
+    for (const [file, { default: setup }] of Object.entries(scripts)) {
       setup().catch(
         (error) => console.error(`[amq] ${file} failed to start`, error)
       );
