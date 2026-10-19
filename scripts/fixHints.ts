@@ -11,7 +11,7 @@
  */
 
 const WORD_SEP = '    ' // 4 spaces
-const LETTER_SEP = ' ' // &nbsp;
+const LETTER_SEP = '\u00a0'
 
 function fixTitle(title: string) {
   return title

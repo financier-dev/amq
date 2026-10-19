@@ -2518,7 +2518,7 @@
   }
 
   const WORD_SEP = "    ";
-  const LETTER_SEP = " ";
+  const LETTER_SEP = " ";
   function fixTitle(title) {
     return title.split(WORD_SEP).map((x) => x.replaceAll(LETTER_SEP, "")).join(" ");
   }
