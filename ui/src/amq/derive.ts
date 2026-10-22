@@ -1,5 +1,7 @@
 /**
- * Pure derivations from a room's `settings`.
+ * Derivations from a room's `settings` that need the game page: labels in the
+ * player's language, colours, chips, profiles and avatars. The pure model is
+ * in `@shared/rooms`.
  *
  * The row, the filter predicate and the tooltips all read from here, so they
  * agree about a room. Nothing touches the DOM. The only AMQ globals read are
@@ -7,25 +9,34 @@
  * `hostModal`).
  */
 
+import {
+  MODE_NAMES,
+  SONG_SELECTION_NAMES,
+  TIER_NAMES,
+  rangeLabel,
+  rangeOf,
+  type DifficultyTier,
+  type GameMode,
+  type SongSelection,
+} from '@shared/rooms'
 import { pageGlobal } from './pageGlobal'
 
-export type GameMode =
-  | 'standard'
-  | 'community'
-  | 'battle-royale'
-  | 'hint'
-  | 'last-man-standing'
-  | 'quick-draw'
-  | 'boss-fight'
-  | 'amq-awards'
-
-export type SongSelection = 'random' | 'mix' | 'watched' | 'custom'
-
-export interface SongTypes {
-  openings: boolean
-  endings: boolean
-  inserts: boolean
-}
+export {
+  DIFFICULTY_TIERS,
+  difficultyRange,
+  guessTimeOf,
+  isCommunityMode,
+  modeOf,
+  rangeLabel,
+  songSelectionOf,
+  songTypesOf,
+  tiersTouched,
+  type DifficultyTier,
+  type GameMode,
+  type GuessTime,
+  type SongSelection,
+  type SongTypes,
+} from '@shared/rooms'
 
 // --- localisation ---------------------------------------------------------
 
@@ -42,37 +53,10 @@ export function t(key: string, fallback: string, data?: object): string {
   }
 }
 
-// --- mode / types / selection ---------------------------------------------
-
-export function isCommunityMode(settings: RoomSettings) {
-  return settings.gameMode === 'Community' || settings.gameMode === 'Themed'
-}
-
-/** roomTile.js:54-71. The first match wins, so the order matters. */
-export function modeOf(settings: RoomSettings): GameMode {
-  if (isCommunityMode(settings)) return 'community'
-  if (settings.showSelection === 2) return 'battle-royale'
-  if (settings.scoreType === 2) return 'hint'
-  if (settings.scoreType === 4) return 'last-man-standing'
-  if (settings.scoreType === 3) return 'quick-draw'
-  if (settings.scoreType === 5) return 'boss-fight'
-  if (settings.gameMode === 'event-hosted') return 'amq-awards'
-  return 'standard'
-}
-
-const MODE_KEYS: Record<GameMode, [string, string]> = {
-  standard: ['standard', 'Standard'],
-  community: ['community', 'Community'],
-  'battle-royale': ['battle_royale', 'Battle Royale'],
-  hint: ['hint', 'Hint'],
-  'last-man-standing': ['last_man_standing', 'Last Man'],
-  'quick-draw': ['quick_draw', 'Quick Draw'],
-  'boss-fight': ['boss_fight', 'Boss Fight'],
-  'amq-awards': ['amq_awards', 'AMQ Awards'],
-}
+// --- mode / selection -----------------------------------------------------
 
 export function modeLabel(mode: GameMode) {
-  const [key, fallback] = MODE_KEYS[mode]
+  const [key, fallback] = MODE_NAMES[mode]
   return t(`room_browser.room_tile.game_mode.${key}`, fallback)
 }
 
@@ -102,48 +86,10 @@ export function modeTone(mode: GameMode) {
   }
 }
 
-/**
- * roomTile.js:37-52. A type is enabled only when the standard toggle is on
- * and the advanced value allows it, or advanced random is on.
- */
-export function songTypesOf(settings: RoomSettings): SongTypes {
-  if (isCommunityMode(settings)) {
-    return { openings: true, endings: true, inserts: true }
-  }
-  const { standardValue: std, advancedValue: adv } = settings.songType
-  return {
-    openings: Boolean(std.openings && (adv.openings || adv.random)),
-    endings: Boolean(std.endings && (adv.endings || adv.random)),
-    inserts: Boolean(std.inserts && (adv.inserts || adv.random)),
-  }
-}
-
-export function songSelectionOf(settings: RoomSettings): SongSelection {
-  if (isCommunityMode(settings)) return 'custom'
-  const selection = settings.songSelection
-  if (selection?.advancedOn) return 'custom'
-  switch (selection?.standardValue) {
-    case 1:
-      return 'random'
-    case 2:
-      return 'mix'
-    case 3:
-      return 'watched'
-    default:
-      return 'custom'
-  }
-}
-
 export function songSelectionLabel(selection: SongSelection) {
-  const fallbacks: Record<SongSelection, string> = {
-    random: 'Random',
-    mix: 'Mixed',
-    watched: 'Watched',
-    custom: 'Custom',
-  }
   return t(
     `room_browser.room_tile.song_selection.${selection}`,
-    fallbacks[selection]
+    SONG_SELECTION_NAMES[selection]
   )
 }
 
@@ -161,102 +107,10 @@ export function songSelectionTone(selection: SongSelection) {
   }
 }
 
-// --- guess time -----------------------------------------------------------
-
-export interface GuessTime {
-  /** Null in community rooms, which have no single guess time. */
-  range: { min: number; max: number } | null
-  extra: { min: number; max: number } | null
-}
-
-export function guessTimeOf(settings: RoomSettings): GuessTime {
-  if (isCommunityMode(settings)) return { range: null, extra: null }
-  return {
-    range: rangeOf(settings.guessTime),
-    extra: positiveRange(settings.extraGuessTime),
-  }
-}
-
-function rangeOf(setting: RoomRandomRange | undefined) {
-  if (!setting) return null
-  return setting.randomOn
-    ? { min: setting.randomValue[0], max: setting.randomValue[1] }
-    : { min: setting.standardValue, max: setting.standardValue }
-}
-
-function positiveRange(setting: RoomRandomRange | undefined) {
-  const range = rangeOf(setting)
-  return range && range.max > 0 ? range : null
-}
-
-/** `20` or `25–30`. The cell adds the unit. */
-export function rangeLabel(range: { min: number; max: number }) {
-  return range.min === range.max ? `${range.min}` : `${range.min}–${range.max}`
-}
-
 // --- difficulty -----------------------------------------------------------
 
-export interface DifficultyTier {
-  key: 'expert' | 'hard' | 'medium' | 'easy' | 'beginner'
-  min: number
-  max: number
-  colour: string
-}
-
-/**
- * From `convertDifficulityToText()` in customQuizAlgorithmBlock.js. A lower %
- * correct is harder, so the scale runs from hard to easy.
- *
- * SPEC §3: use this five-tier map everywhere. `roomFilter.js` still ships a
- * three-tier map (hard 0-20, medium 20-60, easy 60-100); do not use it.
- */
-export const DIFFICULTY_TIERS: DifficultyTier[] = [
-  { key: 'expert', min: 0, max: 15, colour: '#e5658a' },
-  { key: 'hard', min: 15, max: 25, colour: '#ef8a5a' },
-  { key: 'medium', min: 25, max: 50, colour: '#e8b84d' },
-  { key: 'easy', min: 50, max: 70, colour: '#93c96b' },
-  { key: 'beginner', min: 70, max: 100, colour: '#34c9a3' },
-]
-
-const TIER_FALLBACKS: Record<DifficultyTier['key'], string> = {
-  expert: 'Expert',
-  hard: 'Hard',
-  medium: 'Medium',
-  easy: 'Easy',
-  beginner: 'Beginner',
-}
-
 export function tierLabel(tier: DifficultyTier) {
-  return t(
-    `game_settings.song_difficulty.${tier.key}`,
-    TIER_FALLBACKS[tier.key]
-  )
-}
-
-export function difficultyRange(settings: RoomSettings) {
-  const difficulty = settings.songDifficulity
-  if (!difficulty) return { min: 0, max: 100 }
-  if (difficulty.advancedOn) {
-    const [min, max] = difficulty.advancedValue
-    return { min, max }
-  }
-  let min = 100
-  let max = 0
-  for (const tier of DIFFICULTY_TIERS) {
-    if (difficulty.standardValue?.[tier.key]) {
-      min = Math.min(min, tier.min)
-      max = Math.max(max, tier.max)
-    }
-  }
-  // The host modal cannot produce "no tier selected", but the server sends the
-  // payload. Fall back to the full range so that min never exceeds max.
-  return min > max ? { min: 0, max: 100 } : { min, max }
-}
-
-export function tiersTouched(range: { min: number; max: number }) {
-  return DIFFICULTY_TIERS.filter(
-    (tier) => tier.max > range.min && tier.min < range.max
-  )
+  return t(`game_settings.song_difficulty.${tier.key}`, TIER_NAMES[tier.key])
 }
 
 // --- chips ----------------------------------------------------------------

@@ -6933,19 +6933,6 @@
 		}
 	}
 
-	function pageGlobal(name) {
-	  const page = _unsafeWindow;
-	  return page?.[name] ?? globalThis[name];
-	}
-
-	function t(key, fallback, data) {
-	  try {
-	    const translated = localizationHandler.translate(key, data);
-	    return translated && translated !== key ? translated : fallback;
-	  } catch {
-	    return fallback;
-	  }
-	}
 	function isCommunityMode(settings) {
 	  return settings.gameMode === "Community" || settings.gameMode === "Themed";
 	}
@@ -6959,7 +6946,7 @@
 	  if (settings.gameMode === "event-hosted") return "amq-awards";
 	  return "standard";
 	}
-	const MODE_KEYS = {
+	const MODE_NAMES = {
 	  standard: ["standard", "Standard"],
 	  community: ["community", "Community"],
 	  "battle-royale": ["battle_royale", "Battle Royale"],
@@ -6969,28 +6956,6 @@
 	  "boss-fight": ["boss_fight", "Boss Fight"],
 	  "amq-awards": ["amq_awards", "AMQ Awards"]
 	};
-	function modeLabel(mode) {
-	  const [key, fallback] = MODE_KEYS[mode];
-	  return t(`room_browser.room_tile.game_mode.${key}`, fallback);
-	}
-	function modeTone(mode) {
-	  switch (mode) {
-	    case "last-man-standing":
-	      return "teal";
-	    case "quick-draw":
-	      return "amber";
-	    case "hint":
-	    case "amq-awards":
-	      return "violet";
-	    case "battle-royale":
-	    case "community":
-	      return "cyan";
-	    case "boss-fight":
-	      return "rose";
-	    default:
-	      return "blue";
-	  }
-	}
 	function songTypesOf(settings) {
 	  if (isCommunityMode(settings)) {
 	    return { openings: true, endings: true, inserts: true };
@@ -7017,30 +6982,12 @@
 	      return "custom";
 	  }
 	}
-	function songSelectionLabel$1(selection) {
-	  const fallbacks = {
-	    random: "Random",
-	    mix: "Mixed",
-	    watched: "Watched",
-	    custom: "Custom"
-	  };
-	  return t(
-	    `room_browser.room_tile.song_selection.${selection}`,
-	    fallbacks[selection]
-	  );
-	}
-	function songSelectionTone(selection) {
-	  switch (selection) {
-	    case "watched":
-	      return "teal";
-	    case "random":
-	      return "violet";
-	    case "mix":
-	      return "amber";
-	    default:
-	      return "blue";
-	  }
-	}
+	const SONG_SELECTION_NAMES = {
+	  random: "Random",
+	  mix: "Mixed",
+	  watched: "Watched",
+	  custom: "Custom"
+	};
 	function guessTimeOf(settings) {
 	  if (isCommunityMode(settings)) return { range: null, extra: null };
 	  return {
@@ -7066,19 +7013,13 @@
 	  { key: "easy", min: 50, max: 70, colour: "#93c96b" },
 	  { key: "beginner", min: 70, max: 100, colour: "#34c9a3" }
 	];
-	const TIER_FALLBACKS = {
+	const TIER_NAMES = {
 	  expert: "Expert",
 	  hard: "Hard",
 	  medium: "Medium",
 	  easy: "Easy",
 	  beginner: "Beginner"
 	};
-	function tierLabel(tier) {
-	  return t(
-	    `game_settings.song_difficulty.${tier.key}`,
-	    TIER_FALLBACKS[tier.key]
-	  );
-	}
 	function difficultyRange(settings) {
 	  const difficulty = settings.songDifficulity;
 	  if (!difficulty) return { min: 0, max: 100 };
@@ -7100,6 +7041,168 @@
 	  return DIFFICULTY_TIERS.filter(
 	    (tier) => tier.max > range.min && tier.min < range.max
 	  );
+	}
+	function toRoom(info) {
+	  const { settings } = info;
+	  return {
+	    id: info.id,
+	    name: settings.roomName,
+	    host: info.host,
+	    hostAvatar: info.hostAvatar,
+	    isPrivate: Boolean(settings.privateRoom),
+	    inLobby: info.inLobby,
+	    mode: modeOf(settings),
+	    playerCount: info.numberOfPlayers,
+	    roomSize: settings.roomSize,
+	    spectatorCount: info.numberOfSpectators,
+	    players: info.allPlayers?.players ?? [],
+	    spectators: info.allPlayers?.spectators ?? [],
+	    friendNames: info.friendNames ?? [],
+	    songCount: settings.numberOfSongs,
+	    songsLeft: info.songLeft,
+	    guessTime: guessTimeOf(settings),
+	    songSelection: songSelectionOf(settings),
+	    songTypes: songTypesOf(settings),
+	    settings
+	  };
+	}
+	function applySettings(room, settings) {
+	  return {
+	    ...room,
+	    settings,
+	    name: settings.roomName,
+	    isPrivate: Boolean(settings.privateRoom),
+	    roomSize: settings.roomSize,
+	    songCount: settings.numberOfSongs,
+	    mode: modeOf(settings),
+	    guessTime: guessTimeOf(settings),
+	    songSelection: songSelectionOf(settings),
+	    songTypes: songTypesOf(settings)
+	  };
+	}
+	function toggleRosterEntry(roster, name, level) {
+	  const index = roster.findIndex((entry) => entry.name === name);
+	  if (index !== -1) {
+	    return roster.filter((_, position) => position !== index);
+	  }
+	  return [...roster, { name, level }];
+	}
+	function toggleFriend(friends, name, joined) {
+	  if (joined) {
+	    return friends.includes(name) ? friends : [...friends, name];
+	  }
+	  return friends.filter((friend) => friend !== name);
+	}
+	function applyRoomChange(room, payload) {
+	  switch (payload.changeType) {
+	    case "settings":
+	      if (!payload.change) return room;
+	      return applySettings(room, { ...room.settings, ...payload.change });
+	    case "players": {
+	      const next = { ...room };
+	      if (payload.friend) {
+	        next.friendNames = toggleFriend(
+	          room.friendNames,
+	          payload.friend,
+	          (payload.playerCount ?? 0) > room.playerCount
+	        );
+	      }
+	      next.playerCount = payload.playerCount ?? room.playerCount;
+	      if (payload.playerName) {
+	        next.players = toggleRosterEntry(
+	          room.players,
+	          payload.playerName,
+	          payload.playerLevel ?? 0
+	        );
+	      }
+	      if (payload.newHost) next.host = payload.newHost.name;
+	      return next;
+	    }
+	    case "spectators": {
+	      const next = { ...room };
+	      if (payload.friend) {
+	        next.friendNames = toggleFriend(
+	          room.friendNames,
+	          payload.friend,
+	          (payload.spectatorCount ?? 0) > room.spectatorCount
+	        );
+	      }
+	      next.spectatorCount = payload.spectatorCount ?? room.spectatorCount;
+	      if (payload.playerName) {
+	        next.spectators = toggleRosterEntry(
+	          room.spectators,
+	          payload.playerName,
+	          payload.playerLevel ?? 0
+	        );
+	      }
+	      return next;
+	    }
+	    case "songsLeft":
+	      return { ...room, songsLeft: payload.songsLeft ?? room.songsLeft };
+	    case "game start":
+	      return { ...room, inLobby: false, songsLeft: room.songCount };
+	    case "game over":
+	      return { ...room, inLobby: true };
+	    default:
+	      return null;
+	  }
+	}
+
+	function pageGlobal(name) {
+	  const page = _unsafeWindow;
+	  return page?.[name] ?? globalThis[name];
+	}
+
+	function t(key, fallback, data) {
+	  try {
+	    const translated = localizationHandler.translate(key, data);
+	    return translated && translated !== key ? translated : fallback;
+	  } catch {
+	    return fallback;
+	  }
+	}
+	function modeLabel(mode) {
+	  const [key, fallback] = MODE_NAMES[mode];
+	  return t(`room_browser.room_tile.game_mode.${key}`, fallback);
+	}
+	function modeTone(mode) {
+	  switch (mode) {
+	    case "last-man-standing":
+	      return "teal";
+	    case "quick-draw":
+	      return "amber";
+	    case "hint":
+	    case "amq-awards":
+	      return "violet";
+	    case "battle-royale":
+	    case "community":
+	      return "cyan";
+	    case "boss-fight":
+	      return "rose";
+	    default:
+	      return "blue";
+	  }
+	}
+	function songSelectionLabel$1(selection) {
+	  return t(
+	    `room_browser.room_tile.song_selection.${selection}`,
+	    SONG_SELECTION_NAMES[selection]
+	  );
+	}
+	function songSelectionTone(selection) {
+	  switch (selection) {
+	    case "watched":
+	      return "teal";
+	    case "random":
+	      return "violet";
+	    case "mix":
+	      return "amber";
+	    default:
+	      return "blue";
+	  }
+	}
+	function tierLabel(tier) {
+	  return t(`game_settings.song_difficulty.${tier.key}`, TIER_NAMES[tier.key]);
 	}
 	function defaults() {
 	  try {
@@ -7956,65 +8059,6 @@
 
 	/* rooms.svelte.ts generated by Svelte v5.57.0 */
 
-	function toRoom(info) {
-		const { settings } = info;
-
-		return {
-			id: info.id,
-			name: settings.roomName,
-			host: info.host,
-			hostAvatar: info.hostAvatar,
-			isPrivate: Boolean(settings.privateRoom),
-			inLobby: info.inLobby,
-			mode: modeOf(settings),
-			playerCount: info.numberOfPlayers,
-			roomSize: settings.roomSize,
-			spectatorCount: info.numberOfSpectators,
-			players: info.allPlayers?.players ?? [],
-			spectators: info.allPlayers?.spectators ?? [],
-			friendNames: info.friendNames ?? [],
-			songCount: settings.numberOfSongs,
-			songsLeft: info.songLeft,
-			guessTime: guessTimeOf(settings),
-			songSelection: songSelectionOf(settings),
-			songTypes: songTypesOf(settings),
-			settings
-		};
-	}
-
-	function applySettings(room, settings) {
-		return {
-			...room,
-			settings,
-			name: settings.roomName,
-			isPrivate: Boolean(settings.privateRoom),
-			roomSize: settings.roomSize,
-			songCount: settings.numberOfSongs,
-			mode: modeOf(settings),
-			guessTime: guessTimeOf(settings),
-			songSelection: songSelectionOf(settings),
-			songTypes: songTypesOf(settings)
-		};
-	}
-
-	function toggleRosterEntry(roster, name, level) {
-		const index = roster.findIndex((entry) => entry.name === name);
-
-		if (index !== -1) {
-			return roster.filter((_, position) => position !== index);
-		}
-
-		return [...roster, { name, level }];
-	}
-
-	function toggleFriend(friends, name, joined) {
-		if (joined) {
-			return friends.includes(name) ? friends : [...friends, name];
-		}
-
-		return friends.filter((friend) => friend !== name);
-	}
-
 	class RoomStore {
 		#rooms = new SvelteMap();
 		#unbind = null;
@@ -8114,93 +8158,21 @@
 
 			if (!room) return;
 
-			switch (payload.changeType) {
-				case "settings":
-					{
-						if (!payload.change) break;
+			const next = applyRoomChange(room, payload);
 
-						this.#rooms.set(room.id, applySettings(room, { ...room.settings, ...payload.change }));
+			if (next) {
+				this.#rooms.set(room.id, next);
+			} else {
+				this.#rooms.delete(room.id);
+			}
 
-						if (this.#previewRoomId === room.id) {
-							hostModal.changeSettings(payload.change);
-						}
+			if (this.#previewRoomId !== room.id) return;
 
-						break;
-					}
-
-				case "players":
-					{
-						const next = { ...room };
-
-						if (payload.friend) {
-							next.friendNames = toggleFriend(room.friendNames, payload.friend, (payload.playerCount ?? 0) > room.playerCount);
-						}
-
-						next.playerCount = payload.playerCount ?? room.playerCount;
-
-						if (payload.playerName) {
-							next.players = toggleRosterEntry(room.players, payload.playerName, payload.playerLevel ?? 0);
-						}
-
-						if (payload.newHost) next.host = payload.newHost.name;
-
-						this.#rooms.set(room.id, next);
-
-						break;
-					}
-
-				case "spectators":
-					{
-						const next = { ...room };
-
-						if (payload.friend) {
-							next.friendNames = toggleFriend(room.friendNames, payload.friend, (payload.spectatorCount ?? 0) > room.spectatorCount);
-						}
-
-						next.spectatorCount = payload.spectatorCount ?? room.spectatorCount;
-
-						if (payload.playerName) {
-							next.spectators = toggleRosterEntry(room.spectators, payload.playerName, payload.playerLevel ?? 0);
-						}
-
-						this.#rooms.set(room.id, next);
-
-						break;
-					}
-
-				case "songsLeft":
-					{
-						this.#rooms.set(room.id, { ...room, songsLeft: payload.songsLeft ?? room.songsLeft });
-
-						break;
-					}
-
-				case "game start":
-					{
-						this.#rooms.set(room.id, { ...room, inLobby: false, songsLeft: room.songCount });
-
-						break;
-					}
-
-				case "game over":
-					{
-						this.#rooms.set(room.id, { ...room, inLobby: true });
-
-						break;
-					}
-
-				default:
-					// roomTile.js:325. Any other changeType means the room closed.
-					{
-						if (this.#previewRoomId === room.id) {
-							this.#previewRoomId = null;
-							hostModal.hide();
-						}
-
-						this.#rooms.delete(room.id);
-
-						break;
-					}
+			if (!next) {
+				this.#previewRoomId = null;
+				hostModal.hide();
+			} else if (payload.changeType === "settings" && payload.change) {
+				hostModal.changeSettings(payload.change);
 			}
 		}
 

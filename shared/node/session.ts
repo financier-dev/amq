@@ -52,6 +52,11 @@ export interface SessionOptions {
   userscript?: string
   /** The accounts to try, in order of preference. See `credentials`. */
   accounts?: Account[]
+  /**
+   * How long the game page may take to load after the login. When the server
+   * is busy, this has taken more than 2 minutes.
+   */
+  loadTimeoutMs?: number
 }
 
 export interface Session {
@@ -66,6 +71,7 @@ export async function openSession({
   headed = false,
   userscript,
   accounts,
+  loadTimeoutMs = LOGIN_TIMEOUT_MS,
 }: SessionOptions = {}): Promise<Session> {
   const { username, password, account } = credentials(accounts)
   console.error(`logging in with ${account}_USERNAME`)
@@ -166,7 +172,7 @@ export async function openSession({
         (window as any).socket?._socket?.connected &&
         document.querySelector('#loadingScreen')?.classList.contains('hidden'),
       undefined,
-      { timeout: LOGIN_TIMEOUT_MS }
+      { timeout: loadTimeoutMs }
     )
   } catch {
     // Report why the login failed. Never include the credential.

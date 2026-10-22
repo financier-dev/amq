@@ -10,114 +10,11 @@
  */
 
 import { SvelteMap } from 'svelte/reactivity'
+import { applyRoomChange, toRoom, type Room } from '@shared/rooms'
 import { addListeners, sendCommand } from './events'
-import {
-  guessTimeOf,
-  modeOf,
-  songSelectionOf,
-  songTypesOf,
-  t,
-  type GameMode,
-  type GuessTime,
-  type SongSelection,
-  type SongTypes,
-} from './derive'
+import { t } from './derive'
 
-export type { GameMode, SongSelection } from './derive'
-
-export interface RoomPlayer {
-  name: string
-  level: number
-}
-
-export interface Room {
-  id: number
-  name: string
-  host: string
-  hostAvatar: RoomHostAvatar
-  isPrivate: boolean
-  inLobby: boolean
-  mode: GameMode
-  playerCount: number
-  roomSize: number
-  spectatorCount: number
-  players: RoomPlayer[]
-  spectators: RoomPlayer[]
-  /** The player's friends in this room, among players and spectators. */
-  friendNames: string[]
-  songCount: number
-  songsLeft: number
-  guessTime: GuessTime
-  songSelection: SongSelection
-  songTypes: SongTypes
-  settings: RoomSettings
-}
-
-function toRoom(info: RoomInfo): Room {
-  const { settings } = info
-  return {
-    id: info.id,
-    name: settings.roomName,
-    host: info.host,
-    hostAvatar: info.hostAvatar,
-    isPrivate: Boolean(settings.privateRoom),
-    inLobby: info.inLobby,
-    mode: modeOf(settings),
-    playerCount: info.numberOfPlayers,
-    roomSize: settings.roomSize,
-    spectatorCount: info.numberOfSpectators,
-    players: info.allPlayers?.players ?? [],
-    spectators: info.allPlayers?.spectators ?? [],
-    friendNames: info.friendNames ?? [],
-    songCount: settings.numberOfSongs,
-    songsLeft: info.songLeft,
-    guessTime: guessTimeOf(settings),
-    songSelection: songSelectionOf(settings),
-    songTypes: songTypesOf(settings),
-    settings,
-  }
-}
-
-/** Recomputes the fields derived from `settings` after a patch. */
-function applySettings(room: Room, settings: RoomSettings): Room {
-  return {
-    ...room,
-    settings,
-    name: settings.roomName,
-    isPrivate: Boolean(settings.privateRoom),
-    roomSize: settings.roomSize,
-    songCount: settings.numberOfSongs,
-    mode: modeOf(settings),
-    guessTime: guessTimeOf(settings),
-    songSelection: songSelectionOf(settings),
-    songTypes: songTypesOf(settings),
-  }
-}
-
-/**
- * roomTile.js:267-281. A name already in the roster leaves; a name not in it
- * joins. The player count does not tell the two apart: the payload sets it in
- * both cases.
- */
-function toggleRosterEntry(
-  roster: RoomPlayer[],
-  name: string,
-  level: number
-): RoomPlayer[] {
-  const index = roster.findIndex((entry) => entry.name === name)
-  if (index !== -1) {
-    return roster.filter((_, position) => position !== index)
-  }
-  return [...roster, { name, level }]
-}
-
-/** The server tracks friends. `friend` is set only when a friend moved. */
-function toggleFriend(friends: string[], name: string, joined: boolean) {
-  if (joined) {
-    return friends.includes(name) ? friends : [...friends, name]
-  }
-  return friends.filter((friend) => friend !== name)
-}
+export type { GameMode, Room, RoomPlayer, SongSelection } from '@shared/rooms'
 
 // --- store ----------------------------------------------------------------
 
@@ -177,94 +74,20 @@ export class RoomStore {
     const room = this.#rooms.get(payload.roomId)
     if (!room) return
 
-    switch (payload.changeType) {
-      case 'settings': {
-        if (!payload.change) break
-        this.#rooms.set(
-          room.id,
-          applySettings(room, { ...room.settings, ...payload.change })
-        )
-        // roomTile.js:237. Keep the modal in step with the room it previews.
-        if (this.#previewRoomId === room.id) {
-          hostModal.changeSettings(payload.change)
-        }
-        break
-      }
+    const next = applyRoomChange(room, payload)
+    if (next) {
+      this.#rooms.set(room.id, next)
+    } else {
+      this.#rooms.delete(room.id)
+    }
 
-      case 'players': {
-        const next: Room = { ...room }
-        if (payload.friend) {
-          next.friendNames = toggleFriend(
-            room.friendNames,
-            payload.friend,
-            (payload.playerCount ?? 0) > room.playerCount
-          )
-        }
-        next.playerCount = payload.playerCount ?? room.playerCount
-        if (payload.playerName) {
-          next.players = toggleRosterEntry(
-            room.players,
-            payload.playerName,
-            payload.playerLevel ?? 0
-          )
-        }
-        if (payload.newHost) next.host = payload.newHost.name
-        this.#rooms.set(room.id, next)
-        break
-      }
-
-      case 'spectators': {
-        const next: Room = { ...room }
-        if (payload.friend) {
-          next.friendNames = toggleFriend(
-            room.friendNames,
-            payload.friend,
-            (payload.spectatorCount ?? 0) > room.spectatorCount
-          )
-        }
-        next.spectatorCount = payload.spectatorCount ?? room.spectatorCount
-        if (payload.playerName) {
-          next.spectators = toggleRosterEntry(
-            room.spectators,
-            payload.playerName,
-            payload.playerLevel ?? 0
-          )
-        }
-        this.#rooms.set(room.id, next)
-        break
-      }
-
-      case 'songsLeft': {
-        this.#rooms.set(room.id, {
-          ...room,
-          songsLeft: payload.songsLeft ?? room.songsLeft,
-        })
-        break
-      }
-
-      case 'game start': {
-        this.#rooms.set(room.id, {
-          ...room,
-          inLobby: false,
-          songsLeft: room.songCount,
-        })
-        break
-      }
-
-      case 'game over': {
-        this.#rooms.set(room.id, { ...room, inLobby: true })
-        break
-      }
-
-      // roomTile.js:325. Any other changeType means the room closed.
-      default: {
-        if (this.#previewRoomId === room.id) {
-          this.#previewRoomId = null
-          hostModal.hide()
-        }
-        this.#rooms.delete(room.id)
-        break
-      }
+    if (this.#previewRoomId !== room.id) return
+    if (!next) {
+      this.#previewRoomId = null
+      hostModal.hide()
+    } else if (payload.changeType === 'settings' && payload.change) {
+      // roomTile.js:237. Keep the modal in step with the room it previews.
+      hostModal.changeSettings(payload.change)
     }
   }
 

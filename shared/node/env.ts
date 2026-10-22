@@ -38,6 +38,11 @@ function readEnvFile(file: string): Record<string, string> {
   return out
 }
 
+/** A setting from the environment, else from `.env`. Never print a value. */
+export function envValue(key: string): string | undefined {
+  return process.env[key] ?? readEnvFile(path.join(repo, '.env'))[key]
+}
+
 /**
  * The `.env` prefix of an account: `<prefix>_USERNAME` and
  * `<prefix>_PASSWORD`. The live tests use a throwaway account. The local
@@ -62,12 +67,9 @@ export interface Credentials {
 export function credentials(
   accounts: Account[] = ['AMQ_ACCOUNT', 'AMQ_TEST_ACCOUNT']
 ): Credentials {
-  const file = readEnvFile(path.join(repo, '.env'))
-  const read = (key: string) => process.env[key] ?? file[key]
-
   for (const account of accounts) {
-    const username = read(`${account}_USERNAME`)
-    const password = read(`${account}_PASSWORD`)
+    const username = envValue(`${account}_USERNAME`)
+    const password = envValue(`${account}_PASSWORD`)
     if (username && password) return { username, password, account }
   }
 

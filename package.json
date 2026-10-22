@@ -15,7 +15,9 @@
     "test": "npm run build && node ui/tests/render.mjs",
     "test:headed": "npm run build && node ui/tests/render.mjs --headed",
     "test:live": "npm run build && tsx ui/tests/live/run.mjs",
-    "anime-titles": "tsx local/anime-titles.ts"
+    "anime-titles": "tsx local/anime-titles.ts",
+    "watch-rooms": "tsx local/watch-rooms.ts",
+    "rooms": "tsx local/rooms.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

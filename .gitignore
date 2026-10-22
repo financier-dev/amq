@@ -17,5 +17,8 @@ ui/tests/screenshots/
 # Personal inputs to the local scripts. Each has a committed `.example`.
 local/*.overrides.json
 
+# State the local scripts keep between runs.
+local/.cache/
+
 # dist/ is NOT ignored on purpose. The built userscripts are committed so
 # they can be installed from GitHub.
