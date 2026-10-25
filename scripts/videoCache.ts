@@ -176,9 +176,14 @@ export default async function setup() {
     return originalNextVideoInfo.call(this, songInfo, ...rest)
   }
 
+  // A `startTime` means the player joined during a song. AMQ then loads and
+  // plays at once, and reads the current player right after this call, so
+  // waiting here throws inside `setupQuiz` and the quiz screen never opens.
   const originalLoadNextVideo = quizVideoController.loadNextVideo
   quizVideoController.loadNextVideo = function () {
-    const target = isActive() ? songTarget(this._nextVideoInfo?.songInfo) : null
+    const next = this._nextVideoInfo
+    if (next?.startTime != undefined) return originalLoadNextVideo.call(this)
+    const target = isActive() ? songTarget(next?.songInfo) : null
     const check = target && checks.get(target.fileId)
     if (!check) return originalLoadNextVideo.call(this)
     void check.then(() => originalLoadNextVideo.call(this))

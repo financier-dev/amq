@@ -3979,7 +3979,9 @@
     };
     const originalLoadNextVideo = quizVideoController.loadNextVideo;
     quizVideoController.loadNextVideo = function() {
-      const target = isActive() ? songTarget(this._nextVideoInfo?.songInfo) : null;
+      const next = this._nextVideoInfo;
+      if (next?.startTime != void 0) return originalLoadNextVideo.call(this);
+      const target = isActive() ? songTarget(next?.songInfo) : null;
       const check = target && checks.get(target.fileId);
       if (!check) return originalLoadNextVideo.call(this);
       void check.then(() => originalLoadNextVideo.call(this));
