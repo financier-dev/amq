@@ -17,7 +17,9 @@
     "test:live": "npm run build && tsx ui/tests/live/run.mjs",
     "anime-titles": "tsx local/anime-titles.ts",
     "watch-rooms": "tsx local/watch-rooms.ts",
-    "rooms": "tsx local/rooms.ts"
+    "rooms": "tsx local/rooms.ts",
+    "video-cache": "tsx local/video-cache.ts",
+    "clean-video-cache": "tsx local/clean-video-cache.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

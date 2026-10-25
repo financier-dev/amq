@@ -100,7 +100,7 @@
   color: orange;
 }
 `;
-  async function setup$m() {
+  async function setup$n() {
     _GM_addStyle(css$2);
     const animeNames = new Set(await getFixedAnimeNames({ lowercase: true }));
     const answerInput = getAnswerInputEl();
@@ -129,7 +129,7 @@
 
   const __vite_glob_0_0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$m
+    default: setup$n
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const STACK_CLASS = "amq-avatar-stack";
@@ -420,7 +420,7 @@
     localStorage.setItem(LOCAL_STORAGE_KEY$1, JSON.stringify(data));
   }
   const isTypedAnswer = (answer, dropdownDisabled) => answer !== null && (dropdownDisabled || answer === answer.toLocaleLowerCase() || answer === answer.toLocaleUpperCase());
-  async function setup$l() {
+  async function setup$m() {
     let answerTimes = null;
     let userAnswer = null;
     let revealedAnswer = null;
@@ -525,7 +525,7 @@
 
   const __vite_glob_0_1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$l
+    default: setup$m
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function beforeLoad() {
@@ -536,13 +536,13 @@
       this.clearHostTimeout();
     };
   }
-  async function setup$k() {
+  async function setup$l() {
   }
 
   const __vite_glob_0_2 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     beforeLoad,
-    default: setup$k
+    default: setup$l
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const SHOWS_TO_HIDE = [
@@ -550,7 +550,7 @@
     "Senki Zesshou Symphogear XV",
     "Little Busters! EX"
   ];
-  async function setup$j() {
+  async function setup$k() {
     const shouldHideVideo = (songInfo) => SHOWS_TO_HIDE.some(
       (title) => [...songInfo.altAnimeNames, ...songInfo.altAnimeNamesAnswers].some(
         (x) => title.toLocaleLowerCase() === x.toLocaleLowerCase()
@@ -574,7 +574,7 @@
 
   const __vite_glob_0_3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$j
+    default: setup$k
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const commands = {};
@@ -605,7 +605,7 @@
       }
     }
   );
-  async function setup$i() {
+  async function setup$j() {
     const sendMessageFn = gameChat.sendMessage;
     gameChat.sendMessage = function() {
       const inputEl = document.getElementById("gcInput");
@@ -635,7 +635,7 @@
 
   const __vite_glob_0_9 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$i,
+    default: setup$j,
     registerCommand
   }, Symbol.toStringTag, { value: 'Module' }));
 
@@ -646,7 +646,7 @@
     const value = Number(trimmed);
     return Number.isFinite(value) && value >= 0 ? value : null;
   };
-  async function setup$h() {
+  async function setup$i() {
     const animeNames = getAllAnimeNames({ lowercase: true });
     const isValidAnime = (s) => animeNames.current.includes(s.toLocaleLowerCase());
     const voteSkip = () => {
@@ -745,10 +745,10 @@
 
   const __vite_glob_0_4 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$h
+    default: setup$i
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$g() {
+  async function setup$h() {
     const DEBOUNCE_THRESHOLD_MS = 50;
     let lastSubmitTime = 0;
     let curTimeout = null;
@@ -840,14 +840,14 @@
 
   const __vite_glob_0_5 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$g
+    default: setup$h
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const options$1 = {
     themes: ["Music"],
     types: ["Openings", "Endings", "Inserts"]
   };
-  async function setup$f() {
+  async function setup$g() {
     const getLabel = (el) => el.innerText.split("\n")[0].toLocaleLowerCase();
     const cb = (mutationsList) => {
       mutationsList.forEach((mutation) => {
@@ -870,10 +870,10 @@
 
   const __vite_glob_0_6 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$f
+    default: setup$g
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$e() {
+  async function setup$f() {
     let quickAnswerAuto = true;
     registerCommand(
       "qa",
@@ -1075,10 +1075,10 @@
 
   const __vite_glob_0_7 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$e
+    default: setup$f
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$d() {
+  async function setup$e() {
     const cb = (mutationsList) => mutationsList.forEach((mutation) => {
       if (mutation.type !== "childList") return;
       for (const node of mutation.addedNodes) {
@@ -1100,7 +1100,7 @@
 
   const __vite_glob_0_8 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$d
+    default: setup$e
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function observePageVisibility(id, callback) {
@@ -1127,7 +1127,7 @@
       command: "start return lobby vote"
     });
   }
-  async function setup$c() {
+  async function setup$d() {
     (function setupAutoThrow() {
       let autoAnswer = "";
       registerCommand(
@@ -1563,11 +1563,11 @@
 
   const __vite_glob_0_10 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$c
+    default: setup$d
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const BACKGROUND_URL = "https://images8.alphacoders.com/695/695848.png";
-  async function setup$b() {
+  async function setup$c() {
     const backgroundCss = `
   :root {
 	--bg: url("${BACKGROUND_URL}");
@@ -1907,10 +1907,10 @@
 
   const __vite_glob_0_11 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$b
+    default: setup$c
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$a() {
+  async function setup$b() {
     const CONTAINER_ID = "__amq-extra-song-info-container";
     const info = {
       type: {
@@ -2029,7 +2029,7 @@
 
   const __vite_glob_0_12 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$a
+    default: setup$b
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function getDefaultExportFromCjs (x) {
@@ -2317,7 +2317,7 @@
       }
     });
   }
-  async function setup$9() {
+  async function setup$a() {
     registerCommand(
       "diff",
       () => ({
@@ -2584,7 +2584,7 @@
 
   const __vite_glob_0_13 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$9
+    default: setup$a
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const WORD_SEP = "    ";
@@ -2592,7 +2592,7 @@
   function fixTitle(title) {
     return title.split(WORD_SEP).map((x) => x.replaceAll(LETTER_SEP, "")).join(" ");
   }
-  async function setup$8() {
+  async function setup$9() {
     const target = document.getElementById("qpAnimeName");
     if (!target) {
       throw new Error("qpAnimeName element not found");
@@ -2611,7 +2611,7 @@
 
   const __vite_glob_0_14 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$8
+    default: setup$9
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const STORAGE_KEY = "amqForcedVideoHost";
@@ -2623,7 +2623,7 @@
   border-radius: 3px;
 }
 `;
-  async function setup$7() {
+  async function setup$8() {
     await ensureHostRowsLoaded();
     const hosts = videoResolver.hostOrder;
     let forcedHost = readStoredHost(hosts);
@@ -2717,10 +2717,10 @@
 
   const __vite_glob_0_15 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$7
+    default: setup$8
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$6() {
+  async function setup$7() {
     addListener("Jam Vote Result", (data) => {
       const selectedTheme = data.themeResult.option.name;
       const winnerVote = data.themeResult.vote.profileInfo.name;
@@ -2736,7 +2736,7 @@
 
   const __vite_glob_0_16 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$6
+    default: setup$7
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const KEYS = {
@@ -2752,7 +2752,7 @@
     NEXUS_TARGET_PREV_ENEMY: "arrowleft",
     NEXUS_TARGET_NEXT_ENEMY: "arrowright"
   };
-  async function setup$5() {
+  async function setup$6() {
     const focusAnswer = () => {
       const answerInput = $("#qpAnswerInput");
       answerInput.click();
@@ -2852,11 +2852,11 @@
 
   const __vite_glob_0_17 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$5
+    default: setup$6
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const CONTAINER_ID$1 = "amq-online-notifications-container";
-  async function setup$4() {
+  async function setup$5() {
     const containerEl = document.createElement("div");
     containerEl.id = CONTAINER_ID$1;
     containerEl.style.position = "absolute";
@@ -2891,7 +2891,7 @@
 
   const __vite_glob_0_18 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$4
+    default: setup$5
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const TOOLTIP_ID = "amq-shared-tooltip";
@@ -3053,7 +3053,7 @@
       (el) => el.remove()
     );
   }
-  async function setup$3() {
+  async function setup$4() {
     const allTime = loadLocalStorage();
     let session = {};
     let game = {};
@@ -3212,10 +3212,10 @@
 
   const __vite_glob_0_19 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$3
+    default: setup$4
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$2() {
+  async function setup$3() {
     const options = {
       maxHeight: "28rem"
     };
@@ -3360,7 +3360,7 @@
 
   const __vite_glob_0_20 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$2
+    default: setup$3
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const CONTAINER_ID = "amqSongHistoryContainer";
@@ -3748,7 +3748,7 @@
     });
     return row;
   }
-  async function setup$1() {
+  async function setup$2() {
     _GM_addStyle(css$1);
     const { table, head, scroll } = createPanel();
     let gameStartTime = null;
@@ -3770,7 +3770,7 @@
 
   const __vite_glob_0_21 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$1
+    default: setup$2
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const BOX_CLASS = "amq-typing-speed";
@@ -3812,7 +3812,7 @@
     if (value) value.textContent = String(Math.round(wpm));
   }
   const removeBoxes = () => document.querySelectorAll("." + BOX_CLASS).forEach((el) => el.remove());
-  async function setup() {
+  async function setup$1() {
     _GM_addStyle(css);
     const startTimes = /* @__PURE__ */ new Map();
     addListener("play next song", () => {
@@ -3842,6 +3842,218 @@
   }
 
   const __vite_glob_0_22 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$1
+  }, Symbol.toStringTag, { value: 'Module' }));
+
+  const VIDEO_CACHE_PORT = 8787;
+  const VIDEO_CACHE_ORIGIN = `http://127.0.0.1:${VIDEO_CACHE_PORT}`;
+  const CACHED_RESOLUTIONS = [720, 480];
+  function cachedFile(files) {
+    for (const resolution of CACHED_RESOLUTIONS) {
+      const fileId = files?.[resolution];
+      if (fileId && isCacheableFileId(fileId)) return { fileId, resolution };
+    }
+    return null;
+  }
+  function isCacheableFileId(fileId) {
+    return /^[a-z0-9]+\.webm$/i.test(fileId);
+  }
+  function videoCacheUrl(fileId, downloadFrom) {
+    const url = `${VIDEO_CACHE_ORIGIN}/video/${fileId}`;
+    return downloadFrom ? `${url}?download=${encodeURIComponent(downloadFrom)}` : url;
+  }
+
+  const CHECK_TIMEOUT_MS = 300;
+  const MP3_RESOLUTION = 0;
+  const DISABLED_KEY = "amq-video-cache-disabled";
+  let disabled = readDisabled();
+  function readDisabled() {
+    try {
+      return localStorage.getItem(DISABLED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function setDisabled(value) {
+    disabled = value;
+    try {
+      if (value) localStorage.setItem(DISABLED_KEY, "1");
+      else localStorage.removeItem(DISABLED_KEY);
+    } catch {
+    }
+  }
+  function isActive() {
+    return !disabled && qualityController.targetResolution !== MP3_RESOLUTION;
+  }
+  function statusText() {
+    if (disabled) return "off (AMQ default playback)";
+    if (!isActive()) return "on, but paused: the quality setting is mp3";
+    return "on";
+  }
+  const MP3_REASONS = {
+    miss: "Cache miss: downloading the video for next time",
+    offline: "Cache server offline",
+    timeout: "Cache server did not answer in time",
+    failed: "The cached video did not play"
+  };
+  const NO_VIDEO_REASON = "This song has no 720p or 480p video";
+  const ENCRYPTED_REASON = "Encrypted song: the cache is not used";
+  const UNCHECKED_REASON = "The cache was not checked for this song";
+  const answers = /* @__PURE__ */ new Map();
+  const checks = /* @__PURE__ */ new Map();
+  const mp3Reasons = /* @__PURE__ */ new WeakMap();
+  function cacheTarget(videoMap, hostKeys) {
+    if (!videoMap) return null;
+    for (const hostKey of hostKeys) {
+      const file = cachedFile(videoMap[hostKey]);
+      if (file) return { ...file, hostKey };
+    }
+    return null;
+  }
+  function songTarget(songInfo) {
+    if (!songInfo || songInfo.encrypted) return null;
+    return cacheTarget(songInfo.videoMap, options.getHostPriorityList());
+  }
+  async function askCache(fileId) {
+    try {
+      const res = await fetch(videoCacheUrl(fileId, videoResolver.targetHost), {
+        method: "HEAD",
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
+      });
+      return res.ok ? "cached" : "miss";
+    } catch (error) {
+      return error.name === "TimeoutError" ? "timeout" : "offline";
+    }
+  }
+  function startCheck(fileId) {
+    answers.delete(fileId);
+    const check = askCache(fileId).then((result) => {
+      answers.set(fileId, result);
+      checks.delete(fileId);
+      return result;
+    });
+    checks.set(fileId, check);
+    if (answers.size > 500) answers.delete(answers.keys().next().value);
+    return check;
+  }
+  function mp3Reason(player) {
+    if (player.encrypted) return ENCRYPTED_REASON;
+    const target = cacheTarget(player.videoMap, player.hostOrder);
+    if (!target) return NO_VIDEO_REASON;
+    const answer = answers.get(target.fileId);
+    if (!answer || answer === "cached") return UNCHECKED_REASON;
+    return MP3_REASONS[answer];
+  }
+  let reasonLabel = null;
+  let revealed = false;
+  function createReasonLabel() {
+    const soundOnly = document.getElementById("qpVideoSoundOnly");
+    if (!soundOnly) return;
+    reasonLabel = document.createElement("div");
+    Object.assign(reasonLabel.style, {
+      position: "absolute",
+      left: "0",
+      right: "0",
+      top: "calc(50% + 45px)",
+      textAlign: "center",
+      fontSize: "18px",
+      opacity: "0.8",
+      zIndex: "-1"
+    });
+    soundOnly.after(reasonLabel);
+  }
+  function showReason() {
+    if (!reasonLabel) return;
+    const player = quizVideoController.getCurrentPlayer();
+    const reason = revealed && player ? mp3Reasons.get(player) : null;
+    reasonLabel.textContent = reason ?? "";
+  }
+  async function setup() {
+    createReasonLabel();
+    const originalNextVideoInfo = quizVideoController.nextVideoInfo;
+    quizVideoController.nextVideoInfo = function(songInfo, ...rest) {
+      const target = isActive() ? songTarget(songInfo) : null;
+      if (target) void startCheck(target.fileId);
+      return originalNextVideoInfo.call(this, songInfo, ...rest);
+    };
+    const originalLoadNextVideo = quizVideoController.loadNextVideo;
+    quizVideoController.loadNextVideo = function() {
+      const target = isActive() ? songTarget(this._nextVideoInfo?.songInfo) : null;
+      const check = target && checks.get(target.fileId);
+      if (!check) return originalLoadNextVideo.call(this);
+      void check.then(() => originalLoadNextVideo.call(this));
+    };
+    const originalChangeToNextPlayer = quizVideoController.changeToNextPlayer;
+    quizVideoController.changeToNextPlayer = function() {
+      originalChangeToNextPlayer.call(this);
+      revealed = false;
+      showReason();
+    };
+    const originalReplayVideo = quizVideoController.replayVideo;
+    quizVideoController.replayVideo = function() {
+      originalReplayVideo.call(this);
+      revealed = true;
+      showReason();
+    };
+    const proto = MoeVideoPlayer.prototype;
+    const originalGetNextVideoId = proto.getNextVideoId;
+    proto.getNextVideoId = function() {
+      const url = pickVideo(this);
+      if (this === quizVideoController.getCurrentPlayer()) showReason();
+      return url;
+    };
+    function pickVideo(player) {
+      mp3Reasons.set(player, null);
+      if (!isActive()) return originalGetNextVideoId.call(player);
+      const target = player.encrypted ? null : cacheTarget(player.videoMap, player.hostOrder);
+      if (target && answers.get(target.fileId) === "cached") {
+        player.host = target.hostKey;
+        player.resolution = target.resolution;
+        return videoCacheUrl(target.fileId);
+      }
+      const mp3Host = player.hostOrder.find(
+        (hostKey) => player.videoMap[hostKey]?.[MP3_RESOLUTION] !== void 0
+      );
+      if (mp3Host === void 0) return originalGetNextVideoId.call(player);
+      player.host = mp3Host;
+      player.resolution = MP3_RESOLUTION;
+      mp3Reasons.set(player, mp3Reason(player));
+      return videoResolver.formatUrl(
+        player.videoMap[mp3Host][MP3_RESOLUTION],
+        player.encrypted
+      );
+    }
+    const originalHandleError = proto.handleError;
+    proto.handleError = function() {
+      if (!this.currentVideoUrl?.startsWith(VIDEO_CACHE_ORIGIN)) {
+        return originalHandleError.call(this);
+      }
+      const target = cacheTarget(this.videoMap, this.hostOrder);
+      if (target) answers.set(target.fileId, "failed");
+      console.warn("[videoCache] Local file failed, playing the mp3");
+      this.startLoading();
+    };
+    registerCommand(
+      "videocache",
+      () => ({
+        shortHelp: "Turn the local video cache on or off",
+        longHelp: `Usage: /videocache [on|off]</br>On: songs in the local cache play the video from your disk, and other songs play the mp3. Off: AMQ plays songs as usual. The change starts with the next song. When the quality setting is mp3, the cache is paused.</br>Current value: ${statusText()}`
+      }),
+      (args) => {
+        const value = args.trim().toLowerCase();
+        if (value === "on" || value === "off") {
+          setDisabled(value === "off");
+        } else if (value) {
+          gameChat.systemMessage("Usage: /videocache [on|off]");
+          return;
+        }
+        gameChat.systemMessage(`Video cache: ${statusText()}`);
+      }
+    );
+  }
+
+  const __vite_glob_0_23 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -3873,7 +4085,7 @@
     );
   }
 
-  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": __vite_glob_0_0,"./answerTimes.ts": __vite_glob_0_1,"./antiAfk.ts": __vite_glob_0_2,"./autoHideVideo.ts": __vite_glob_0_3,"./autoSkip.ts": __vite_glob_0_4,"./autoSubmit.ts": __vite_glob_0_5,"./autoVoter.ts": __vite_glob_0_6,"./betterDropdown.ts": __vite_glob_0_7,"./chatTimestamps.ts": __vite_glob_0_8,"./commands.ts": __vite_glob_0_9,"./customCommands.ts": __vite_glob_0_10,"./customCss.ts": __vite_glob_0_11,"./easyExtraInfo.ts": __vite_glob_0_12,"./easySettings.ts": __vite_glob_0_13,"./fixHints.ts": __vite_glob_0_14,"./forceVideoHost.ts": __vite_glob_0_15,"./jamVoteResultAnnouncer.ts": __vite_glob_0_16,"./keyboardShortcuts.ts": __vite_glob_0_17,"./onlineNotifications.ts": __vite_glob_0_18,"./playerStats.ts": __vite_glob_0_19,"./showExtraSongInfo.ts": __vite_glob_0_20,"./songHistory.ts": __vite_glob_0_21,"./typingSpeed.ts": __vite_glob_0_22
+  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": __vite_glob_0_0,"./answerTimes.ts": __vite_glob_0_1,"./antiAfk.ts": __vite_glob_0_2,"./autoHideVideo.ts": __vite_glob_0_3,"./autoSkip.ts": __vite_glob_0_4,"./autoSubmit.ts": __vite_glob_0_5,"./autoVoter.ts": __vite_glob_0_6,"./betterDropdown.ts": __vite_glob_0_7,"./chatTimestamps.ts": __vite_glob_0_8,"./commands.ts": __vite_glob_0_9,"./customCommands.ts": __vite_glob_0_10,"./customCss.ts": __vite_glob_0_11,"./easyExtraInfo.ts": __vite_glob_0_12,"./easySettings.ts": __vite_glob_0_13,"./fixHints.ts": __vite_glob_0_14,"./forceVideoHost.ts": __vite_glob_0_15,"./jamVoteResultAnnouncer.ts": __vite_glob_0_16,"./keyboardShortcuts.ts": __vite_glob_0_17,"./onlineNotifications.ts": __vite_glob_0_18,"./playerStats.ts": __vite_glob_0_19,"./showExtraSongInfo.ts": __vite_glob_0_20,"./songHistory.ts": __vite_glob_0_21,"./typingSpeed.ts": __vite_glob_0_22,"./videoCache.ts": __vite_glob_0_23
 
   });
   async function main() {

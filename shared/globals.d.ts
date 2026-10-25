@@ -336,9 +336,50 @@ declare global {
     [key: string]: any
   }
 
+  /**
+   * File IDs by host key and resolution, such as
+   * `{ catbox: { 720: 'abc123.webm', 480: '…', 0: 'abc123.mp3' } }`.
+   * The host key comes from `options.getHostPriorityList()`. It is not
+   * the EU/NA1/NA2 endpoint, which `videoResolver` picks separately.
+   */
+  type VideoMap = Record<string, Record<number, string> | undefined>
+
+  /** `videoInfo` of `quiz next video info`. */
+  interface SongVideoInfo {
+    id: number
+    videoMap: VideoMap
+    encrypted?: boolean
+    [key: string]: any
+  }
+
   const quizVideoController: {
     getCurrentVideoStartPoint: () => number | null
     getCurrentVideoLength: () => number | null
+    nextVideoInfo: (songInfo: SongVideoInfo, ...rest: any[]) => void
+    loadNextVideo: () => void
+    _nextVideoInfo: { songInfo: SongVideoInfo; [key: string]: any } | null
+    /** Makes the buffered player the current one, before it plays. */
+    changeToNextPlayer: () => void
+    getCurrentPlayer: () => MoeVideoPlayer | undefined
+    /** Called once per song, when `answer results` starts the reveal. */
+    replayVideo: () => void
+  }
+
+  /** `targetResolution` is 0 when the quality setting is mp3. */
+  const qualityController: {
+    targetResolution: number
+  }
+
+  class MoeVideoPlayer {
+    videoMap: VideoMap
+    encrypted: boolean
+    host: string
+    resolution: number
+    hostOrder: string[]
+    currentVideoUrl: string | null
+    getNextVideoId(): string
+    handleError(): void
+    startLoading(): void
   }
 
   /** The fields of `lobby.settings` that scripts read are typed as present. */
@@ -385,6 +426,9 @@ declare global {
   /** AMQ's settings object. Do not confuse it with a script's own `options`. */
   const options: {
     useRomajiNames: boolean
+    getHostPriorityList: () => string[]
+    /** List statuses ticked under Settings → Anime List → Included Entries. */
+    getIncludedListTypesMap: () => Record<string, boolean>
     [key: string]: any
   }
 
@@ -464,6 +508,7 @@ declare global {
     connectionTesterMap: Record<string, any>
     updateActiveHost: () => boolean
     testHost: (host: string) => void
+    formatUrl: (fileId: string, encrypted: boolean) => string
   }
 
   const videoConnectionStatus: {
