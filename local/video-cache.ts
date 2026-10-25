@@ -4,6 +4,7 @@
  *
  *   npm run video-cache
  *   npm run video-cache -- --limit-kbps 0     # no download speed limit
+ *   npm run video-cache -- --host NA1         # download everything from NA1
  *
  * The userscript `scripts/videoCache.ts` asks for each song's file (720p,
  * else 480p):
@@ -51,22 +52,30 @@ const ALLOWED_ORIGIN = 'https://animemusicquiz.com'
 const { values: flags } = parseArgs({
   options: {
     'limit-kbps': { type: 'string', default: '500' },
+    host: { type: 'string' },
     help: { type: 'boolean', short: 'h', default: false },
   },
 })
 
 if (flags.help) {
-  console.log(`Usage: npm run video-cache [-- --limit-kbps <n>]
+  console.log(`Usage: npm run video-cache [-- options]
 
 Serves ${videoCacheDir()} at http://127.0.0.1:${VIDEO_CACHE_PORT}.
 
-  --limit-kbps <n>  download speed limit in KB/s (default 500, 0 = none)`)
+  --limit-kbps <n>  download speed limit in KB/s (default 500, 0 = none)
+  --host <name>     download every file from this AMQ host: EU, NA1 or NA2
+                    (default: the host each request names)`)
   process.exit(0)
 }
 
 const limitKbps = Number(flags['limit-kbps'])
 if (!Number.isFinite(limitKbps) || limitKbps < 0) {
   console.error('--limit-kbps must be a number, 0 or more.')
+  process.exit(1)
+}
+
+if (flags.host !== undefined && !(flags.host in VIDEO_HOSTS)) {
+  console.error(`Unknown host "${flags.host}". Use EU, NA1 or NA2.`)
   process.exit(1)
 }
 
@@ -144,7 +153,7 @@ async function drain() {
     const fromBulk = !missQueue.length
     const { fileId, host } = fromBulk ? bulkQueue[0] : missQueue.shift()!
     try {
-      await download(fileId, VIDEO_HOSTS[host] + fileId)
+      await download(fileId, VIDEO_HOSTS[flags.host ?? host] + fileId)
     } catch (error) {
       console.error(`download failed: ${fileId}:`, (error as Error).message)
     } finally {
@@ -329,8 +338,10 @@ server.on('error', (error) => {
 
 server.listen(VIDEO_CACHE_PORT, '127.0.0.1', () => {
   const limit = limitKbps ? `${limitKbps} KB/s` : 'no limit'
+  const from = flags.host ? `, all from ${flags.host}` : ''
   console.log(
-    `Serving ${dir} at http://127.0.0.1:${VIDEO_CACHE_PORT} (downloads: ${limit})`
+    `Serving ${dir} at http://127.0.0.1:${VIDEO_CACHE_PORT} ` +
+      `(downloads: ${limit}${from})`
   )
   if (bulkQueue.length) {
     console.log(`${bulkQueue.length} files waiting in the bulk queue`)

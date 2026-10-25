@@ -129,9 +129,10 @@ Videos are kept in `~/amq-cache`. To use another folder, set
 `AMQ_VIDEO_CACHE_DIR` in `.env`. Downloads run one at a time. If the server
 stops, it continues the queued downloads the next time it starts.
 
-| Option             | What it does                                                    |
-| ------------------ | --------------------------------------------------------------- |
-| `--limit-kbps <n>` | Download speed limit in KB/s. Default: 500. `0` means no limit. |
+| Option             | What it does                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `--limit-kbps <n>` | Download speed limit in KB/s. Default: 500. `0` means no limit.                                                        |
+| `--host <name>`    | Download every file from this AMQ host: `EU`, `NA1` or `NA2`. Default: the host the game or `queue-list-videos` names. |
 
 ### clean-video-cache
 
