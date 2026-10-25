@@ -276,3 +276,43 @@ export async function request(
     ] as const
   )
 }
+
+/**
+ * Stops AMQ from disconnecting a page that stays open without player input.
+ *
+ * `afkKicker.setup()` starts a 30-minute timer during login. Socket commands
+ * do not reset it, so a script that only sends requests is logged off when it
+ * runs out.
+ */
+export async function disableAfkKicker(page: Page) {
+  await page.evaluate(() => {
+    clearTimeout(afkKicker.afkWarningTimeout)
+    afkKicker.setupAfkTimeout = () => {}
+  })
+}
+
+export type SessionEvent =
+  | { kind: 'disconnect' }
+  | { kind: 'reconnect' }
+  /** `reason` is a locale key, such as `…kicked_by_server.server_restart`. */
+  | { kind: 'logoff'; reason: string }
+
+/**
+ * Passes socket disconnects, reconnects and `force logoff` to Node.
+ * `name` is the page function Playwright exposes; one per page.
+ */
+export async function watchSessionEvents(
+  page: Page,
+  onEvent: (event: SessionEvent) => void,
+  name = '__sessionEvents'
+) {
+  await page.exposeFunction(name, onEvent)
+  await page.evaluate((name) => {
+    const send = (event: SessionEvent) => (window as any)[name](event)
+    new Listener('force logoff', (data: any) =>
+      send({ kind: 'logoff', reason: String(data?.reasonKey ?? '') })
+    ).bindListener()
+    socket._socket.on('disconnect', () => send({ kind: 'disconnect' }))
+    socket._socket.on('reconnect', () => send({ kind: 'reconnect' }))
+  }, name)
+}

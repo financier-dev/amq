@@ -6,6 +6,11 @@
  */
 
 import type { Page } from 'playwright'
+import {
+  disableAfkKicker,
+  watchSessionEvents,
+  type SessionEvent,
+} from '@shared/node/session'
 import { applyRoomChange, toRoom, type Room } from '@shared/rooms'
 
 /** How long the room scripts wait for the game page to load. */
@@ -14,23 +19,17 @@ export const LOAD_TIMEOUT_MS = 5 * 60_000
 export type FeedEvent =
   | { kind: 'rooms'; data: NewRoomsData }
   | { kind: 'change'; data: RoomChangeData }
-  | { kind: 'disconnect' }
-  | { kind: 'reconnect' }
-  /** `reason` is a locale key, such as `…kicked_by_server.server_restart`. */
-  | { kind: 'logoff'; reason: string }
+  | SessionEvent
 
 export async function openRoomFeed(
   page: Page,
   onEvent: (event: FeedEvent) => void
 ) {
+  await disableAfkKicker(page)
+  await watchSessionEvents(page, onEvent)
   await page.exposeFunction('__roomFeed', onEvent)
   await page.evaluate(() => {
     const send = (event: FeedEvent) => (window as any).__roomFeed(event)
-
-    // `afkKicker.setup()` started a 30-minute timer during login. When it
-    // runs out, the page disconnects itself.
-    clearTimeout(afkKicker.afkWarningTimeout)
-    afkKicker.setupAfkTimeout = () => {}
 
     new Listener('New Rooms', (data: NewRoomsData) =>
       send({ kind: 'rooms', data })
@@ -38,11 +37,6 @@ export async function openRoomFeed(
     new Listener('Room Change', (data: RoomChangeData) =>
       send({ kind: 'change', data })
     ).bindListener()
-    new Listener('force logoff', (data: any) =>
-      send({ kind: 'logoff', reason: String(data?.reasonKey ?? '') })
-    ).bindListener()
-    socket._socket.on('disconnect', () => send({ kind: 'disconnect' }))
-    socket._socket.on('reconnect', () => send({ kind: 'reconnect' }))
 
     // AMQ's own view sends `get rooms`. The server then keeps sending
     // updates until the view closes.
