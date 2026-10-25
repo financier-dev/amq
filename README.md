@@ -1,6 +1,15 @@
 # amq
 
-Userscripts and tools for [Anime Music Quiz](https://animemusicquiz.com).
+These are all the scripts I use for
+[Anime Music Quiz](https://animemusicquiz.com), both in the game and offline
+on my computer. I made them myself. Some ideas came from other players'
+scripts, and recently Claude has done most of the implementation.
+
+The scripts are personalized for how I play. I did not make them for other
+people, but you can use them as a base for your own scripts.
+
+## Projects
+
 Everything is TypeScript. Vite builds the userscripts into plain `.user.js`
 files under [`dist/`](dist).
 
@@ -14,8 +23,10 @@ The repository has three projects:
   changes, song history, player stats, styles and more. See
   [`scripts/README.md`](scripts/README.md).
 - **[`local/`](local)** holds scripts that run on your computer, not in the
-  browser. `npm run anime-titles` prints the Japanese titles of the anime on
-  your list. See [`local/README.md`](local/README.md).
+  browser: a local cache of song videos that the game plays from your disk,
+  a room watcher that alerts you when a "no dd" room opens, a list of open
+  rooms, and the Japanese titles of the anime on your list. See
+  [`local/README.md`](local/README.md).
 
 ## Install
 
@@ -33,7 +44,6 @@ npm run check            # svelte-check
 npm run lint             # eslint
 npm run format           # prettier
 npm test                 # build, then render in headless Chromium and assert
-npm run anime-titles     # print the anime titles on your list
 ```
 
 One output file is one **target**. [`build/targets.ts`](build/targets.ts)
