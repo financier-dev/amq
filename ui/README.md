@@ -5,8 +5,13 @@ A userscript that replaces two screens of
 
 - **Room browser.** The grid of room tiles becomes a sortable list. The
   filters and the join, spectate and host actions work as before.
+  
+  <img width="1702" height="1277" alt="image" src="https://github.com/user-attachments/assets/40aad7c1-d2bf-4964-869d-d21d0b2b0e84" />
+
 - **Quiz builder.** The custom quiz creator becomes an editor with two panes:
   the song library on the left, and the quiz as one grouped list on the right.
+  
+  <img width="1701" height="1283" alt="image" src="https://github.com/user-attachments/assets/f205b14c-6275-4863-8253-4ec51b917a78" />
 
 The rest of the game does not change, and other AMQ userscripts continue to
 work.
