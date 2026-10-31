@@ -111,6 +111,31 @@ function withoutPassword(settings: any): Record<string, unknown> {
   return copy
 }
 
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+/** `startPoint` and `videoLength` are what AMQ's Song History shows. */
+function videoRecord(): PlayedSong['video'] {
+  const player = quizVideoController.getCurrentPlayer()
+  return {
+    // AMQ keeps the sample point divided by 100. Round off the float error.
+    samplePoint: player
+      ? finiteOrNull(Math.round(player.startPercent * 100 * 1e6) / 1e6)
+      : null,
+    startPoint: finiteOrNull(quizVideoController.getCurrentVideoStartPoint()),
+    videoLength: finiteOrNull(quizVideoController.getCurrentVideoLength()),
+    playbackSpeed: finiteOrNull(player?.playbackRate),
+    fullSongRange: Boolean(quiz.fullSongRange),
+    forcedSamplePoint: Boolean(player?.forcedSamplePoint),
+    host: player?.host ?? null,
+    resolution: player?.resolution ?? null,
+    guessMode: quizVideoController.getCurrentVideoGuessMode() ?? null,
+    guessTime: round.guessTime ?? finiteOrNull(player?.playLength),
+    extraGuessTime: round.extraGuessTime,
+  }
+}
+
 function buildRecord(result: any): PlayedSong | null {
   if (!game) return null
   const spectator = Boolean(quiz.isSpectator)
@@ -164,15 +189,7 @@ function buildRecord(result: any): PlayedSong | null {
       settings: withoutPassword(quiz.quizSettings),
     },
     song: songInfo,
-    video: {
-      startPoint: quizVideoController.getCurrentVideoStartPoint(),
-      length: quizVideoController.getCurrentVideoLength(),
-      host: quizVideoController.getCurrentPlayer()?.host ?? null,
-      resolution: quizVideoController.getCurrentPlayer()?.resolution ?? null,
-      guessMode: quizVideoController.getCurrentVideoGuessMode() ?? null,
-      guessTime: round.guessTime,
-      extraGuessTime: round.extraGuessTime,
-    },
+    video: videoRecord(),
     players,
     result: rest,
   }

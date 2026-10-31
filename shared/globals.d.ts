@@ -382,6 +382,14 @@ declare global {
     resolution: number
     hostOrder: string[]
     currentVideoUrl: string | null
+    /** The sample point of `quiz next video info` (0 to 100), divided by 100. */
+    startPercent: number
+    /** The second where the clip starts in the file. Null until it loads. */
+    startPoint: number | null
+    /** The guess time, in seconds. */
+    playLength: number
+    playbackRate: number
+    forcedSamplePoint: boolean | null | undefined
     getNextVideoId(): string
     handleError(): void
     startLoading(): void

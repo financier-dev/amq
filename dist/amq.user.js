@@ -2985,6 +2985,26 @@
     delete copy.password;
     return copy;
   }
+  function finiteOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function videoRecord() {
+    const player = quizVideoController.getCurrentPlayer();
+    return {
+      // AMQ keeps the sample point divided by 100. Round off the float error.
+      samplePoint: player ? finiteOrNull(Math.round(player.startPercent * 100 * 1e6) / 1e6) : null,
+      startPoint: finiteOrNull(quizVideoController.getCurrentVideoStartPoint()),
+      videoLength: finiteOrNull(quizVideoController.getCurrentVideoLength()),
+      playbackSpeed: finiteOrNull(player?.playbackRate),
+      fullSongRange: Boolean(quiz.fullSongRange),
+      forcedSamplePoint: Boolean(player?.forcedSamplePoint),
+      host: player?.host ?? null,
+      resolution: player?.resolution ?? null,
+      guessMode: quizVideoController.getCurrentVideoGuessMode() ?? null,
+      guessTime: round.guessTime ?? finiteOrNull(player?.playLength),
+      extraGuessTime: round.extraGuessTime
+    };
+  }
   function buildRecord(result) {
     if (!game) return null;
     const spectator = Boolean(quiz.isSpectator);
@@ -3035,15 +3055,7 @@
         settings: withoutPassword(quiz.quizSettings)
       },
       song: songInfo,
-      video: {
-        startPoint: quizVideoController.getCurrentVideoStartPoint(),
-        length: quizVideoController.getCurrentVideoLength(),
-        host: quizVideoController.getCurrentPlayer()?.host ?? null,
-        resolution: quizVideoController.getCurrentPlayer()?.resolution ?? null,
-        guessMode: quizVideoController.getCurrentVideoGuessMode() ?? null,
-        guessTime: round.guessTime,
-        extraGuessTime: round.extraGuessTime
-      },
+      video: videoRecord(),
       players,
       result: rest
     };

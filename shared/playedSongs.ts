@@ -66,9 +66,27 @@ export interface PlayedSong {
   }
   /** `songInfo` of `answer results`, as AMQ sends it. */
   song: Record<string, unknown> & { annSongId?: number; annId?: number }
+  /**
+   * The sample, as AMQ's Song History shows it: `startPoint/videoLength`.
+   * The game sends `samplePoint`, and the player turns it into `startPoint`:
+   *
+   *   startPoint = floor((videoLength - buffer) * samplePoint / 100)
+   *
+   * `buffer` is `(guessTime + 10) * playbackSpeed`, or
+   * `guessTime * playbackSpeed` with full song range or a forced sample point.
+   * With a forced sample point, AMQ uses `videoLength * samplePoint / 100`,
+   * at most `videoLength - buffer`.
+   */
   video: {
+    /** The sample point in percent (0 to 100), as AMQ sends it. */
+    samplePoint: number | null
+    /** The second of the file where the song starts to play. */
     startPoint: number | null
-    length: number | null
+    /** The length of the file, in seconds. */
+    videoLength: number | null
+    playbackSpeed: number | null
+    fullSongRange: boolean
+    forcedSamplePoint: boolean
     host: string | null
     resolution: number | null
     guessMode: unknown
