@@ -727,6 +727,12 @@ declare global {
       annSongId: number
     ) => LibraryAnimeSongEntry | undefined
     getAnnIdFromAnnSongId: (annSongId: number) => number | undefined
+    /**
+     * Every anime on the account's list, by annId, with its list status:
+     * `options.LIST_TYPE_ID_MAP`. It ignores the Included Entries setting,
+     * which only sets `watched`.
+     */
+    animeListMapCache: Record<string, number>
     [key: string]: any
   }
 

@@ -174,6 +174,7 @@ still being read.
 ```
 npm run queue-list-videos -- --main-account     # your own list
 npm run queue-list-videos -- --mal <user>       # any MyAnimeList user's list
+npm run queue-list-videos -- --anilist <user>   # any AniList user's list
 ```
 
 AMQ gives the file names one song at a time, so the script sends one request
@@ -182,19 +183,22 @@ that `scan-library` already saved need no request. Each answer is saved in
 `local/.cache/list-videos.json` and in the song database, so a song is asked
 about only once, and a stopped run continues where it stopped.
 
-| Option           | What it does                                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `--main-account` | Log in as your account and use its list and all its custom lists. Changes no setting.                              |
-| `--mal <user>`   | Log in as the test account and set its anime list to this MyAnimeList user. The setting stays on the test account. |
-| `--from-cache`   | Do not log in. Queue the files saved by earlier runs again.                                                        |
-| `--limit <n>`    | Ask about the first `n` new songs only. Use it for a test.                                                         |
-| `--delay-ms <n>` | Wait between requests, in milliseconds. Default: 2000.                                                             |
-| `--host <name>`  | The AMQ video host to download from: `EU`, `NA1` or `NA2`. Default: `NA2`.                                         |
-| `--headed`       | Show the browser window.                                                                                           |
+| Option             | What it does                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `--main-account`   | Log in as your account and use its list and all its custom lists. Changes no setting.                              |
+| `--mal <user>`     | Log in as the test account and set its anime list to this MyAnimeList user. The setting stays on the test account. |
+| `--anilist <user>` | The same as `--mal`, for an AniList user.                                                                          |
+| `--from-cache`     | Do not log in. Queue the files saved by earlier runs again.                                                        |
+| `--limit <n>`      | Ask about the first `n` new songs only. Use it for a test.                                                         |
+| `--delay-ms <n>`   | Wait between requests, in milliseconds. Default: 2000.                                                             |
+| `--host <name>`    | The AMQ video host to download from: `EU`, `NA1` or `NA2`. Default: `NA2`.                                         |
+| `--headed`         | Show the browser window.                                                                                           |
 
-Use exactly one of `--main-account`, `--mal` and `--from-cache`. The list
-follows the account's Settings → Anime List: only the ticked Included Entries.
-With `--mal`, the run disconnects `watch-rooms`, which uses the same account.
+Use exactly one of `--main-account`, `--mal`, `--anilist` and `--from-cache`. The script
+takes every anime on the list, whatever its status: Watching, Completed,
+On-Hold, Dropped and Plan to Watch. It ignores the Included Entries ticked in
+Settings → Anime List.
+With `--mal` or `--anilist`, the run disconnects `watch-rooms`, which uses the same account.
 
 ## Song database
 

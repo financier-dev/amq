@@ -1,19 +1,21 @@
 /*
- * Queues the video of every song on a MyAnimeList user's list for download
+ * Queues the video of every song on a MyAnimeList or AniList user's list for download
  * by `npm run video-cache`: the 720p file, else the 480p one.
  *
  *   npm run queue-list-videos -- --mal <user>            # all songs
  *   npm run queue-list-videos -- --mal <user> --limit 5  # first 5, as a test
+ *   npm run queue-list-videos -- --anilist <user>        # an AniList user
  *   npm run queue-list-videos -- --main-account          # your own list
  *   npm run queue-list-videos -- --from-cache            # queue again, no login
  *
- * With `--mal`, it logs in with `AMQ_TEST_ACCOUNT_*` and sets that account's
- * anime list to the MAL user. That setting stays on the test account. With
+ * With `--mal` or `--anilist`, it logs in with `AMQ_TEST_ACCOUNT_*` and sets
+ * that account's anime list to the user. That setting stays on the test account. With
  * `--main-account`, it logs in with `AMQ_ACCOUNT_*` and changes no setting.
  * This takes over the game if you are playing.
  *
- * The list follows the account's own Settings → Anime List: the Included
- * Entries ticked there. It also adds every song of every custom list on the
+ * It takes every anime on the list, whatever its status (Watching,
+ * Completed, On-Hold, Dropped, Plan to Watch). It ignores the Included
+ * Entries ticked in Settings → Anime List. It also adds every song of every custom list on the
  * account: all uploaded songs of each anime entry, and each song entry.
  *
  * AMQ gives file names one song at a time. A song whose files are already in
@@ -66,6 +68,7 @@ const LIST_TYPE_NAMES: Record<string, string> = {
 const { values: flags } = parseArgs({
   options: {
     mal: { type: 'string' },
+    anilist: { type: 'string' },
     'main-account': { type: 'boolean', default: false },
     'from-cache': { type: 'boolean', default: false },
     limit: { type: 'string' },
@@ -76,13 +79,33 @@ const { values: flags } = parseArgs({
   },
 })
 
-const modes = [flags.mal, flags['main-account'], flags['from-cache']]
+interface ListUser {
+  /** The `listType` of AMQ's `update anime list`. */
+  listType: 'MAL' | 'ANILIST'
+  site: string
+  name: string
+}
+
+const listUser: ListUser | undefined = flags.mal
+  ? { listType: 'MAL', site: 'MAL', name: flags.mal }
+  : flags.anilist
+    ? { listType: 'ANILIST', site: 'AniList', name: flags.anilist }
+    : undefined
+
+const modes = [
+  flags.mal,
+  flags.anilist,
+  flags['main-account'],
+  flags['from-cache'],
+]
 if (flags.help || modes.filter(Boolean).length !== 1) {
   console.log(`Usage: npm run queue-list-videos -- --mal <user> [options]
+       npm run queue-list-videos -- --anilist <user> [options]
        npm run queue-list-videos -- --main-account [options]
        npm run queue-list-videos -- --from-cache
 
-  --mal <user>    log in as the test account and use this MyAnimeList user
+  --mal <user>      log in as the test account and use this MyAnimeList user
+  --anilist <user>  log in as the test account and use this AniList user
   --main-account  log in as AMQ_ACCOUNT and use its own list and custom lists
   --limit <n>     only the first n songs that have no answer yet
   --delay-ms <n>  wait between file name requests (default 2000)
@@ -141,19 +164,21 @@ function saveManifest(manifest: Manifest) {
 }
 
 interface ListedSongs {
-  includedTypes: string[]
-  animeCount: number
+  /** The number of anime on the list, by list status. */
+  statusCounts: Record<string, number>
   annSongIds: number[]
   customLists: { name: string; anime: number; songs: number }[]
 }
 
-async function setAnimeList(page: Page, mal: string) {
-  console.error(`Setting the test account's anime list to MAL user ${mal}`)
+async function setAnimeList(page: Page, user: ListUser) {
+  console.error(
+    `Setting the test account's anime list to ${user.site} user ${user.name}`
+  )
   const result = await request(page, {
     type: 'library',
     command: 'update anime list',
     reply: 'anime list update result',
-    data: { newUsername: mal, listType: 'MAL' },
+    data: { newUsername: user.name, listType: user.listType },
     timeout: 120_000,
   })
   if (!result?.success) {
@@ -162,8 +187,8 @@ async function setAnimeList(page: Page, mal: string) {
 }
 
 /**
- * The uploaded songs of every anime the list marks as watched, and of every
- * custom list.
+ * The uploaded songs of every anime on the list, whatever its status, and of
+ * every custom list.
  */
 async function listedSongs(page: Page): Promise<ListedSongs> {
   return page.evaluate(
@@ -176,15 +201,18 @@ async function listedSongs(page: Page): Promise<ListedSongs> {
         libraryCacheHandler.getCache(
           (cache: Record<string, LibraryAnimeEntry>) => {
             clearTimeout(timer)
-            const included = options.getIncludedListTypesMap()
             const uploadedSongs = (anime: LibraryAnimeEntry) =>
               [...anime.songs.OP, ...anime.songs.ED, ...anime.songs.INS]
                 .filter((song) => song.uploaded)
                 .map((song) => song.annSongId)
-            const watched = Object.values(cache).filter(
-              (anime) => anime.watched
-            )
-            const ids = new Set(watched.flatMap(uploadedSongs))
+            const statusCounts: Record<string, number> = {}
+            const ids = new Set<number>()
+            const statuses = libraryCacheHandler.animeListMapCache ?? {}
+            for (const [annId, status] of Object.entries(statuses)) {
+              statusCounts[status] = (statusCounts[status] ?? 0) + 1
+              const anime = cache[annId]
+              if (anime) uploadedSongs(anime).forEach((id) => ids.add(id))
+            }
             const lists = [...customListHandler.customListMap.values()]
             for (const list of lists) {
               for (const annId of list.animeMap.keys()) {
@@ -198,10 +226,7 @@ async function listedSongs(page: Page): Promise<ListedSongs> {
               }
             }
             resolve({
-              includedTypes: Object.keys(included).filter(
-                (key) => included[key]
-              ),
-              animeCount: watched.length,
+              statusCounts,
               annSongIds: [...ids],
               customLists: lists.map((list) => ({
                 name: list.name,
@@ -216,23 +241,25 @@ async function listedSongs(page: Page): Promise<ListedSongs> {
   )
 }
 
-/** Uses the test account with `mal`, else the main account as it is. */
-async function collect(mal: string | undefined): Promise<Manifest> {
+/** Uses the test account with `user`'s list, else the main account as it is. */
+async function collect(user: ListUser | undefined): Promise<Manifest> {
   // File IDs do not depend on the list, so answers from any run are kept.
   const manifest = readManifest()
 
   const db = await openSongDb()
   const { browser, page } = await openSession({
     headed: flags.headed,
-    accounts: [mal ? 'AMQ_TEST_ACCOUNT' : 'AMQ_ACCOUNT'],
+    accounts: [user ? 'AMQ_TEST_ACCOUNT' : 'AMQ_ACCOUNT'],
   })
 
   try {
     const check = await guardSession(page)
-    if (mal) await setAnimeList(page, mal)
+    if (user) await setAnimeList(page, user)
     const listed = await listedSongs(page)
-    const included = listed.includedTypes
-      .map((type) => LIST_TYPE_NAMES[type] ?? type)
+    const counts = Object.entries(listed.statusCounts)
+    const animeCount = counts.reduce((sum, [, count]) => sum + count, 0)
+    const byStatus = counts
+      .map(([type, count]) => `${LIST_TYPE_NAMES[type] ?? type} ${count}`)
       .join(', ')
     for (const list of listed.customLists) {
       console.error(
@@ -240,15 +267,15 @@ async function collect(mal: string | undefined): Promise<Manifest> {
       )
     }
     console.error(
-      `${listed.animeCount} anime on the list (included entries: ` +
-        `${included || 'none'}), ${listed.annSongIds.length} songs in all`
+      `${animeCount} anime on the list (${byStatus || 'none'}), ` +
+        `${listed.annSongIds.length} songs in all`
     )
 
+    // The song database comes first: `scan-library` keeps its files up to
+    // date, and the manifest can still have a file AMQ replaced.
     const known = await db.songs
       .find({
-        annSongId: {
-          $in: listed.annSongIds.filter((id) => !(id in manifest.songs)),
-        },
+        annSongId: { $in: listed.annSongIds },
         files: { $exists: true },
       })
       .toArray()
@@ -349,10 +376,12 @@ async function queue(manifest: Manifest) {
 if (flags['from-cache']) {
   const manifest = readManifest()
   if (!Object.keys(manifest.songs).length) {
-    console.error(`Nothing saved yet in ${MANIFEST}. Run with --mal first.`)
+    console.error(
+      `Nothing saved yet in ${MANIFEST}. Run with --mal or --anilist first.`
+    )
     process.exit(1)
   }
   await queue(manifest)
 } else {
-  await queue(await collect(flags.mal))
+  await queue(await collect(listUser))
 }
