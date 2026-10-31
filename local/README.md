@@ -127,6 +127,14 @@ quality setting is mp3.
 The first time, Brave asks if animemusicquiz.com can access localhost. Allow
 it.
 
+The server also saves each song you play in the `played-songs` collection,
+which `scripts/playedSongs.ts` sends at each reveal. One document has the
+room settings (without the password), the full song information, and for
+each player: name, level, team, answer, answer time in seconds, hints and
+result. Songs of games you only watch are saved too, with
+`self.spectator: true`. When the server is not running, the game keeps up to
+100 songs and sends them when the server runs again.
+
 Videos are kept in `~/amq-cache`. To use another folder, set
 `AMQ_VIDEO_CACHE_DIR` in `.env`. Downloads run one at a time. If the server
 stops, it continues the queued downloads the next time it starts.

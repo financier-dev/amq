@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { MongoClient, type Collection, type ObjectId } from 'mongodb'
 import { envValue } from '@shared/node/env'
+import type { PlayedSong } from '@shared/playedSongs'
 import {
   CACHED_RESOLUTIONS,
   type SongInfo,
@@ -67,6 +68,16 @@ function songDbUrl(): string {
   )
 }
 
+/** A played song as `savePlayedSong` saves it, keyed by `recordId`. */
+export type PlayedSongDoc = Omit<
+  PlayedSong,
+  'recordId' | 'playedAt' | 'songStartedAt'
+> & {
+  _id: string
+  playedAt: Date
+  songStartedAt: Date | null
+}
+
 interface MetaDoc {
   _id: string
   value: unknown
@@ -77,6 +88,8 @@ export interface SongDb {
   songs: Collection<SongDoc>
   /** Values the scripts keep between runs, by name. */
   meta: Collection<MetaDoc>
+  /** One document for each song of each game, by `scripts/playedSongs.ts`. */
+  playedSongs: Collection<PlayedSongDoc>
 }
 
 export async function openSongDb(): Promise<SongDb> {
@@ -100,7 +113,46 @@ export async function openSongDb(): Promise<SongDb> {
   await songs.createIndex({ webmPath: 1 })
   await songs.createIndex({ anime: 1, name: 1, type: 1, typeNumber: 1 })
   const meta = client.db('amq').collection<MetaDoc>('meta')
-  return { client, songs, meta }
+  const playedSongs = client.db('amq').collection<PlayedSongDoc>('played-songs')
+  await playedSongs.createIndex({ playedAt: -1 })
+  await playedSongs.createIndex({ gameKey: 1, songNumber: 1 })
+  await playedSongs.createIndex({ 'song.annSongId': 1 })
+  await playedSongs.createIndex({ 'players.name': 1 })
+  return { client, songs, meta, playedSongs }
+}
+
+/**
+ * Checks the body of `POST /played-song` and saves it. A record that is
+ * already saved does not change. Returns null when the body is not a record.
+ */
+export async function savePlayedSong(
+  playedSongs: Collection<PlayedSongDoc>,
+  body: any
+): Promise<'added' | 'unchanged' | null> {
+  const playedAt = new Date(body?.playedAt)
+  const valid =
+    typeof body?.recordId === 'string' &&
+    typeof body.gameKey === 'string' &&
+    !Number.isNaN(playedAt.getTime()) &&
+    typeof body.song === 'object' &&
+    body.song !== null &&
+    Array.isArray(body.players) &&
+    typeof body.room?.settings === 'object'
+  if (!valid) return null
+  const { recordId, songStartedAt, ...record } = body as PlayedSong
+  delete (record.room.settings as { password?: unknown }).password
+  const result = await playedSongs.updateOne(
+    { _id: recordId },
+    {
+      $setOnInsert: {
+        ...record,
+        playedAt,
+        songStartedAt: songStartedAt ? new Date(songStartedAt) : null,
+      },
+    },
+    { upsert: true }
+  )
+  return result.upsertedCount ? 'added' : 'unchanged'
 }
 
 /** The master list ID of the last completed library check. */

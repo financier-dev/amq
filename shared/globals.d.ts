@@ -317,6 +317,10 @@ declare global {
         isSelf: boolean
         teamNumber: number | null
         _name: string
+        name: string
+        /** The level when the game started. */
+        level: number
+        host: boolean
         avatarSlot: { lifeCounterController: { currentLives: number } }
       }
     >
@@ -355,6 +359,7 @@ declare global {
   const quizVideoController: {
     getCurrentVideoStartPoint: () => number | null
     getCurrentVideoLength: () => number | null
+    getCurrentVideoGuessMode: () => unknown
     nextVideoInfo: (songInfo: SongVideoInfo, ...rest: any[]) => void
     loadNextVideo: () => void
     _nextVideoInfo: { songInfo: SongVideoInfo; [key: string]: any } | null

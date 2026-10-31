@@ -30,6 +30,11 @@
  *   POST /song  { fileId, song }  the song a game revealed, with its
  *                                 difficulty and alt answers
  *
+ * The userscript `scripts/playedSongs.ts` sends a record of each song of
+ * each game, which the server saves in `amq.played-songs`:
+ *
+ *   POST /played-song  a `PlayedSong` (`shared/playedSongs.ts`)
+ *
  * A revealed song whose file is cached is registered at once. When neither
  * source knows a file, the server logs it. `npm run scan-library` registers
  * it when it saves the files of a song that uses it.
@@ -60,7 +65,8 @@ import {
   VIDEO_HOSTS,
   isCacheableFileId,
 } from '@shared/videoCache'
-import { type SongDb, openSongDb, saveSong } from './lib/songDb'
+import { PLAYED_SONG_PATH } from '@shared/playedSongs'
+import { type SongDb, openSongDb, savePlayedSong, saveSong } from './lib/songDb'
 import { videoCacheDir } from './lib/videoCacheDir'
 
 const ALLOWED_ORIGIN = 'https://animemusicquiz.com'
@@ -377,6 +383,33 @@ async function handleSong(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handlePlayedSong(req: IncomingMessage, res: ServerResponse) {
+  if (!req.headers['content-type']?.startsWith('application/json')) {
+    return send(res, 415)
+  }
+  let body: unknown
+  try {
+    body = JSON.parse(await readBody(req))
+  } catch {
+    return send(res, 400)
+  }
+  let result: Awaited<ReturnType<typeof savePlayedSong>>
+  try {
+    result = await savePlayedSong(db.playedSongs, body)
+  } catch (error) {
+    console.error('could not save a played song:', (error as Error).message)
+    return send(res, 500)
+  }
+  if (!result) return send(res, 400)
+  send(res, 204)
+  if (result === 'added') {
+    const { song, songNumber } = body as any
+    console.log(
+      `played #${songNumber ?? '?'}: ${song.animeNames?.romaji} "${song.songName}"`
+    )
+  }
+}
+
 /** Sleeps until `bytes` is within the speed limit for the time elapsed. */
 async function throttle(bytes: number, started: number) {
   if (!limitKbps) return
@@ -449,6 +482,10 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/song') {
     if (req.method !== 'POST') return send(res, 405)
     return handleSong(req, res)
+  }
+  if (url.pathname === PLAYED_SONG_PATH) {
+    if (req.method !== 'POST') return send(res, 405)
+    return handlePlayedSong(req, res)
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405)
 
