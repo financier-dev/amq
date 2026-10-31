@@ -17,7 +17,8 @@
  *
  * Then it asks AMQ for the files of each uploaded song that has none, which
  * includes the new songs. Each answer is saved at once, so a run that stops
- * can go on later. The library does not show when AMQ replaces a video, so a
+ * can go on later. A song whose file is already cached gets it as its
+ * `webmPath`. The library does not show when AMQ replaces a video, so a
  * replaced file shows only with `--refresh`.
  *
  * It logs in with `AMQ_TEST_ACCOUNT_*` and only reads. It disconnects

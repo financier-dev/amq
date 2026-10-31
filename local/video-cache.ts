@@ -31,8 +31,8 @@
  *                                 difficulty and alt answers
  *
  * A revealed song whose file is cached is registered at once. When neither
- * source knows a file, the server logs it, and `npm run register-songs`
- * registers it after a scan.
+ * source knows a file, the server logs it. `npm run scan-library` registers
+ * it when it saves the files of a song that uses it.
  *
  * Downloads run one at a time, at most `--limit-kbps`, so they do not take
  * the bandwidth the game needs for the current song. A file is written under
@@ -298,7 +298,7 @@ async function registerFile(fileId: string) {
   if (!count && !using) {
     console.error(
       `not in the song database: ${fileId}. No song has this file. ` +
-        'Run `npm run scan-library`, then `npm run register-songs`.'
+        'Run `npm run scan-library` to register it.'
     )
   }
 }

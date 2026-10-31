@@ -21,8 +21,7 @@
     "video-cache": "tsx local/video-cache.ts",
     "clean-video-cache": "tsx local/clean-video-cache.ts",
     "queue-list-videos": "tsx local/queue-list-videos.ts",
-    "scan-library": "tsx local/scan-library.ts",
-    "register-songs": "tsx local/register-songs.ts"
+    "scan-library": "tsx local/scan-library.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

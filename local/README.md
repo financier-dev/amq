@@ -44,7 +44,6 @@ to any command to see its options.
 | `npm run clean-video-cache` | Lists cached videos that AMQ deleted. Deletes them with `--delete`.    | does not log in |
 | `npm run queue-list-videos` | Queues the videos of every song on an anime list for download.         | either, by flag |
 | `npm run scan-library`      | Adds every library song and its files to the song database.            | test account    |
-| `npm run register-songs`    | Makes the song database match the video cache.                         | does not log in |
 
 ## anime-titles
 
@@ -207,8 +206,9 @@ When the library changed since the last run, it compares every song with the
 database. It adds new songs, updates songs whose names, type or number
 changed, and deletes songs that are no longer in the library. It prints each
 change and each deletion. Then it asks AMQ for the files of every new song,
-two requests at a time. The first run asks about every song and takes about
-3 hours. A stopped run continues where it stopped.
+two requests at a time. A song whose file is already in the video cache gets
+it as its `webmPath`. The first run asks about every song and takes about 3
+hours. A stopped run continues where it stopped.
 
 The library does not show when AMQ replaces a video. Use `--refresh` to ask
 for the files of every song again.
@@ -219,15 +219,3 @@ for the files of every song again.
 | `--limit <n>`       | Ask for the files of `n` songs at most. Use it for a test.     |
 | `--concurrency <n>` | Requests at the same time: 1 or 2. Default: 2.                 |
 | `--headed`          | Show the browser window.                                       |
-
-### register-songs
-
-Run it after `scan-library`. It sets `webmPath` of every song to its cached
-video. When a song's file is outside the cache, it queues the download, so
-`video-cache` must be running. Songs that are not in the library, or that
-have no 720p or 480p video, keep their file.
-
-| Option          | What it does                                                               |
-| --------------- | -------------------------------------------------------------------------- |
-| `--dry-run`     | Change nothing. Only show what would change.                               |
-| `--host <name>` | The AMQ video host to download from: `EU`, `NA1` or `NA2`. Default: `NA2`. |

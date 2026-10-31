@@ -3,18 +3,25 @@
  * IDs of its files on AMQ and the path of its cached video. `webmPath` is null
  * when the video is not cached. Every cached video must be in a document.
  *
- * `npm run scan-library` adds the songs and their files. The cache server
- * sets `webmPath` when a download completes, and `npm run register-songs`
- * fixes what it missed.
+ * `npm run scan-library` adds the songs and their files. A song saved with
+ * a file that is already cached gets that file as its `webmPath`. The cache
+ * server sets `webmPath` when a download completes.
  *
  * The fields are the ones `~/amq/update-db.ts` wrote, so the scripts that read
- * the database still work. `annSongId`, `annId` and `files` are new. Documents
- * from before them have none until `register-songs` links them.
+ * the database still work. `annSongId`, `annId` and `files` are new.
  */
 
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import { MongoClient, type Collection, type ObjectId } from 'mongodb'
 import { envValue } from '@shared/node/env'
-import type { SongInfo, SongType } from '@shared/videoCache'
+import {
+  CACHED_RESOLUTIONS,
+  type SongInfo,
+  type SongType,
+  isCacheableFileId,
+} from '@shared/videoCache'
+import { videoCacheDir } from './videoCacheDir'
 
 export interface SongFile {
   /** 0 is the mp3. */
@@ -138,7 +145,8 @@ export type SaveResult = 'added' | 'updated' | 'unchanged'
 
 /**
  * Adds or updates the document of `song`. Fields that `song` does not have,
- * such as `difficulty` from a library song, keep their value.
+ * such as `difficulty` from a library song, keep their value. Without
+ * `webmPath`, a song with `files` gets its cached file, if it has one.
  */
 export async function saveSong(
   songs: Collection<SongDoc>,
@@ -155,7 +163,8 @@ export async function saveSong(
     type: song.type,
     typeNumber: song.typeNumber,
   }
-  if (webmPath !== undefined) fields.webmPath = webmPath
+  const cached = webmPath ?? (song.files && cachedPath(song.files))
+  if (cached) fields.webmPath = cached
   if (song.difficulty !== undefined) fields.difficulty = song.difficulty
   if (song.altAnswers !== undefined) fields.altAnswers = song.altAnswers
   if (song.uploaded !== undefined) fields.uploaded = song.uploaded
@@ -179,6 +188,25 @@ export async function saveSong(
     { $set: fields, $unset: { owned: '' } as any }
   )
   return result.modifiedCount ? 'updated' : 'unchanged'
+}
+
+/**
+ * The path of a song's cached file: the 720p file, then the 480p one, then
+ * any other. Null when no file is cached.
+ */
+export function cachedPath(files: SongFile[]): string | null {
+  const dir = videoCacheDir()
+  const byResolution = fileMap(files)
+  const fileIds = [
+    ...CACHED_RESOLUTIONS.map((resolution) => byResolution[resolution]),
+    ...files.map((file) => file.fileId),
+  ]
+  for (const fileId of fileIds) {
+    if (!fileId || !isCacheableFileId(fileId)) continue
+    const file = path.join(dir, fileId)
+    if (existsSync(file)) return file
+  }
+  return null
 }
 
 /** The songs that use a file. Several songs can use the same file. */
