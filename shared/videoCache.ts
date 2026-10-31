@@ -58,3 +58,36 @@ export function videoCacheUrl(fileId: string, downloadFrom?: string): string {
     ? `${url}?download=${encodeURIComponent(downloadFrom)}`
     : url
 }
+
+export type SongType = 'OP' | 'ED' | 'IN'
+
+/**
+ * A song as the song database stores it, without its file. The cache server
+ * registers each cached file with the songs that use it.
+ */
+export interface SongInfo {
+  annSongId: number
+  annId: number
+  /** The romaji name, else the English one. */
+  anime: string
+  artist: string
+  name: string
+  type: SongType
+  /** Null for inserts. */
+  typeNumber: number | null
+  /** AMQ's difficulty of the anime. Only a game reveal has it. */
+  difficulty?: number | null
+  /** Other accepted anime answers. Only a game reveal has them. */
+  altAnswers?: string[]
+}
+
+/** `type` as AMQ sends it in a song reveal: 1 OP, 2 ED, 3 insert. */
+export function songType(type: number): SongType {
+  return type === 1 ? 'OP' : type === 2 ? 'ED' : 'IN'
+}
+
+/** The body of `POST /song`: a revealed song and the file the cache keeps. */
+export interface RevealedSong {
+  fileId: string
+  song: SongInfo
+}

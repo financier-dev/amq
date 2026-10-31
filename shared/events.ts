@@ -25,6 +25,8 @@ export interface AnswerResultsData {
     rebroadcast?: boolean
     dub?: boolean
     siteIds?: { annId?: number }
+    annId?: number
+    annSongId?: number
     videoTargetMap: {
       catbox: {
         0?: string | null

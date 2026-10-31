@@ -3863,6 +3863,9 @@
     const url = `${VIDEO_CACHE_ORIGIN}/video/${fileId}`;
     return downloadFrom ? `${url}?download=${encodeURIComponent(downloadFrom)}` : url;
   }
+  function songType(type) {
+    return type === 1 ? "OP" : type === 2 ? "ED" : "IN";
+  }
 
   const CHECK_TIMEOUT_MS = 300;
   const MP3_RESOLUTION = 0;
@@ -3969,8 +3972,45 @@
     const reason = revealed && player ? mp3Reasons.get(player) : null;
     reasonLabel.textContent = reason ?? "";
   }
+  function revealedSong(songInfo) {
+    const { annSongId, annId } = songInfo;
+    if (annSongId === void 0 || annId === void 0) return null;
+    const videoMap = songInfo.videoTargetMap;
+    const target = cacheTarget(videoMap, options.getHostPriorityList());
+    if (!target) return null;
+    const type = songType(songInfo.type);
+    return {
+      fileId: target.fileId,
+      song: {
+        annSongId,
+        annId,
+        anime: songInfo.animeNames.romaji,
+        artist: songInfo.artist,
+        name: songInfo.songName,
+        type,
+        typeNumber: type === "IN" ? null : songInfo.typeNumber || null,
+        difficulty: typeof songInfo.animeDifficulty === "number" ? songInfo.animeDifficulty : null,
+        altAnswers: [...new Set(songInfo.altAnimeNamesAnswers)].sort(
+          (a, b) => a.localeCompare(b)
+        )
+      }
+    };
+  }
+  function sendReveal(songInfo) {
+    const revealed2 = revealedSong(songInfo);
+    if (!revealed2) return;
+    fetch(`${VIDEO_CACHE_ORIGIN}/song`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(revealed2)
+    }).catch(() => {
+    });
+  }
   async function setup() {
     createReasonLabel();
+    addListener("answer results", ({ songInfo }) => {
+      if (isActive()) sendReveal(songInfo);
+    });
     const originalNextVideoInfo = quizVideoController.nextVideoInfo;
     quizVideoController.nextVideoInfo = function(songInfo, ...rest) {
       const target = isActive() ? songTarget(songInfo) : null;

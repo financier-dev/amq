@@ -20,7 +20,9 @@
     "rooms": "tsx local/rooms.ts",
     "video-cache": "tsx local/video-cache.ts",
     "clean-video-cache": "tsx local/clean-video-cache.ts",
-    "queue-list-videos": "tsx local/queue-list-videos.ts"
+    "queue-list-videos": "tsx local/queue-list-videos.ts",
+    "scan-library": "tsx local/scan-library.ts",
+    "register-songs": "tsx local/register-songs.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -31,6 +33,7 @@
     "eslint": "^9.18.0",
     "eslint-plugin-svelte": "^3.0.0",
     "globals": "^15.14.0",
+    "mongodb": "^6.21.0",
     "playwright": "^1.63.0",
     "prettier": "^3.4.2",
     "prettier-plugin-svelte": "^3.3.3",

@@ -43,6 +43,8 @@ to any command to see its options.
 | `npm run video-cache`       | Serves your cached song videos to the game and downloads missing ones. | does not log in |
 | `npm run clean-video-cache` | Lists cached videos that AMQ deleted. Deletes them with `--delete`.    | does not log in |
 | `npm run queue-list-videos` | Queues the videos of every song on an anime list for download.         | either, by flag |
+| `npm run scan-library`      | Adds every library song and its files to the song database.            | test account    |
+| `npm run register-songs`    | Makes the song database match the video cache.                         | does not log in |
 
 ## anime-titles
 
@@ -101,8 +103,9 @@ and logs out.
 
 ## Video cache
 
-Three scripts keep song videos on your disk, so the game can play them with
+These scripts keep song videos on your disk, so the game can play them with
 no wait. They work with `scripts/videoCache.ts` in the AMQ Master Script.
+Every cached video is also registered in the song database (see below).
 
 ### video-cache
 
@@ -129,6 +132,11 @@ Videos are kept in `~/amq-cache`. To use another folder, set
 `AMQ_VIDEO_CACHE_DIR` in `.env`. Downloads run one at a time. If the server
 stops, it continues the queued downloads the next time it starts.
 
+The server does not start when it cannot connect to the song database. When
+a download completes, it adds the song to the database. During the reveal of
+each song, the game sends the song's difficulty and alt answers, which the
+library does not have.
+
 | Option             | What it does                                                                                                           |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `--limit-kbps <n>` | Download speed limit in KB/s. Default: 500. `0` means no limit.                                                        |
@@ -136,14 +144,19 @@ stops, it continues the queued downloads the next time it starts.
 
 ### clean-video-cache
 
-AMQ often replaces videos. Run this from time to time to find the cached
-videos that AMQ deleted. It asks an AMQ video host about each file. A file
-that it cannot check is kept.
+Finds cached videos to delete:
 
-| Option          | What it does                                                     |
-| --------------- | ---------------------------------------------------------------- |
-| `--delete`      | Delete the files that AMQ deleted. Without it, only list them.   |
-| `--host <name>` | The AMQ video host to ask: `EU`, `NA1` or `NA2`. Default: `NA2`. |
+- videos that no song in the song database uses, for example because
+  `scan-library` deleted the song. This check runs only when `scan-library`
+  has finished.
+- videos that AMQ deleted, usually because the song got a new one. AMQ often
+  replaces videos. The script asks an AMQ video host about each file, two at
+  a time. A file that it cannot check is kept.
+
+| Option          | What it does                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| `--delete`      | Delete those files, and clear their `webmPath` in the song database. Without it, only list them. |
+| `--host <name>` | The AMQ video host to ask: `EU`, `NA1` or `NA2`. Default: `NA2`.                                 |
 
 ### queue-list-videos
 
@@ -157,9 +170,10 @@ npm run queue-list-videos -- --mal <user>       # any MyAnimeList user's list
 ```
 
 AMQ gives the file names one song at a time, so the script sends one request
-every 2 seconds. A list of 3,000 songs takes about 1 hour 40 minutes. Each
-answer is saved in `local/.cache/list-videos.json`, so a song is asked about
-only once, and a stopped run continues where it stopped.
+every 2 seconds. A list of 3,000 songs takes about 1 hour 40 minutes. Songs
+that `scan-library` already saved need no request. Each answer is saved in
+`local/.cache/list-videos.json` and in the song database, so a song is asked
+about only once, and a stopped run continues where it stopped.
 
 | Option           | What it does                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -174,3 +188,46 @@ only once, and a stopped run continues where it stopped.
 Use exactly one of `--main-account`, `--mal` and `--from-cache`. The list
 follows the account's Settings → Anime List: only the ticked Included Entries.
 With `--mal`, the run disconnects `watch-rooms`, which uses the same account.
+
+## Song database
+
+A MongoDB database (`amq`, collection `songs`) has one document for each
+library song: the anime, artist, song name, type and number, AMQ's
+difficulty, the alt answers, the song's files on AMQ and `webmPath`, the path
+of its cached video. `webmPath` is null when the video is not cached. The
+default server is `mongodb://localhost:27017`. To use another one, set
+`AMQ_SONG_DB_URL` in `.env`.
+
+### scan-library
+
+Updates the song database from AMQ's song library. Run it when you want the
+latest songs. It disconnects `watch-rooms`, which uses the same account.
+
+When the library changed since the last run, it compares every song with the
+database. It adds new songs, updates songs whose names, type or number
+changed, and deletes songs that are no longer in the library. It prints each
+change and each deletion. Then it asks AMQ for the files of every new song,
+two requests at a time. The first run asks about every song and takes about
+3 hours. A stopped run continues where it stopped.
+
+The library does not show when AMQ replaces a video. Use `--refresh` to ask
+for the files of every song again.
+
+| Option              | What it does                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `--refresh`         | Compare every song, and ask for the files of every song again. |
+| `--limit <n>`       | Ask for the files of `n` songs at most. Use it for a test.     |
+| `--concurrency <n>` | Requests at the same time: 1 or 2. Default: 2.                 |
+| `--headed`          | Show the browser window.                                       |
+
+### register-songs
+
+Run it after `scan-library`. It sets `webmPath` of every song to its cached
+video. When a song's file is outside the cache, it queues the download, so
+`video-cache` must be running. Songs that are not in the library, or that
+have no 720p or 480p video, keep their file.
+
+| Option          | What it does                                                               |
+| --------------- | -------------------------------------------------------------------------- |
+| `--dry-run`     | Change nothing. Only show what would change.                               |
+| `--host <name>` | The AMQ video host to download from: `EU`, `NA1` or `NA2`. Default: `NA2`. |

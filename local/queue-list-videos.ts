@@ -16,16 +16,18 @@
  * Entries ticked there. It also adds every song of every custom list on the
  * account: all uploaded songs of each anime entry, and each song entry.
  *
- * AMQ gives file names one song at a time (`get song extended info` with
- * `includeFileNames`, as the quiz creator asks). The script sends one request
- * every `--delay-ms` and saves each answer in `local/.cache/list-videos.json`,
+ * AMQ gives file names one song at a time. A song whose files are already in
+ * the song database (`npm run scan-library`) needs no request. For the
+ * others, the script sends one request every `--delay-ms` and saves each
+ * answer in the database, so the cache server can find the song of the file.
+ * It saves which file each listed song uses in `local/.cache/list-videos.json`,
  * so a run that stops can go on later without asking again. Runs can share
- * the file at the same time: each save merges with what is on disk. Every
+ * that file at the same time: each save merges with what is on disk. Every
  * `SAVE_EVERY` songs it sends the new files to the cache server, so downloads
  * start while the list is still being read.
  *
  * It stops at once when AMQ logs the account off or the connection does not
- * come back within `RECONNECT_GRACE_MS`, and logs why each song failed.
+ * come back within a minute, and logs why each song failed.
  *
  * It only reads, except for the list setting: it never joins, spectates or
  * hosts a room. It disconnects `npm run watch-rooms`, which uses the same
@@ -40,12 +42,14 @@ import type { Page } from 'playwright'
 import { repo } from '@shared/node/env'
 import {
   LIBRARY_TIMEOUT_MS,
-  disableAfkKicker,
+  guardSession,
   openSession,
   request,
-  watchSessionEvents,
 } from '@shared/node/session'
-import { cachedFile, VIDEO_CACHE_ORIGIN, VIDEO_HOSTS } from '@shared/videoCache'
+import { cachedFile, VIDEO_HOSTS } from '@shared/videoCache'
+import { queueDownloads } from './lib/cacheServer'
+import { askAll, readLibrary } from './lib/library'
+import { fileMap, openSongDb, saveSong } from './lib/songDb'
 import { videoCacheDir } from './lib/videoCacheDir'
 
 const MANIFEST = path.join(repo, 'local', '.cache', 'list-videos.json')
@@ -58,10 +62,6 @@ const LIST_TYPE_NAMES: Record<string, string> = {
   4: 'Dropped',
   5: 'Plan to Watch',
 }
-/** Stop when this many requests in a row get no file names. */
-const MAX_FAILURES_IN_A_ROW = 5
-const RECONNECT_GRACE_MS = 60_000
-const REQUEST_TIMEOUT_MS = 30_000
 
 const { values: flags } = parseArgs({
   options: {
@@ -216,73 +216,19 @@ async function listedSongs(page: Page): Promise<ListedSongs> {
   )
 }
 
-type FileNameResult =
-  { ok: true; fileId: string | null } | { ok: false; reason: string }
-
-async function fileNameFor(
-  page: Page,
-  annSongId: number
-): Promise<FileNameResult> {
-  let info: any
-  try {
-    info = await request(page, {
-      type: 'library',
-      command: 'get song extended info',
-      reply: 'get song extended info',
-      data: { annSongId, includeFileNames: true },
-      matchField: 'annSongId',
-      matchValue: annSongId,
-      timeout: REQUEST_TIMEOUT_MS,
-    })
-  } catch (error) {
-    return { ok: false, reason: (error as Error).message }
-  }
-  const map = info?.fileNameMap as Record<number, string> | undefined
-  if (!map) {
-    const keys = info ? Object.keys(info).join(', ') : 'empty reply'
-    return { ok: false, reason: `reply without fileNameMap (${keys})` }
-  }
-  return { ok: true, fileId: cachedFile(map)?.fileId ?? null }
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 /** Uses the test account with `mal`, else the main account as it is. */
 async function collect(mal: string | undefined): Promise<Manifest> {
   // File IDs do not depend on the list, so answers from any run are kept.
   const manifest = readManifest()
 
+  const db = await openSongDb()
   const { browser, page } = await openSession({
     headed: flags.headed,
     accounts: [mal ? 'AMQ_TEST_ACCOUNT' : 'AMQ_ACCOUNT'],
   })
-  let loggedOff: string | null = null
-  let disconnectedAt: number | null = null
-  await disableAfkKicker(page)
-  await watchSessionEvents(page, (event) => {
-    if (event.kind === 'logoff') {
-      loggedOff = event.reason || 'no reason given'
-    } else if (event.kind === 'disconnect') {
-      disconnectedAt = Date.now()
-      console.error('socket disconnected, waiting for it to reconnect')
-    } else {
-      disconnectedAt = null
-      console.error('socket reconnected')
-    }
-  })
-  const checkSession = async () => {
-    if (loggedOff) {
-      throw new Error(`AMQ logged the test account off (${loggedOff}).`)
-    }
-    while (disconnectedAt !== null) {
-      if (Date.now() - disconnectedAt > RECONNECT_GRACE_MS) {
-        throw new Error('The connection to AMQ did not come back.')
-      }
-      await sleep(1_000)
-    }
-  }
 
   try {
+    const check = await guardSession(page)
     if (mal) await setAnimeList(page, mal)
     const listed = await listedSongs(page)
     const included = listed.includedTypes
@@ -298,47 +244,56 @@ async function collect(mal: string | undefined): Promise<Manifest> {
         `${included || 'none'}), ${listed.annSongIds.length} songs in all`
     )
 
-    const unknown = listed.annSongIds.filter((id) => !(id in manifest.songs))
-    const todo = unknown.slice(0, limit)
+    const known = await db.songs
+      .find({
+        annSongId: {
+          $in: listed.annSongIds.filter((id) => !(id in manifest.songs)),
+        },
+        files: { $exists: true },
+      })
+      .toArray()
+    for (const doc of known) {
+      manifest.songs[doc.annSongId!] =
+        cachedFile(fileMap(doc.files))?.fileId ?? null
+    }
+    const unknown = new Set(
+      listed.annSongIds.filter((id) => !(id in manifest.songs))
+    )
+    const todo = (await readLibrary(page)).songs
+      .filter((song) => unknown.has(song.annSongId))
+      .slice(0, limit)
     const minutes = Math.ceil((todo.length * delayMs) / 60_000)
     console.error(
-      `${listed.annSongIds.length - unknown.length} songs already known, ` +
-        `asking about ${todo.length} of ${unknown.length} (about ${minutes} min)`
+      `${listed.annSongIds.length - unknown.size} songs already known ` +
+        `(${known.length} from the song database), asking about ` +
+        `${todo.length} of ${unknown.size} (about ${minutes} min)`
     )
 
-    let failures = 0
     let batch: string[] = []
-    for (const [index, annSongId] of todo.entries()) {
-      await checkSession()
-      const result = await fileNameFor(page, annSongId)
-      if (!result.ok) {
-        await checkSession()
-        failures++
-        console.error(`song ${annSongId}: ${result.reason}`)
-        if (failures >= MAX_FAILURES_IN_A_ROW) {
-          throw new Error(
-            `${failures} songs in a row came back without file names. Stopping.`
+    await askAll(page, todo, {
+      concurrency: 1,
+      delayMs,
+      check,
+      async onAnswer(song, done) {
+        await saveSong(db.songs, song)
+        const fileId = cachedFile(fileMap(song.files))?.fileId ?? null
+        manifest.songs[song.annSongId] = fileId
+        if (fileId) batch.push(fileId)
+        if (done % SAVE_EVERY === 0) {
+          saveManifest(manifest)
+          const queued = await postQueue(await notCached(batch), true)
+          batch = []
+          console.error(
+            `asked ${done}/${todo.length}` +
+              (queued ? `, queued ${queued} downloads` : '')
           )
         }
-      } else {
-        failures = 0
-        manifest.songs[annSongId] = result.fileId
-        if (result.fileId) batch.push(result.fileId)
-      }
-      if ((index + 1) % SAVE_EVERY === 0) {
-        saveManifest(manifest)
-        const queued = await postQueue(await notCached(batch), true)
-        batch = []
-        console.error(
-          `asked ${index + 1}/${todo.length}` +
-            (queued ? `, queued ${queued} downloads` : '')
-        )
-      }
-      await sleep(delayMs)
-    }
+      },
+    })
   } finally {
     saveManifest(manifest)
     await browser.close()
+    await db.client.close()
   }
   return manifest
 }
@@ -363,18 +318,8 @@ let serverWarned = false
  * `quiet` warns only once when the server cannot be reached.
  */
 async function postQueue(fileIds: string[], quiet = false): Promise<number> {
-  if (!fileIds.length) return 0
   try {
-    const res = await fetch(`${VIDEO_CACHE_ORIGIN}/queue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        files: fileIds.map((fileId) => ({ fileId, host: flags.host })),
-      }),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const { added } = (await res.json()) as { added: number }
-    return added
+    return await queueDownloads(fileIds, flags.host)
   } catch (error) {
     if (!quiet || !serverWarned) {
       console.error(

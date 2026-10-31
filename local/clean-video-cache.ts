@@ -1,13 +1,23 @@
 /*
- * Finds cached videos that AMQ no longer serves, and deletes them with
- * `--delete`.
+ * Finds cached videos that no song uses or that AMQ no longer serves, and
+ * deletes them with `--delete`.
  *
  *   npm run clean-video-cache               # report only
  *   npm run clean-video-cache -- --delete   # delete them
  *
- * It sends a `HEAD` request for each cached file to an AMQ video host. A 404
- * means AMQ deleted the file, usually because the song got a new video. Any
- * other failure (timeout, server error) keeps the file.
+ * A file is in no song when no document of the song database has it as its
+ * `webmPath` or in its `files`. This happens when `npm run scan-library`
+ * deleted the song, or when AMQ gave the song a new file. It is checked only
+ * when the song database is complete: a library check finished and every
+ * song has its files.
+ *
+ * It sends a `HEAD` request for each other cached file to an AMQ video host,
+ * `CONCURRENCY` at a time. A 404 means AMQ deleted the file, usually because
+ * the song got a new video. Any other failure (timeout, server error) keeps
+ * the file.
+ *
+ * Deleting a file sets `webmPath` to null in the song database, for the songs
+ * that used it. The new video downloads when the song plays in a game.
  *
  * It does not find a file that AMQ replaced but still serves. It does not log
  * in to AMQ.
@@ -17,9 +27,11 @@ import { readdir, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { VIDEO_HOSTS } from '@shared/videoCache'
+import { openSongDb, savedMasterListId } from './lib/songDb'
 import { videoCacheDir } from './lib/videoCacheDir'
 
-const CONCURRENCY = 4
+/** Never send more requests than this to AMQ at the same time. */
+const CONCURRENCY = 2
 const TIMEOUT_MS = 15_000
 
 const { values: flags } = parseArgs({
@@ -33,8 +45,8 @@ const { values: flags } = parseArgs({
 if (flags.help) {
   console.log(`Usage: npm run clean-video-cache [-- --delete] [-- --host EU|NA1|NA2]
 
-Checks every video in ${videoCacheDir()} against AMQ's video host and lists
-the ones AMQ no longer serves.
+Lists the videos in ${videoCacheDir()} that no song in the song database
+uses, and the ones AMQ's video host no longer serves.
 
   --delete       delete those files
   --host <name>  the AMQ host to check against (default NA2)`)
@@ -48,7 +60,36 @@ if (!endpoint) {
 }
 
 const dir = videoCacheDir()
-const files = (await readdir(dir)).filter((name) => /\.(webm|mp3)$/i.test(name))
+const cachedFiles = (await readdir(dir)).filter((name) =>
+  /\.(webm|mp3)$/i.test(name)
+)
+const { client, songs, meta } = await openSongDb()
+
+/** The cached files that no song uses, or null when the database is not complete. */
+async function unusedFiles(): Promise<string[] | null> {
+  const unscanned = await songs.countDocuments({
+    annSongId: { $exists: true },
+    files: { $exists: false },
+  })
+  if (!(await savedMasterListId(meta)) || unscanned) return null
+  const used = new Set<string>()
+  for await (const doc of songs
+    .find()
+    .project<{ webmPath: string | null; files?: { fileId: string }[] }>({
+      webmPath: 1,
+      files: 1,
+    })) {
+    if (doc.webmPath?.startsWith(dir + path.sep)) {
+      used.add(path.basename(doc.webmPath))
+    }
+    for (const { fileId } of doc.files ?? []) used.add(fileId)
+  }
+  return cachedFiles.filter((name) => !used.has(name))
+}
+
+const unused = await unusedFiles()
+const unusedSet = new Set(unused)
+const files = cachedFiles.filter((name) => !unusedSet.has(name))
 
 type Status = 'kept' | 'gone' | 'unknown'
 
@@ -91,15 +132,27 @@ console.error(`Checking ${files.length} files in ${dir} against ${endpoint}`)
 await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 if (process.stderr.isTTY) process.stderr.write('\n')
 
-const goneBytes = gone.reduce((sum, file) => sum + file.size, 0)
-const gb = (goneBytes / 1e9).toFixed(1)
-
-for (const { name } of gone.sort((a, b) => a.name.localeCompare(b.name))) {
-  console.log(name)
-}
-console.error(
-  `${gone.length} of ${files.length} files are no longer on AMQ (${gb} GB).`
+const unusedSizes = await Promise.all(
+  (unused ?? []).map(async (name) => ({
+    name,
+    size: (await stat(path.join(dir, name))).size,
+  }))
 )
+const toDelete = [...unusedSizes, ...gone].sort((a, b) =>
+  a.name.localeCompare(b.name)
+)
+const gb = (toDelete.reduce((sum, file) => sum + file.size, 0) / 1e9).toFixed(1)
+
+for (const { name } of toDelete) console.log(name)
+if (unused) {
+  console.error(`${unused.length} files are in no song in the song database.`)
+} else {
+  console.error(
+    'The song database is not complete, so files in no song were not looked ' +
+      'for. Run `npm run scan-library` first.'
+  )
+}
+console.error(`${gone.length} of ${files.length} files are no longer on AMQ.`)
 if (unknown.length) {
   console.error(
     `${unknown.length} files could not be checked and were kept. Run again later.`
@@ -107,8 +160,19 @@ if (unknown.length) {
 }
 
 if (flags.delete) {
-  for (const { name } of gone) await rm(path.join(dir, name))
-  console.error(`Deleted ${gone.length} files (${gb} GB).`)
-} else if (gone.length) {
-  console.error('Nothing was deleted. Add `-- --delete` to delete them.')
+  const paths = toDelete.map(({ name }) => path.join(dir, name))
+  for (const file of paths) await rm(file)
+  const result = await songs.updateMany(
+    { webmPath: { $in: paths } },
+    { $set: { webmPath: null } }
+  )
+  console.error(
+    `Deleted ${toDelete.length} files (${gb} GB). ${result.modifiedCount} ` +
+      'songs in the song database have no cached file now.'
+  )
+} else if (toDelete.length) {
+  console.error(
+    `Nothing was deleted (${gb} GB). Add \`-- --delete\` to delete them.`
+  )
 }
+await client.close()

@@ -316,3 +316,39 @@ export async function watchSessionEvents(
     socket._socket.on('reconnect', () => send({ kind: 'reconnect' }))
   }, name)
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Watches a session for a long run of requests. The returned `check` throws
+ * when AMQ logged the account off, and waits while the socket reconnects. It
+ * throws when the connection does not come back within `reconnectGraceMs`.
+ */
+export async function guardSession(
+  page: Page,
+  reconnectGraceMs = 60_000
+): Promise<() => Promise<void>> {
+  let loggedOff: string | null = null
+  let disconnectedAt: number | null = null
+  await disableAfkKicker(page)
+  await watchSessionEvents(page, (event) => {
+    if (event.kind === 'logoff') {
+      loggedOff = event.reason || 'no reason given'
+    } else if (event.kind === 'disconnect') {
+      disconnectedAt = Date.now()
+      console.error('socket disconnected, waiting for it to reconnect')
+    } else {
+      disconnectedAt = null
+      console.error('socket reconnected')
+    }
+  })
+  return async () => {
+    if (loggedOff) throw new Error(`AMQ logged the account off (${loggedOff}).`)
+    while (disconnectedAt !== null) {
+      if (Date.now() - disconnectedAt > reconnectGraceMs) {
+        throw new Error('The connection to AMQ did not come back.')
+      }
+      await sleep(1_000)
+    }
+  }
+}

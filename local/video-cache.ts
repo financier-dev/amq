@@ -21,6 +21,19 @@
  * Those go to a bulk queue, saved in `.bulk-queue.json` in the cache folder
  * so a restart keeps it. Songs missed during a game download first.
  *
+ * Every cached file must be in the song database (`local/lib/songDb.ts`), so
+ * the server does not start without it. When a download completes, the
+ * server sets the file as the `webmPath` of the songs that use it. It finds
+ * them by their files (`npm run scan-library`) and in the reveals the
+ * userscript sends:
+ *
+ *   POST /song  { fileId, song }  the song a game revealed, with its
+ *                                 difficulty and alt answers
+ *
+ * A revealed song whose file is cached is registered at once. When neither
+ * source knows a file, the server logs it, and `npm run register-songs`
+ * registers it after a scan.
+ *
  * Downloads run one at a time, at most `--limit-kbps`, so they do not take
  * the bandwidth the game needs for the current song. A file is written under
  * `.partial/` and moved into the cache only when it is complete, so the game
@@ -41,10 +54,13 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { parseArgs } from 'node:util'
 import {
+  type RevealedSong,
+  type SongInfo,
   VIDEO_CACHE_PORT,
   VIDEO_HOSTS,
   isCacheableFileId,
 } from '@shared/videoCache'
+import { type SongDb, openSongDb, saveSong } from './lib/songDb'
 import { videoCacheDir } from './lib/videoCacheDir'
 
 const ALLOWED_ORIGIN = 'https://animemusicquiz.com'
@@ -76,6 +92,14 @@ if (!Number.isFinite(limitKbps) || limitKbps < 0) {
 
 if (flags.host !== undefined && !(flags.host in VIDEO_HOSTS)) {
   console.error(`Unknown host "${flags.host}". Use EU, NA1 or NA2.`)
+  process.exit(1)
+}
+
+let db: SongDb
+try {
+  db = await openSongDb()
+} catch (error) {
+  console.error((error as Error).message)
   process.exit(1)
 }
 
@@ -156,6 +180,7 @@ async function drain() {
       await download(fileId, VIDEO_HOSTS[flags.host ?? host] + fileId)
     } catch (error) {
       console.error(`download failed: ${fileId}:`, (error as Error).message)
+      revealedSongs.delete(fileId)
     } finally {
       pending.delete(fileId)
       if (fromBulk && bulkQueue[0]?.fileId === fileId) {
@@ -236,6 +261,120 @@ async function download(fileId: string, url: string) {
   console.log(
     `cached ${fileId}: ${(written / 1e6).toFixed(1)} MB in ${seconds.toFixed(0)}s`
   )
+  await registerFile(fileId)
+}
+
+/** Songs that a game revealed while their file was downloading. */
+const revealedSongs = new Map<string, SongInfo[]>()
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Sets `webmPath` on the songs that use a cached file. A song that already
+ * has another cached file keeps it.
+ */
+async function registerFile(fileId: string) {
+  const webmPath = path.join(dir, fileId)
+  let count = 0
+  try {
+    const result = await db.songs.updateMany(
+      {
+        'files.fileId': fileId,
+        webmPath: { $not: new RegExp(`^${escapeRegExp(dir + path.sep)}`) },
+      },
+      { $set: { webmPath } }
+    )
+    count = result.matchedCount
+    count += await saveRevealed(revealedSongs.get(fileId) ?? [], fileId)
+  } catch (error) {
+    console.error(`could not register ${fileId}:`, (error as Error).message)
+    return
+  } finally {
+    revealedSongs.delete(fileId)
+  }
+  const using = await db.songs.countDocuments({ webmPath })
+  if (!count && !using) {
+    console.error(
+      `not in the song database: ${fileId}. No song has this file. ` +
+        'Run `npm run scan-library`, then `npm run register-songs`.'
+    )
+  }
+}
+
+/** Saves revealed songs with their cached file. Returns how many. */
+async function saveRevealed(songs: SongInfo[], fileId: string) {
+  for (const song of songs) {
+    const result = await saveSong(db.songs, song, path.join(dir, fileId))
+    if (result !== 'unchanged') {
+      console.log(`${result} in the song database: ${songLabel(song)}`)
+    }
+  }
+  return songs.length
+}
+
+function songLabel(song: SongInfo): string {
+  const number = song.typeNumber ? ` ${song.typeNumber}` : ''
+  return `${song.anime} ${song.type}${number} "${song.name}"`
+}
+
+function parseRevealedSong(body: any): RevealedSong | null {
+  const song = body?.song
+  const valid =
+    typeof body?.fileId === 'string' &&
+    isCacheableFileId(body.fileId) &&
+    Number.isInteger(song?.annSongId) &&
+    Number.isInteger(song?.annId) &&
+    ['anime', 'artist', 'name'].every((key) => typeof song[key] === 'string') &&
+    ['OP', 'ED', 'IN'].includes(song.type) &&
+    (song.typeNumber === null || Number.isInteger(song.typeNumber)) &&
+    (song.difficulty === null || typeof song.difficulty === 'number') &&
+    Array.isArray(song.altAnswers) &&
+    song.altAnswers.every((answer: unknown) => typeof answer === 'string')
+  if (!valid) return null
+  const { annSongId, annId, anime, artist, name, type, typeNumber } = song
+  return {
+    fileId: body.fileId,
+    song: {
+      annSongId,
+      annId,
+      anime,
+      artist,
+      name,
+      type,
+      typeNumber,
+      difficulty: song.difficulty,
+      altAnswers: song.altAnswers,
+    },
+  }
+}
+
+async function handleSong(req: IncomingMessage, res: ServerResponse) {
+  if (!req.headers['content-type']?.startsWith('application/json')) {
+    return send(res, 415)
+  }
+  let revealed: RevealedSong | null
+  try {
+    revealed = parseRevealedSong(JSON.parse(await readBody(req)))
+  } catch {
+    revealed = null
+  }
+  if (!revealed) return send(res, 400)
+  send(res, 204)
+
+  const { fileId, song } = revealed
+  if (await exists(path.join(dir, fileId))) {
+    await saveRevealed([song], fileId).catch((error) =>
+      console.error(
+        `could not save ${songLabel(song)}:`,
+        (error as Error).message
+      )
+    )
+  } else if (pending.has(fileId)) {
+    const songs = revealedSongs.get(fileId) ?? []
+    revealedSongs.set(fileId, [...songs, song])
+  }
 }
 
 /** Sleeps until `bytes` is within the speed limit for the time elapsed. */
@@ -297,12 +436,19 @@ async function serveFile(
 const server = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
   res.setHeader('Access-Control-Allow-Private-Network', 'true')
-  if (req.method === 'OPTIONS') return send(res, 204)
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return send(res, 204)
+  }
 
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (url.pathname === '/queue') {
     if (req.method !== 'POST') return send(res, 405)
     return handleQueue(req, res)
+  }
+  if (url.pathname === '/song') {
+    if (req.method !== 'POST') return send(res, 405)
+    return handleSong(req, res)
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405)
 

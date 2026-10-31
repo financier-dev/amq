@@ -16,14 +16,20 @@
  * running, every song plays the mp3. When a song plays the mp3, the video box
  * shows why under AMQ's "Sound Only" text, during the reveal only.
  *
+ * At each reveal, the script sends the song's names, difficulty and alt
+ * answers to the server, which keeps them in the song database with the file.
+ *
  * The script does nothing, and AMQ plays as usual, when the game's quality
  * setting is mp3 or when `/videocache off` turned it off.
  */
 
+import { type AnswerResultsData, addListener } from '@shared/events'
 import {
   type CachedFile,
+  type RevealedSong,
   VIDEO_CACHE_ORIGIN,
   cachedFile,
+  songType,
   videoCacheUrl,
 } from '@shared/videoCache'
 import { registerCommand } from './commands'
@@ -166,8 +172,55 @@ function showReason() {
   reasonLabel.textContent = reason ?? ''
 }
 
+function revealedSong(
+  songInfo: AnswerResultsData['songInfo']
+): RevealedSong | null {
+  const { annSongId, annId } = songInfo
+  if (annSongId === undefined || annId === undefined) return null
+  // The typing names only the `catbox` host. The map has every host.
+  const videoMap = songInfo.videoTargetMap as unknown as VideoMap
+  const target = cacheTarget(videoMap, options.getHostPriorityList())
+  if (!target) return null
+  const type = songType(songInfo.type)
+  return {
+    fileId: target.fileId,
+    song: {
+      annSongId,
+      annId,
+      anime: songInfo.animeNames.romaji,
+      artist: songInfo.artist,
+      name: songInfo.songName,
+      type,
+      typeNumber: type === 'IN' ? null : songInfo.typeNumber || null,
+      difficulty:
+        typeof songInfo.animeDifficulty === 'number'
+          ? songInfo.animeDifficulty
+          : null,
+      altAnswers: [...new Set(songInfo.altAnimeNamesAnswers)].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    },
+  }
+}
+
+function sendReveal(songInfo: AnswerResultsData['songInfo']) {
+  const revealed = revealedSong(songInfo)
+  if (!revealed) return
+  fetch(`${VIDEO_CACHE_ORIGIN}/song`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(revealed),
+  }).catch(() => {
+    // The server is offline, so it caches nothing to register.
+  })
+}
+
 export default async function setup() {
   createReasonLabel()
+
+  addListener('answer results', ({ songInfo }) => {
+    if (isActive()) sendReveal(songInfo)
+  })
 
   const originalNextVideoInfo = quizVideoController.nextVideoInfo
   quizVideoController.nextVideoInfo = function (songInfo, ...rest) {
