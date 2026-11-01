@@ -1559,6 +1559,62 @@
         }
       );
     })();
+    (function setupPinCommand() {
+      const messageIds = /* @__PURE__ */ new Map();
+      const remember = ({ messageId }) => messageIds.set(String(messageId), messageId);
+      addListener(
+        "game chat update",
+        ({ messages }) => messages.forEach(remember)
+      );
+      addListener("Game Chat Message", remember);
+      registerCommand(
+        "pin",
+        () => ({
+          shortHelp: "Pin the last chat message",
+          longHelp: "Usage: /pin</br>Pins the last player message in chat. Replaces the current pinned message. You must be the host."
+        }),
+        () => {
+          if (!lobby.isHost) {
+            gameChat.systemMessage("You must be the host to use this command");
+            return;
+          }
+          const messages = document.querySelectorAll(
+            "#gcMessageContainer .gcPlayerMessage"
+          );
+          const domId = messages[messages.length - 1]?.id.replace(
+            "gcPlayerMessage-",
+            ""
+          );
+          const messageId = domId ? messageIds.get(domId) : void 0;
+          if (messageId === void 0) {
+            gameChat.systemMessage("There is no message to pin");
+            return;
+          }
+          socket.sendCommand({
+            type: "lobby",
+            command: "pin message",
+            data: { messageId }
+          });
+        }
+      );
+      registerCommand(
+        "unpin",
+        () => ({
+          shortHelp: "Unpin the pinned chat message",
+          longHelp: "Usage: /unpin</br>Removes the pinned message. You must be the host."
+        }),
+        () => {
+          if (!lobby.isHost) {
+            gameChat.systemMessage("You must be the host to use this command");
+            return;
+          }
+          socket.sendCommand({
+            type: "lobby",
+            command: "remove pinned message"
+          });
+        }
+      );
+    })();
   }
 
   const __vite_glob_0_10 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({

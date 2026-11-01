@@ -47,6 +47,11 @@ export interface ChatMessageData {
   sender: string
 }
 
+export interface GameChatMessageData extends ChatMessageData {
+  /** The client never says whether this is a number or a string. */
+  messageId: number | string
+}
+
 export interface PlayerAnsweredData {
   gamePlayerIds: number[]
   answerTime: number
@@ -84,7 +89,8 @@ export interface AMQEventMap {
   'Change To Player': any
   'chat message response': any
   'chat message': ChatMessageData
-  'game chat update': { messages: ChatMessageData[] }
+  'game chat update': { messages: GameChatMessageData[] }
+  'Game Chat Message': GameChatMessageData
   'get all song names': any
   'get current master list id': { masterListId: string }
   'Host Promotion': any

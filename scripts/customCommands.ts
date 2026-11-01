@@ -6,7 +6,7 @@ import {
 } from '@shared/pages'
 import { getAllAnimeNames } from '@shared/anime'
 import { DROPDOWN_HIDDEN_CLASS } from './lib/elements'
-import { addListener } from '@shared/events'
+import { addListener, type GameChatMessageData } from '@shared/events'
 
 function startReturnToLobbyVote() {
   socket.sendCommand({
@@ -528,6 +528,71 @@ export default async function setup() {
             command: 'quiz pause',
           })
         }
+      }
+    )
+  })()
+  ;(function setupPinCommand() {
+    // AMQ sends `pin message` with the ID as the server sent it. The DOM has
+    // only its string form, so keep the original value of each one.
+    const messageIds = new Map<string, number | string>()
+    const remember = ({ messageId }: GameChatMessageData) =>
+      messageIds.set(String(messageId), messageId)
+    addListener('game chat update', ({ messages }) =>
+      messages.forEach(remember)
+    )
+    addListener('Game Chat Message', remember)
+
+    registerCommand(
+      'pin',
+      () => ({
+        shortHelp: 'Pin the last chat message',
+        longHelp:
+          'Usage: /pin</br>Pins the last player message in chat. Replaces the current pinned message. You must be the host.',
+      }),
+      () => {
+        if (!lobby.isHost) {
+          gameChat.systemMessage('You must be the host to use this command')
+          return
+        }
+
+        const messages = document.querySelectorAll(
+          '#gcMessageContainer .gcPlayerMessage'
+        )
+        const domId = messages[messages.length - 1]?.id.replace(
+          'gcPlayerMessage-',
+          ''
+        )
+        const messageId = domId ? messageIds.get(domId) : undefined
+        if (messageId === undefined) {
+          gameChat.systemMessage('There is no message to pin')
+          return
+        }
+
+        socket.sendCommand({
+          type: 'lobby',
+          command: 'pin message',
+          data: { messageId },
+        })
+      }
+    )
+
+    registerCommand(
+      'unpin',
+      () => ({
+        shortHelp: 'Unpin the pinned chat message',
+        longHelp:
+          'Usage: /unpin</br>Removes the pinned message. You must be the host.',
+      }),
+      () => {
+        if (!lobby.isHost) {
+          gameChat.systemMessage('You must be the host to use this command')
+          return
+        }
+
+        socket.sendCommand({
+          type: 'lobby',
+          command: 'remove pinned message',
+        })
       }
     )
   })()
