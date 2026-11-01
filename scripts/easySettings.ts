@@ -69,28 +69,46 @@ function changeSongs(numSongs: number) {
   })
 }
 
-function getGenreObj(genre: string) {
-  return hostModal.genreFilter.awesomepleteInstance._list.find(
-    (g) => g.name.toLocaleLowerCase() === genre.toLocaleLowerCase()
+type FilterKey = 'genre' | 'tags'
+
+const filterFor = (key: FilterKey) =>
+  key === 'genre' ? hostModal.genreFilter : hostModal.tagFilter
+
+function findFilterItem(key: FilterKey, name: string) {
+  return filterFor(key).awesomepleteInstance._list.find(
+    (item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()
   )
 }
 
-function addGenre(genre: { id: number; name: string }) {
-  changeSettings({
-    genre: [...lobby.settings.genre, { id: genre.id.toString(), state: 1 }],
-  })
-}
+function changeFilter(key: FilterKey, args: string) {
+  const argsArr = args.trim().split(' ')
+  if (argsArr[0].toLocaleLowerCase() === 'none') {
+    changeSettings({ [key]: [] })
+    return
+  }
+  const isRemove = argsArr[0].toLocaleLowerCase() === 'rem'
+  const name = argsArr.slice(isRemove ? 1 : 0).join(' ')
+  const item = findFilterItem(key, name)
+  if (!item) {
+    gameChat.systemMessage(
+      `Error: Unknown ${key === 'genre' ? 'genre' : 'tag'} "${name}"`
+    )
+    return
+  }
 
-function removeGenre(genre: { id: number; name: string }) {
-  changeSettings({
-    genre: [
-      ...lobby.settings.genre.filter((g) => String(g.id) !== String(genre.id)),
-    ],
-  })
-}
-
-function removeAllGenres() {
-  changeSettings({ genre: [] })
+  const entries = lobby.settings[key] ?? []
+  const hasItem = entries.some((e) => String(e.id) === String(item.id))
+  if (isRemove) {
+    if (!hasItem) return
+    changeSettings({
+      [key]: entries.filter((e) => String(e.id) !== String(item.id)),
+    })
+  } else {
+    if (hasItem) return
+    changeSettings({
+      [key]: [...entries, { id: item.id.toString(), state: 1 }],
+    })
+  }
 }
 
 function changeTeamSize(size: number) {
@@ -219,28 +237,17 @@ export default async function setup() {
       longHelp:
         'Usage: /genre [genre]|rem [genre]|none</br>Adds or removes the specified genre from the genre filter. Use "rem" to remove a genre, or "none" to clear all genres.',
     }),
-    (args) => {
-      const argsArr = args.split(' ')
-      if (argsArr[0].toLocaleLowerCase() === 'none') {
-        removeAllGenres()
-        return
-      }
-      const isRemove = argsArr[0].toLocaleLowerCase() === 'rem'
-      const genre = argsArr.slice(isRemove ? 1 : 0).join(' ')
-      const genreObj = getGenreObj(genre)
-      const hasGenre = lobby.settings.genre.some(
-        (g) => g.id.toString() === genreObj?.id.toString()
-      )
+    (args) => changeFilter('genre', args)
+  )
 
-      if (!genreObj) return
-      if (isRemove) {
-        if (!hasGenre) return
-        removeGenre(genreObj)
-      } else {
-        if (hasGenre) return
-        addGenre(genreObj)
-      }
-    }
+  registerCommand(
+    'tag',
+    () => ({
+      shortHelp: 'Add or remove tag filter',
+      longHelp:
+        'Usage: /tag [tag]|rem [tag]|none</br>Adds the tag to the tag filter. Use "rem" to remove a tag. Use "none" to remove all tags.',
+    }),
+    (args) => changeFilter('tags', args)
   )
 
   registerCommand(
