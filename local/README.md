@@ -44,6 +44,7 @@ to any command to see its options.
 | `npm run clean-video-cache` | Lists cached videos that AMQ deleted. Deletes them with `--delete`.    | does not log in |
 | `npm run queue-list-videos` | Queues the videos of every song on an anime list for download.         | either, by flag |
 | `npm run scan-library`      | Adds every library song and its files to the song database.            | test account    |
+| `npm run fetch-approvals`   | Downloads new Discord approval messages, then runs `approval-dates`.   | does not log in |
 | `npm run approval-dates`    | Sets when each song was approved and last replaced, from Discord.      | does not log in |
 
 ## anime-titles
@@ -263,7 +264,10 @@ entry gets the message whose anime name fits it best. Otherwise, all the songs
 that match equally well get the date. Steps 2 to 4
 only fill an `added` date that step 1 did not find.
 
-Put the exports in `local/.cache/discord/`, named
+`npm run fetch-approvals` downloads the messages and runs this script. Run
+`approval-dates` alone to compute the dates again without asking Discord.
+
+The exports are in `local/.cache/discord/`, named
 `approvals-<UTC time of export>.json`, for example
 `approvals-2026-11-04T15-36-11Z.json`. The script reads only the exports that
 are newer than the last one it read. It keeps the messages in the database
@@ -275,3 +279,26 @@ run. So it is safe to run it again after `scan-library`.
 | `--full`        | Read every export again, not only the new ones. |
 | `--dry-run`     | Print what would change, and write nothing.     |
 | `-v, --verbose` | Print each match that was not found by file.    |
+
+### fetch-approvals
+
+Downloads the messages posted in the approvals channel of AMQ's Discord
+server since the last download, then runs `approval-dates`. The new messages
+go to a new export in `local/.cache/discord/`. The first run downloads the
+whole channel.
+
+It needs two values in `.env`:
+
+```
+BOT_DISCORD_TOKEN=…
+APPROVALS_CHANNEL_ID=…
+```
+
+To get the channel ID, turn on Developer Mode in Discord (Settings →
+Advanced), then right-click the channel and choose Copy Channel ID. The token
+gives full access to its account. Keep it only in `.env`. Reading a channel
+with a user token, not a bot token, is against Discord's terms.
+
+| Option          | What it does                                 |
+| --------------- | -------------------------------------------- |
+| `-v, --verbose` | Print each match that was not found by file. |

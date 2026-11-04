@@ -22,7 +22,8 @@
     "clean-video-cache": "tsx local/clean-video-cache.ts",
     "queue-list-videos": "tsx local/queue-list-videos.ts",
     "scan-library": "tsx local/scan-library.ts",
-    "approval-dates": "tsx local/approval-dates.ts"
+    "approval-dates": "tsx local/approval-dates.ts",
+    "fetch-approvals": "tsx local/fetch-approvals.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
