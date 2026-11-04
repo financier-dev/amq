@@ -44,6 +44,7 @@ to any command to see its options.
 | `npm run clean-video-cache` | Lists cached videos that AMQ deleted. Deletes them with `--delete`.    | does not log in |
 | `npm run queue-list-videos` | Queues the videos of every song on an anime list for download.         | either, by flag |
 | `npm run scan-library`      | Adds every library song and its files to the song database.            | test account    |
+| `npm run approval-dates`    | Sets when each song was approved and last replaced, from Discord.      | does not log in |
 
 ## anime-titles
 
@@ -231,3 +232,46 @@ for the files of every song again.
 | `--limit <n>`       | Ask for the files of `n` songs at most. Use it for a test.     |
 | `--concurrency <n>` | Requests at the same time: 1 or 2. Default: 2.                 |
 | `--headed`          | Show the browser window.                                       |
+
+### approval-dates
+
+Sets two dates on each song from exports of the approvals channel of AMQ's
+Discord server:
+
+- `added`: when the song was approved ("A new song has been approved!").
+- `lastUpdated`: when its last replacement was approved ("A replacement has
+  been approved!").
+
+Each is null when no message matches the song. Names are compared without
+accents, and long vowels count as one vowel, so "Kakyūsei" matches
+"Kakyuusei". A message finds its song in
+three steps. Each step is used only when the step before it found no song:
+
+1. File: the file name in the message's link is one of the song's files.
+2. Linked message: the file is no longer in any song, usually because the
+   video was replaced. Another message for the same anime, song, artist and
+   type has a file that is.
+3. Name: exactly one song has the same song name, artist and type. If
+   several songs do, the anime name must pick one.
+4. Anime: songs with the same anime name, song name and type, whatever the
+   artist. Old messages often name the voice actors where AMQ now has the
+   group's name.
+
+In steps 1 and 2, the song name, artist and type must mostly agree. Several
+anime entries can share a file. When there is a message for each entry, each
+entry gets the message whose anime name fits it best. Otherwise, all the songs
+that match equally well get the date. Steps 2 to 4
+only fill an `added` date that step 1 did not find.
+
+Put the exports in `local/.cache/discord/`, named
+`approvals-<UTC time of export>.json`, for example
+`approvals-2026-11-04T15-36-11Z.json`. The script reads only the exports that
+are newer than the last one it read. It keeps the messages in the database
+(collection `approvals`), and computes the dates of every song again on each
+run. So it is safe to run it again after `scan-library`.
+
+| Option          | What it does                                    |
+| --------------- | ----------------------------------------------- |
+| `--full`        | Read every export again, not only the new ones. |
+| `--dry-run`     | Print what would change, and write nothing.     |
+| `-v, --verbose` | Print each match that was not found by file.    |

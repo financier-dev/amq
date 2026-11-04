@@ -52,6 +52,14 @@ export interface SongDoc {
   files?: SongFile[]
   /** When AMQ gave `files`, in ms since the epoch. */
   filesAskedAt?: number
+  /**
+   * When the song was approved, from the Discord approvals channel. Null when
+   * no approval message matches the song. Missing until
+   * `npm run approval-dates` checks the song.
+   */
+  added?: Date | null
+  /** When the song's last replacement was approved. Null when it has none. */
+  lastUpdated?: Date | null
 }
 
 /** A library song with the files AMQ gave for it. */
@@ -78,6 +86,25 @@ export type PlayedSongDoc = Omit<
   songStartedAt: Date | null
 }
 
+/**
+ * One message of the Discord approvals channel, as `npm run approval-dates`
+ * reads it from an export. `_id` is the Discord message ID. The fields are the
+ * message's, as posted: `anime` is the English title.
+ */
+export interface ApprovalDoc {
+  _id: string
+  /** The first line, such as "A new song has been approved!". */
+  kind: string
+  postedAt: Date
+  anime: string
+  name: string
+  artist: string
+  /** As posted: "Opening 1", "Ending2", "Insert Song". */
+  songType: string
+  /** The last part of the link. Old links are on other hosts. */
+  fileId: string
+}
+
 interface MetaDoc {
   _id: string
   value: unknown
@@ -90,6 +117,8 @@ export interface SongDb {
   meta: Collection<MetaDoc>
   /** One document for each song of each game, by `scripts/playedSongs.ts`. */
   playedSongs: Collection<PlayedSongDoc>
+  /** The approval messages from the Discord exports. */
+  approvals: Collection<ApprovalDoc>
 }
 
 export async function openSongDb(): Promise<SongDb> {
@@ -118,7 +147,8 @@ export async function openSongDb(): Promise<SongDb> {
   await playedSongs.createIndex({ gameKey: 1, songNumber: 1 })
   await playedSongs.createIndex({ 'song.annSongId': 1 })
   await playedSongs.createIndex({ 'players.name': 1 })
-  return { client, songs, meta, playedSongs }
+  const approvals = client.db('amq').collection<ApprovalDoc>('approvals')
+  return { client, songs, meta, playedSongs, approvals }
 }
 
 /**
