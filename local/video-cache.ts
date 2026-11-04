@@ -35,6 +35,11 @@
  *
  *   POST /played-song  a `PlayedSong` (`shared/playedSongs.ts`)
  *
+ * `scripts/showExtraSongInfo.ts` asks for the dates that
+ * `npm run approval-dates` saved:
+ *
+ *   GET /song-dates?annSongId=<id>  →  `SongDates` (`shared/songDates.ts`)
+ *
  * A revealed song whose file is cached is registered at once. When neither
  * source knows a file, the server logs it. `npm run scan-library` registers
  * it when it saves the files of a song that uses it.
@@ -66,6 +71,7 @@ import {
   isCacheableFileId,
 } from '@shared/videoCache'
 import { PLAYED_SONG_PATH } from '@shared/playedSongs'
+import { SONG_DATES_PATH, type SongDates } from '@shared/songDates'
 import { type SongDb, openSongDb, savePlayedSong, saveSong } from './lib/songDb'
 import { videoCacheDir } from './lib/videoCacheDir'
 
@@ -410,6 +416,29 @@ async function handlePlayedSong(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handleSongDates(url: URL, res: ServerResponse) {
+  const annSongId = Number(url.searchParams.get('annSongId'))
+  if (!Number.isInteger(annSongId)) return send(res, 400)
+  let song
+  try {
+    song = await db.songs.findOne(
+      { annSongId },
+      { projection: { added: 1, lastUpdated: 1 } }
+    )
+  } catch (error) {
+    console.error('could not read song dates:', (error as Error).message)
+    return send(res, 500)
+  }
+  if (!song) return send(res, 404)
+  const dates: SongDates = {
+    added: song.added?.toISOString() ?? null,
+    lastUpdated: song.lastUpdated?.toISOString() ?? null,
+  }
+  res
+    .writeHead(200, { 'Content-Type': 'application/json' })
+    .end(JSON.stringify(dates))
+}
+
 /** Sleeps until `bytes` is within the speed limit for the time elapsed. */
 async function throttle(bytes: number, started: number) {
   if (!limitKbps) return
@@ -486,6 +515,10 @@ const server = createServer(async (req, res) => {
   if (url.pathname === PLAYED_SONG_PATH) {
     if (req.method !== 'POST') return send(res, 405)
     return handlePlayedSong(req, res)
+  }
+  if (url.pathname === SONG_DATES_PATH) {
+    if (req.method !== 'GET') return send(res, 405)
+    return handleSongDates(url, res)
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405)
 

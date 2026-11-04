@@ -3502,15 +3502,52 @@
     default: setup$4
   }, Symbol.toStringTag, { value: 'Module' }));
 
+  const SONG_DATES_PATH = "/song-dates";
+
+  const UNITS = [
+    "years",
+    "months",
+    "days",
+    "hours",
+    "minutes",
+    "seconds"
+  ];
+  const temporal = globalThis.Temporal;
+  function calendarElapsed(api, then) {
+    const zone = api.Now.timeZoneId();
+    const now = api.Now.zonedDateTimeISO(zone);
+    const start = api.Instant.fromEpochMilliseconds(
+      Math.min(then, Date.now())
+    ).toZonedDateTimeISO(zone);
+    return start.until(now, { largestUnit: "years" });
+  }
+  function averageElapsed(then) {
+    const seconds = Math.max(0, Date.now() - then) / 1e3;
+    const day = 24 * 60 * 60;
+    const lengths = {
+      years: 365.25 * day,
+      months: 30.44 * day,
+      days: day,
+      hours: 60 * 60,
+      minutes: 60,
+      seconds: 1
+    };
+    const unit = UNITS.find((u) => seconds >= lengths[u]) ?? "seconds";
+    return {
+      ...Object.fromEntries(UNITS.map((u) => [u, 0])),
+      [unit]: Math.floor(seconds / lengths[unit])
+    };
+  }
   async function setup$3() {
     const options = {
       maxHeight: "28rem"
     };
     const CONTAINER_ID = "__amq-show-extra-song-info-container";
-    const LAST_SEEN_CONTAINER_ID = "__amq-show-extra-song-info-last-seen-container";
+    const INFO_ROWS_ID = "__amq-show-extra-song-info-rows";
     const LOCAL_STORAGE_KEY = "amq-extra-song-info";
+    const HOVER_GROUP = "show-extra-song-info";
     function removeContainerIfExists() {
-      document.getElementById(LAST_SEEN_CONTAINER_ID)?.remove();
+      document.getElementById(INFO_ROWS_ID)?.remove();
       const container = document.getElementById(CONTAINER_ID);
       container?.remove();
     }
@@ -3529,30 +3566,59 @@
     function getAndUpdateLastSeen(songInfo) {
       const key = songInfo.videoTargetMap.catbox[720] ?? songInfo.videoTargetMap.catbox[480] ?? songInfo.videoTargetMap.catbox[0] ?? null;
       const data = loadLocalStorage();
-      if (!key || data === null) return "Error";
+      if (!key || data === null) return "error";
       const last = data[key];
-      const now = Date.now();
-      data[key] = now;
+      data[key] = Date.now();
       updateLocalStorage(data);
-      if (!last) return "never";
-      let diff = (now - last) / 1e3;
-      const units = [
-        { label: "second", step: 60 },
-        { label: "minute", step: 60 },
-        { label: "hour", step: 24 },
-        { label: "day", step: 30 },
-        { label: "month", step: 12 },
-        { label: "year", step: Infinity }
-      ];
-      for (const unit of units) {
-        if (diff >= unit.step) {
-          diff /= unit.step;
-        } else {
-          const val = Math.round(diff);
-          return `${val} ${unit.label + (val === 1 ? "" : "s")} ago`;
-        }
+      return last ? new Date(last) : null;
+    }
+    function relativeTime(then) {
+      const elapsed = temporal ? calendarElapsed(temporal, then) : averageElapsed(then);
+      const unit = UNITS.find((u) => elapsed[u] > 0) ?? "seconds";
+      const value = elapsed[unit];
+      return `${value} ${value === 1 ? unit.slice(0, -1) : unit} ago`;
+    }
+    function infoRow(label, value) {
+      const row = document.createElement("div");
+      const labelEl = document.createElement("span");
+      labelEl.innerText = label;
+      Object.assign(labelEl.style, { fontWeight: "bold", marginRight: "0.5rem" });
+      const valueEl = document.createElement("span");
+      valueEl.innerText = value;
+      row.append(labelEl, valueEl);
+      return { row, valueEl };
+    }
+    const toDate = (iso) => iso ? new Date(iso) : null;
+    function dateRow(label, date, empty) {
+      if (!date) return infoRow(label, empty).row;
+      const { row, valueEl } = infoRow(label, relativeTime(date.getTime()));
+      const exact = date.toLocaleString(void 0, {
+        dateStyle: "long",
+        timeStyle: "medium"
+      });
+      addHoverTarget(HOVER_GROUP, {
+        el: valueEl,
+        getLines: () => [makeTooltipLine(exact)]
+      });
+      return row;
+    }
+    async function addSongDates(infoRows, annSongId) {
+      if (annSongId === void 0) return;
+      let dates;
+      try {
+        const res = await fetch(
+          `${VIDEO_CACHE_ORIGIN}${SONG_DATES_PATH}?annSongId=${annSongId}`
+        );
+        if (!res.ok) return;
+        dates = await res.json();
+      } catch {
+        return;
       }
-      return "Error";
+      if (!infoRows.isConnected) return;
+      infoRows.append(
+        dateRow("Added:", toDate(dates.added), "unknown"),
+        dateRow("Last updated:", toDate(dates.lastUpdated), "unknown")
+      );
     }
     addListener("answer results", (results) => {
       removeContainerIfExists();
@@ -3566,21 +3632,15 @@
         maxHeight: options.maxHeight,
         overflowY: "auto"
       });
-      document.getElementById(LAST_SEEN_CONTAINER_ID)?.remove();
+      document.getElementById(INFO_ROWS_ID)?.remove();
+      const infoRows = document.createElement("div");
+      infoRows.id = INFO_ROWS_ID;
       const lastSeen = getAndUpdateLastSeen(results.songInfo);
-      const lastSeenContainer = document.createElement("div");
-      lastSeenContainer.id = LAST_SEEN_CONTAINER_ID;
-      const lastSeenLabel = document.createElement("span");
-      lastSeenLabel.innerText = "Last seen:";
-      Object.assign(lastSeenLabel.style, {
-        fontWeight: "bold",
-        marginRight: "0.5rem"
-      });
-      lastSeenContainer.append(lastSeenLabel, lastSeen);
-      document.getElementById("qpSongInfoContainer")?.insertBefore(
-        lastSeenContainer,
-        document.getElementById("qpSongInfoLinkRow")
+      infoRows.append(
+        lastSeen === "error" ? infoRow("Last seen:", "Error").row : dateRow("Last seen:", lastSeen, "never")
       );
+      document.getElementById("qpSongInfoContainer")?.insertBefore(infoRows, document.getElementById("qpSongInfoLinkRow"));
+      void addSongDates(infoRows, results.songInfo.annSongId);
       const correctAnswersContainer = document.createElement("div");
       Object.assign(correctAnswersContainer.style, {
         display: "flex",
