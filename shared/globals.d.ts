@@ -733,6 +733,12 @@ declare global {
      * which only sets `watched`.
      */
     animeListMapCache: Record<string, number>
+    /**
+     * Runs the last `getCache` callback on every `get current master list id`
+     * reply. `currentRequestCallback` is never cleared after the first
+     * `getCache` (`libraryCacheHandler.js:22`).
+     */
+    getCurrentMasterListIdListener: Listener
     [key: string]: any
   }
 

@@ -95,13 +95,13 @@
   const DROPDOWN_HIDDEN_CLASS = "amq-custom-commands-dd-hidden";
   const isDropdownDisabled = () => document.getElementById("qpAnswerInputContainer")?.classList.contains(DROPDOWN_HIDDEN_CLASS) ?? false;
 
-  const css$2 = `
+  const css$3 = `
 .amq-answer-input-valid-answer {
   color: orange;
 }
 `;
-  async function setup$o() {
-    _GM_addStyle(css$2);
+  async function setup$p() {
+    _GM_addStyle(css$3);
     const animeNames = new Set(await getFixedAnimeNames({ lowercase: true }));
     const answerInput = getAnswerInputEl();
     if (!answerInput) return;
@@ -129,7 +129,7 @@
 
   const __vite_glob_0_0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$o
+    default: setup$p
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const STACK_CLASS = "amq-avatar-stack";
@@ -420,7 +420,7 @@
     localStorage.setItem(LOCAL_STORAGE_KEY$1, JSON.stringify(data));
   }
   const isTypedAnswer = (answer, dropdownDisabled) => answer !== null && (dropdownDisabled || answer === answer.toLocaleLowerCase() || answer === answer.toLocaleUpperCase());
-  async function setup$n() {
+  async function setup$o() {
     let answerTimes = null;
     let userAnswer = null;
     let revealedAnswer = null;
@@ -525,7 +525,7 @@
 
   const __vite_glob_0_1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$n
+    default: setup$o
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function beforeLoad() {
@@ -536,13 +536,13 @@
       this.clearHostTimeout();
     };
   }
-  async function setup$m() {
+  async function setup$n() {
   }
 
   const __vite_glob_0_2 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     beforeLoad,
-    default: setup$m
+    default: setup$n
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const SHOWS_TO_HIDE = [
@@ -550,7 +550,7 @@
     "Senki Zesshou Symphogear XV",
     "Little Busters! EX"
   ];
-  async function setup$l() {
+  async function setup$m() {
     const shouldHideVideo = (songInfo) => SHOWS_TO_HIDE.some(
       (title) => [...songInfo.altAnimeNames, ...songInfo.altAnimeNamesAnswers].some(
         (x) => title.toLocaleLowerCase() === x.toLocaleLowerCase()
@@ -574,7 +574,7 @@
 
   const __vite_glob_0_3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$l
+    default: setup$m
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const commands = {};
@@ -605,7 +605,7 @@
       }
     }
   );
-  async function setup$k() {
+  async function setup$l() {
     const sendMessageFn = gameChat.sendMessage;
     gameChat.sendMessage = function() {
       const inputEl = document.getElementById("gcInput");
@@ -635,7 +635,7 @@
 
   const __vite_glob_0_9 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$k,
+    default: setup$l,
     registerCommand
   }, Symbol.toStringTag, { value: 'Module' }));
 
@@ -646,7 +646,7 @@
     const value = Number(trimmed);
     return Number.isFinite(value) && value >= 0 ? value : null;
   };
-  async function setup$j() {
+  async function setup$k() {
     const animeNames = getAllAnimeNames({ lowercase: true });
     const isValidAnime = (s) => animeNames.current.includes(s.toLocaleLowerCase());
     const voteSkip = () => {
@@ -745,10 +745,10 @@
 
   const __vite_glob_0_4 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$j
+    default: setup$k
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$i() {
+  async function setup$j() {
     const DEBOUNCE_THRESHOLD_MS = 50;
     let lastSubmitTime = 0;
     let curTimeout = null;
@@ -840,14 +840,14 @@
 
   const __vite_glob_0_5 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$i
+    default: setup$j
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const options$1 = {
     themes: ["Music"],
     types: ["Openings", "Endings", "Inserts"]
   };
-  async function setup$h() {
+  async function setup$i() {
     const getLabel = (el) => el.innerText.split("\n")[0].toLocaleLowerCase();
     const cb = (mutationsList) => {
       mutationsList.forEach((mutation) => {
@@ -870,10 +870,10 @@
 
   const __vite_glob_0_6 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$h
+    default: setup$i
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$g() {
+  async function setup$h() {
     let quickAnswerAuto = true;
     registerCommand(
       "qa",
@@ -1075,10 +1075,10 @@
 
   const __vite_glob_0_7 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$g
+    default: setup$h
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$f() {
+  async function setup$g() {
     const cb = (mutationsList) => mutationsList.forEach((mutation) => {
       if (mutation.type !== "childList") return;
       for (const node of mutation.addedNodes) {
@@ -1100,7 +1100,7 @@
 
   const __vite_glob_0_8 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$f
+    default: setup$g
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function observePageVisibility(id, callback) {
@@ -1127,7 +1127,7 @@
       command: "start return lobby vote"
     });
   }
-  async function setup$e() {
+  async function setup$f() {
     (function setupAutoThrow() {
       let autoAnswer = "";
       registerCommand(
@@ -1619,11 +1619,11 @@
 
   const __vite_glob_0_10 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$e
+    default: setup$f
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const BACKGROUND_URL = "https://images8.alphacoders.com/695/695848.png";
-  async function setup$d() {
+  async function setup$e() {
     const backgroundCss = `
   :root {
 	--bg: url("${BACKGROUND_URL}");
@@ -1963,10 +1963,10 @@
 
   const __vite_glob_0_11 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$d
+    default: setup$e
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$c() {
+  async function setup$d() {
     const CONTAINER_ID = "__amq-extra-song-info-container";
     const info = {
       type: {
@@ -2085,7 +2085,7 @@
 
   const __vite_glob_0_12 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$c
+    default: setup$d
   }, Symbol.toStringTag, { value: 'Module' }));
 
   function getDefaultExportFromCjs (x) {
@@ -2388,7 +2388,7 @@
       }
     });
   }
-  async function setup$b() {
+  async function setup$c() {
     registerCommand(
       "diff",
       () => ({
@@ -2643,7 +2643,7 @@
 
   const __vite_glob_0_13 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$b
+    default: setup$c
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const WORD_SEP = "    ";
@@ -2651,7 +2651,7 @@
   function fixTitle(title) {
     return title.split(WORD_SEP).map((x) => x.replaceAll(LETTER_SEP, "")).join(" ");
   }
-  async function setup$a() {
+  async function setup$b() {
     const target = document.getElementById("qpAnimeName");
     if (!target) {
       throw new Error("qpAnimeName element not found");
@@ -2670,7 +2670,7 @@
 
   const __vite_glob_0_14 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$a
+    default: setup$b
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const STORAGE_KEY = "amqForcedVideoHost";
@@ -2682,7 +2682,7 @@
   border-radius: 3px;
 }
 `;
-  async function setup$9() {
+  async function setup$a() {
     await ensureHostRowsLoaded();
     const hosts = videoResolver.hostOrder;
     let forcedHost = readStoredHost(hosts);
@@ -2776,10 +2776,10 @@
 
   const __vite_glob_0_15 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$9
+    default: setup$a
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  async function setup$8() {
+  async function setup$9() {
     addListener("Jam Vote Result", (data) => {
       const selectedTheme = data.themeResult.option.name;
       const winnerVote = data.themeResult.vote.profileInfo.name;
@@ -2795,7 +2795,7 @@
 
   const __vite_glob_0_16 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$8
+    default: setup$9
   }, Symbol.toStringTag, { value: 'Module' }));
 
   const KEYS = {
@@ -2811,7 +2811,7 @@
     NEXUS_TARGET_PREV_ENEMY: "arrowleft",
     NEXUS_TARGET_NEXT_ENEMY: "arrowright"
   };
-  async function setup$7() {
+  async function setup$8() {
     const focusAnswer = () => {
       const answerInput = $("#qpAnswerInput");
       answerInput.click();
@@ -2911,13 +2911,13 @@
 
   const __vite_glob_0_17 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
-    default: setup$7
+    default: setup$8
   }, Symbol.toStringTag, { value: 'Module' }));
 
-  const CONTAINER_ID$1 = "amq-online-notifications-container";
-  async function setup$6() {
+  const CONTAINER_ID$2 = "amq-online-notifications-container";
+  async function setup$7() {
     const containerEl = document.createElement("div");
-    containerEl.id = CONTAINER_ID$1;
+    containerEl.id = CONTAINER_ID$2;
     containerEl.style.position = "absolute";
     containerEl.style.top = "0";
     containerEl.style.left = "0";
@@ -2932,7 +2932,7 @@
       notifEl.style.padding = "0.5rem";
       notifEl.style.backgroundColor = type === "online" ? "green" : "#3f3f3f";
       notifEl.textContent = text;
-      const containerEl2 = document.getElementById(CONTAINER_ID$1);
+      const containerEl2 = document.getElementById(CONTAINER_ID$2);
       if (!containerEl2) return;
       containerEl2.appendChild(notifEl);
       setTimeout(() => {
@@ -2949,6 +2949,108 @@
   }
 
   const __vite_glob_0_18 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+    __proto__: null,
+    default: setup$7
+  }, Symbol.toStringTag, { value: 'Module' }));
+
+  const PROBE_INTERVAL_MS = 5e3;
+  const PROBE_TIMEOUT_MS = 1e4;
+  const HISTORY_SIZE = 12;
+  const PROBE_COMMAND = "get current master list id";
+  const CONTAINER_ID$1 = "amqPingContainer";
+  const css$2 = `
+#${CONTAINER_ID$1} {
+  position: absolute;
+  top: 0;
+  right: 0;
+  line-height: 45px;
+  padding-left: 12px;
+  transform: translateX(100%) skewX(35.5deg);
+  font-size: 16px;
+  white-space: nowrap;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  pointer-events: initial;
+}
+
+#${CONTAINER_ID$1} .amqPingUnit {
+  font-size: 11px;
+}
+`;
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  function createDisplay() {
+    const container = document.createElement("div");
+    container.id = CONTAINER_ID$1;
+    const value = document.createElement("span");
+    const unit = document.createElement("span");
+    unit.className = "amqPingUnit";
+    unit.textContent = " ms";
+    container.append(value, unit);
+    document.getElementById("currencyTicketContainer")?.append(container);
+    return {
+      show(rtt, history) {
+        if (rtt === null) {
+          value.textContent = "—";
+          container.title = `No reply in ${PROBE_TIMEOUT_MS / 1e3} seconds`;
+          return;
+        }
+        value.textContent = String(Math.round(rtt));
+        container.title = `Ping to the game server
+Last minute: median ${Math.round(median(history))} ms, lowest ${Math.round(Math.min(...history))} ms`;
+      }
+    };
+  }
+  async function setup$6() {
+    _GM_addStyle(css$2);
+    const display = createDisplay();
+    const history = [];
+    const gameListener = libraryCacheHandler.getCurrentMasterListIdListener;
+    let waiting = false;
+    let gameSentProbeCommand = false;
+    const sendCommand = socket.sendCommand.bind(socket);
+    socket.sendCommand = (content, responseHandler) => {
+      if (waiting && content?.command === PROBE_COMMAND) {
+        gameSentProbeCommand = true;
+        gameListener?.bindListener();
+      }
+      return sendCommand(content, responseHandler);
+    };
+    const probe = () => {
+      if (waiting || socket._disconnected) return;
+      const rebindGameListener = gameListener?.bound ?? false;
+      gameListener?.unbindListener();
+      waiting = true;
+      gameSentProbeCommand = false;
+      const finish = (rtt) => {
+        waiting = false;
+        clearTimeout(timeout);
+        unbind();
+        if (rebindGameListener) gameListener?.bindListener();
+        if (rtt === null) {
+          display.show(null, history);
+          return;
+        }
+        if (gameSentProbeCommand) return;
+        history.push(rtt);
+        if (history.length > HISTORY_SIZE) history.shift();
+        display.show(rtt, history);
+      };
+      const start = performance.now();
+      const unbind = addListener(
+        PROBE_COMMAND,
+        () => finish(performance.now() - start)
+      );
+      const timeout = setTimeout(() => finish(null), PROBE_TIMEOUT_MS);
+      sendCommand({ type: "library", command: PROBE_COMMAND });
+    };
+    probe();
+    setInterval(probe, PROBE_INTERVAL_MS);
+  }
+
+  const __vite_glob_0_19 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$6
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -3176,7 +3278,7 @@
     void flush();
   }
 
-  const __vite_glob_0_19 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_20 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$5
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -3497,7 +3599,7 @@
     );
   }
 
-  const __vite_glob_0_20 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_21 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$4
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -3705,7 +3807,7 @@
     });
   }
 
-  const __vite_glob_0_21 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_22 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$3
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -4115,7 +4217,7 @@
     });
   }
 
-  const __vite_glob_0_22 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_23 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$2
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -4188,7 +4290,7 @@
     });
   }
 
-  const __vite_glob_0_23 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_24 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup$1
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -4421,7 +4523,7 @@
     );
   }
 
-  const __vite_glob_0_24 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  const __vite_glob_0_25 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     __proto__: null,
     default: setup
   }, Symbol.toStringTag, { value: 'Module' }));
@@ -4453,7 +4555,7 @@
     );
   }
 
-  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": __vite_glob_0_0,"./answerTimes.ts": __vite_glob_0_1,"./antiAfk.ts": __vite_glob_0_2,"./autoHideVideo.ts": __vite_glob_0_3,"./autoSkip.ts": __vite_glob_0_4,"./autoSubmit.ts": __vite_glob_0_5,"./autoVoter.ts": __vite_glob_0_6,"./betterDropdown.ts": __vite_glob_0_7,"./chatTimestamps.ts": __vite_glob_0_8,"./commands.ts": __vite_glob_0_9,"./customCommands.ts": __vite_glob_0_10,"./customCss.ts": __vite_glob_0_11,"./easyExtraInfo.ts": __vite_glob_0_12,"./easySettings.ts": __vite_glob_0_13,"./fixHints.ts": __vite_glob_0_14,"./forceVideoHost.ts": __vite_glob_0_15,"./jamVoteResultAnnouncer.ts": __vite_glob_0_16,"./keyboardShortcuts.ts": __vite_glob_0_17,"./onlineNotifications.ts": __vite_glob_0_18,"./playedSongs.ts": __vite_glob_0_19,"./playerStats.ts": __vite_glob_0_20,"./showExtraSongInfo.ts": __vite_glob_0_21,"./songHistory.ts": __vite_glob_0_22,"./typingSpeed.ts": __vite_glob_0_23,"./videoCache.ts": __vite_glob_0_24
+  const scripts = /* #__PURE__ */ Object.assign({"./answerInput.ts": __vite_glob_0_0,"./answerTimes.ts": __vite_glob_0_1,"./antiAfk.ts": __vite_glob_0_2,"./autoHideVideo.ts": __vite_glob_0_3,"./autoSkip.ts": __vite_glob_0_4,"./autoSubmit.ts": __vite_glob_0_5,"./autoVoter.ts": __vite_glob_0_6,"./betterDropdown.ts": __vite_glob_0_7,"./chatTimestamps.ts": __vite_glob_0_8,"./commands.ts": __vite_glob_0_9,"./customCommands.ts": __vite_glob_0_10,"./customCss.ts": __vite_glob_0_11,"./easyExtraInfo.ts": __vite_glob_0_12,"./easySettings.ts": __vite_glob_0_13,"./fixHints.ts": __vite_glob_0_14,"./forceVideoHost.ts": __vite_glob_0_15,"./jamVoteResultAnnouncer.ts": __vite_glob_0_16,"./keyboardShortcuts.ts": __vite_glob_0_17,"./onlineNotifications.ts": __vite_glob_0_18,"./ping.ts": __vite_glob_0_19,"./playedSongs.ts": __vite_glob_0_20,"./playerStats.ts": __vite_glob_0_21,"./showExtraSongInfo.ts": __vite_glob_0_22,"./songHistory.ts": __vite_glob_0_23,"./typingSpeed.ts": __vite_glob_0_24,"./videoCache.ts": __vite_glob_0_25
 
   });
   async function main() {
