@@ -62,6 +62,7 @@ import {
 } from 'node:http'
 import path from 'node:path'
 import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { parseArgs } from 'node:util'
 import {
   type RevealedSong,
@@ -246,25 +247,24 @@ async function download(fileId: string, url: string) {
   const expected = Number(res.headers.get('content-length'))
 
   const partial = path.join(partialDir, fileId)
-  const out = fs.createWriteStream(partial)
   let written = 0
   try {
-    for await (const chunk of Readable.fromWeb(res.body as any)) {
-      if (!out.write(chunk)) {
-        await new Promise<void>((resolve) => out.once('drain', () => resolve()))
-      }
-      written += chunk.length
-      await throttle(written, started)
-    }
-    await new Promise<void>((resolve, reject) =>
-      out.end((error?: Error | null) => (error ? reject(error) : resolve()))
+    await pipeline(
+      Readable.fromWeb(res.body as any),
+      async function* (source: AsyncIterable<Buffer>) {
+        for await (const chunk of source) {
+          written += chunk.length
+          await throttle(written, started)
+          yield chunk
+        }
+      },
+      fs.createWriteStream(partial)
     )
     if (expected && written !== expected) {
       throw new Error(`got ${written} of ${expected} bytes`)
     }
     await rename(partial, target)
   } catch (error) {
-    out.destroy()
     await rm(partial, { force: true })
     throw error
   }
