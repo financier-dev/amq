@@ -792,6 +792,50 @@ declare global {
     [key: string]: any
   }
 
+  /** A skin: one color of an outfit (`StoreColor` in `storeCharacter.js`). */
+  interface StoreColor {
+    colorId: number
+    name: string
+    unlocked: boolean
+    [key: string]: any
+  }
+
+  /** An outfit of a character (`StoreAvatar` in `storeCharacter.js`). */
+  interface StoreAvatar {
+    avatarId: number
+    avatarName: string
+    outfitName: string
+    /** `"None"` when the outfit has no toggle. */
+    optionName: string
+    colors: StoreColor[]
+    colorMap: Record<number, StoreColor>
+    [key: string]: any
+  }
+
+  /** A location background (`StoreBackground` in `storeBackgrounds.js`). */
+  interface StoreUniqueBackground {
+    id: number
+    name: string
+    unlocked: boolean
+    [key: string]: any
+  }
+
+  /** `storeWindow.js`. Set up during `login complete`. */
+  const storeWindow: {
+    getAllAvatars: () => StoreAvatar[]
+    getAvatarFromAvatarId: (avatarId: number) => StoreAvatar
+    /** True when the outfit's skins can be used as backgrounds for others. */
+    getAvatarBonusUnlocked: (avatarId: number) => boolean
+    topBar: {
+      backgrounds: { backgrounds: StoreUniqueBackground[] }
+      favorites: {
+        favoriteAvatars: { favoriteId: number; [key: string]: any }[]
+      }
+      [key: string]: any
+    }
+    [key: string]: any
+  }
+
   const selfName: string
   const messageDisplayer: any
 

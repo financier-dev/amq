@@ -23,7 +23,8 @@
     "queue-list-videos": "tsx local/queue-list-videos.ts",
     "scan-library": "tsx local/scan-library.ts",
     "approval-dates": "tsx local/approval-dates.ts",
-    "fetch-approvals": "tsx local/fetch-approvals.ts"
+    "fetch-approvals": "tsx local/fetch-approvals.ts",
+    "set-favorites": "tsx local/set-favorites.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

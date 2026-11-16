@@ -46,6 +46,7 @@ to any command to see its options.
 | `npm run scan-library`      | Adds every library song and its files to the song database.            | test account    |
 | `npm run fetch-approvals`   | Downloads new Discord approval messages, then runs `approval-dates`.   | does not log in |
 | `npm run approval-dates`    | Sets when each song was approved and last replaced, from Discord.      | does not log in |
+| `npm run set-favorites`     | Adds combinations of skins and backgrounds to your favorite avatars.   | your account    |
 
 ## anime-titles
 
@@ -65,6 +66,50 @@ Included Entries, and the AMQ Custom List selected there in its mode.
 To change the title of an anime or leave it out, copy
 `anime-titles.overrides.example.json` to `anime-titles.overrides.json` and
 edit it. Use `--candidates` to see the names you can choose from.
+
+## set-favorites
+
+Adds every combination of the skins and the backgrounds you choose to your
+favorite avatars. It keeps your current favorites, and skips the
+combinations that are already favorites. With `--replace`, it removes all
+your current favorites first.
+
+```
+npm run set-favorites -- --list shiina
+npm run set-favorites -- --skins "Water Princess Shiina" --dry-run
+npm run set-favorites -- --skins "Water Princess Shiina"
+npm run set-favorites -- --skins "Water Princess Shiina" --replace
+npm run set-favorites -- --skins "Water Princess Shiina: <skin>, <skin>" \
+  --backgrounds "Water Princess Shiina" --backgrounds "<location background>"
+```
+
+A selector is the outfit's full name as the store shows it, "<outfit>
+<character>". Case does not matter. Alone, it means every skin of the outfit.
+After a colon, a comma-separated list picks some skins. A background selector
+can also be the name of a location background. Use `--list` to find the
+names.
+
+The script follows the store's rules, and skips a combination whose star the
+store would not show. It prints why:
+
+- The skin must be unlocked.
+- A skin's own background always works with it.
+- The background of another skin needs that skin unlocked, and 10 unlocked
+  skins of its outfit.
+- A location background must be unlocked.
+
+The favorites have no decorations.
+
+| Option                     | What it does                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--skins <selector>`       | The skins to favorite. Repeat it for more.                                                              |
+| `--backgrounds <selector>` | The backgrounds to combine them with. Repeat it for more. Default: `--skins`.                           |
+| `--option <on\|off\|both>` | The outfit's toggle, such as a tiara: `on`, `off` or `both` versions in the favorites. Default: `both`. |
+| `--list <text>`            | Print the outfits whose name contains the text, with their skins. Change nothing.                       |
+| `--replace`                | Remove all your current favorites first. By default, they stay.                                         |
+| `--dry-run`                | Print the favorites it would set, and change nothing.                                                   |
+| `--test-account`           | Use the test account instead of yours.                                                                  |
+| `--headed`                 | Show the browser window.                                                                                |
 
 ## watch-rooms and rooms
 
